@@ -326,7 +326,7 @@ struct DockCueCTL {
           "fullscreenMode": "overlay",     // overlay | desktopOnly
           "displays": "all",               // all | primary | mouse | fixed
           "fixedDisplayID": null,          // UInt32, used when displays=fixed
-          "backgroundStyle": "clear",      // clear only; legacy glass/dark decode as clear
+          "backgroundStyle": "glass",      // glass (Liquid Glass, macOS 26+) | clear; legacy dark decodes as clear
           "calendarEvents": false,         // bool: enable macOS Calendar?
           "watchDirectory": null,          // string or null: path to directory with config+hud JSONs
           "debugLogging": true,            // bool
@@ -334,8 +334,8 @@ struct DockCueCTL {
             "width": 0,                    // 0 = auto-fill Dock-adjacent space
             "height": 82,
             "margin": 18,
-            "cornerRadius": 14,
-            "opacity": 0.84,              // legacy/reserved; HUD background is always clear
+            "cornerRadius": 14,            // glass corner radius (glass background only)
+            "opacity": 0.84,              // legacy/reserved
             "maxLines": 2,                // max lines in list items
             "contentDensity": "comfortable", // compact | comfortable | spacious
             "scrollIntervalSeconds": 4     // seconds between auto-scroll pages

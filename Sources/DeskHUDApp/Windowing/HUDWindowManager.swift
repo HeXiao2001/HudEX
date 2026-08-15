@@ -60,6 +60,7 @@ final class HUDWindowManager {
                 )
                 let hostingView = NSHostingView(rootView: view)
                 hostingView.frame = NSRect(origin: .zero, size: frame.size)
+                hostingView.autoresizingMask = [.width, .height]
 
                 let window = NSWindow(
                     contentRect: frame,
@@ -68,7 +69,12 @@ final class HUDWindowManager {
                     defer: false,
                     screen: screen
                 )
-                window.contentView = hostingView
+                window.contentView = Self.makeContentView(
+                    hosting: hostingView,
+                    background: config.backgroundStyle,
+                    size: frame.size,
+                    cornerRadius: config.window.cornerRadius
+                )
                 window.isOpaque = false
                 window.backgroundColor = .clear
                 window.hasShadow = false
@@ -89,13 +95,48 @@ final class HUDWindowManager {
         syncContextFile()
     }
 
-    /// Apply config changes to existing windows without tearing them down.
-    /// When display target or fixed display ID changes, rebuilds all windows.
-    func reconfigure(config: HUDConfig) {
-        let displayChanged = activeConfig?.displays != config.displays
-            || activeConfig?.fixedDisplayID != config.fixedDisplayID
+    /// Wraps the SwiftUI hosting view in the configured background.
+    /// `.glass` uses the AppKit Liquid Glass API (WWDC25): content goes into
+    /// `NSGlassEffectView.contentView` so AppKit applies the correct visual
+    /// treatments. Pre-macOS 26 falls back to behind-window vibrancy.
+    private static func makeContentView(
+        hosting: NSHostingView<HUDPanelView>,
+        background: DeskHUDCore.BackgroundStyle,
+        size: NSSize,
+        cornerRadius: Double
+    ) -> NSView {
+        guard background == .glass else { return hosting }
 
-        if displayChanged, let document = activeDocument {
+        if #available(macOS 26.0, *) {
+            let glass = NSGlassEffectView(frame: NSRect(origin: .zero, size: size))
+            glass.cornerRadius = cornerRadius
+            glass.contentView = hosting
+            return glass
+        }
+
+        let container = NSView(frame: NSRect(origin: .zero, size: size))
+        let vibrancy = NSVisualEffectView(frame: NSRect(origin: .zero, size: size))
+        vibrancy.material = .hudWindow
+        vibrancy.blendingMode = .behindWindow
+        vibrancy.state = .active
+        vibrancy.wantsLayer = true
+        vibrancy.layer?.cornerRadius = cornerRadius
+        vibrancy.layer?.masksToBounds = true
+        vibrancy.autoresizingMask = [.width, .height]
+        container.addSubview(vibrancy)
+        container.addSubview(hosting)
+        return container
+    }
+
+    /// Apply config changes to existing windows without tearing them down.
+    /// When display target, fixed display ID, or background style changes,
+    /// rebuilds all windows (background lives on the window's content view).
+    func reconfigure(config: HUDConfig) {
+        let needsRebuild = activeConfig?.displays != config.displays
+            || activeConfig?.fixedDisplayID != config.fixedDisplayID
+            || activeConfig?.backgroundStyle != config.backgroundStyle
+
+        if needsRebuild, let document = activeDocument {
             show(document: document, config: config)
             return
         }

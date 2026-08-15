@@ -20,7 +20,7 @@ public struct HUDConfig: Codable, Equatable, Sendable {
         fullscreenMode: FullscreenMode = .desktopOnly,
         displays: DisplayMode = .primary,
         fixedDisplayID: UInt32? = nil,
-        backgroundStyle: BackgroundStyle = .clear,
+        backgroundStyle: BackgroundStyle = .glass,
         calendarEvents: Bool = false,
         launchAtLogin: Bool = false,
         hideMenuBar: Bool = false,
@@ -83,25 +83,23 @@ public enum FullscreenMode: String, Codable, CaseIterable, Sendable {
 
 public enum BackgroundStyle: String, Codable, CaseIterable, Sendable {
     case clear  // No background, only text and glyphs
+    case glass  // Native Liquid Glass (NSGlassEffectView on macOS 26+, vibrancy fallback)
 
     public init(from decoder: Decoder) throws {
         let raw = try decoder.singleValueContainer().decode(String.self)
         switch raw {
-        case "clear", "glass", "dark":
+        case "clear", "glass":
+            self = BackgroundStyle(rawValue: raw)!
+        case "dark":  // legacy value from pre-glass builds
             self = .clear
         default:
             throw DecodingError.dataCorrupted(
                 DecodingError.Context(
                     codingPath: decoder.codingPath,
-                    debugDescription: "Unsupported backgroundStyle: \(raw). DockCue now only supports clear."
+                    debugDescription: "Unsupported backgroundStyle: \(raw). Supported: clear, glass."
                 )
             )
         }
-    }
-
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        try container.encode("clear")
     }
 }
 

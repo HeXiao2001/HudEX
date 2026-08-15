@@ -49,7 +49,7 @@ final class HUDModelDecodingTests: XCTestCase {
 
         XCTAssertEqual(config.effectProfile, .low)
         XCTAssertEqual(config.fullscreenMode, .overlay)
-        XCTAssertEqual(config.backgroundStyle, .clear)
+        XCTAssertEqual(config.backgroundStyle, .glass)
         XCTAssertEqual(config.launchAtLogin, false)
         XCTAssertEqual(config.hideMenuBar, false)
         XCTAssertEqual(config.window.width, 320)
@@ -58,12 +58,24 @@ final class HUDModelDecodingTests: XCTestCase {
     }
 
 
-    func testLegacyBackgroundStylesDecodeAsClear() throws {
-        for style in ["clear", "glass", "dark"] {
-            let json = #"{"backgroundStyle":"\#(style)"}"#.data(using: .utf8)!
-            let config = try JSONDecoder().decode(HUDConfig.self, from: json)
-            XCTAssertEqual(config.backgroundStyle, .clear)
-        }
+    func testBackgroundStyleDecodingAndRoundtrip() throws {
+        // Explicit values decode as themselves
+        XCTAssertEqual(try decodeStyle("glass"), .glass)
+        XCTAssertEqual(try decodeStyle("clear"), .clear)
+        // Legacy "dark" from pre-glass builds maps to clear
+        XCTAssertEqual(try decodeStyle("dark"), .clear)
+        // Unknown values throw
+        XCTAssertThrowsError(try decodeStyle("neon"))
+
+        // Roundtrip: encode writes the raw value back
+        let encoded = try JSONEncoder().encode(HUDConfig(backgroundStyle: .glass))
+        let decoded = try JSONDecoder().decode(HUDConfig.self, from: encoded)
+        XCTAssertEqual(decoded.backgroundStyle, .glass)
+    }
+
+    private func decodeStyle(_ raw: String) throws -> BackgroundStyle {
+        let json = #"{"backgroundStyle":"\#(raw)"}"#.data(using: .utf8)!
+        return try JSONDecoder().decode(HUDConfig.self, from: json).backgroundStyle
     }
 
     func testLoaderReportsInvalidJSONWithoutThrowing() throws {

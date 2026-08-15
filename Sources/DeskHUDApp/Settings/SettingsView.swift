@@ -87,6 +87,11 @@ private struct AppearancePane: View {
 
     var body: some View {
         Form {
+            Picker("Background:", selection: $config.backgroundStyle) {
+                Text("Liquid Glass (Dock-like)").tag(DeskHUDCore.BackgroundStyle.glass)
+                Text("Clear").tag(DeskHUDCore.BackgroundStyle.clear)
+            }
+
             Picker("Effect:", selection: $config.effectProfile) {
                 Text("Low").tag(EffectProfile.low)
                 Text("Medium").tag(EffectProfile.medium)

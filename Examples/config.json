@@ -3,7 +3,7 @@
   "effectProfile": "low",
   "fullscreenMode": "desktopOnly",
   "displays": "all",
-  "backgroundStyle": "clear",
+  "backgroundStyle": "glass",
   "calendarEvents": true,
   "launchAtLogin": false,
   "hideMenuBar": false,
