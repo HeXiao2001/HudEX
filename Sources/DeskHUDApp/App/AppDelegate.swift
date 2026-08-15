@@ -21,6 +21,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindowController: SettingsWindowController?
     private var fileWatchers: [DispatchSourceFileSystemObject] = []
     private var reloadDebounceTimer: Timer?
+    private var calendarItems: [HUDItem] = []
+    private var calendarFetchTask: Task<Void, Never>?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -91,6 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         currentDocument = document
         applyConfigAndDocument()
         installFileWatchers(watchDir: watchDir)
+        refreshCalendar()
     }
 
     /// For each slot, if a file named `hud_{slot.id}.json` exists, load it and
@@ -118,16 +121,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Enrich the left (agenda) slot with calendar events and reminders.
     /// External file content is handled by `watchDirectory` — no separate path needed.
+    /// Calendar items come from the async-fetched `calendarItems` cache; stale
+    /// ones (cal-/rem- prefixed ids from a previous merge) are stripped first
+    /// so re-merging an already-merged document stays idempotent.
     private func mergeAgendaSources(into document: HUDDocument) -> HUDDocument {
         var doc = document
         guard let leftIndex = doc.slots.firstIndex(where: { $0.anchor == .dockLeft })
         else { return doc }
 
         var items = doc.slots[leftIndex].resolvedSections.flatMap { $0.items }
+        items.removeAll { $0.id.hasPrefix("cal-") || $0.id.hasPrefix("rem-") }
 
         // Calendar
         if currentConfig.calendarEvents {
-            items.append(contentsOf: CalendarReader.fetch())
+            items.append(contentsOf: calendarItems)
         }
 
         // Sort: by time first (schedule + todos interleaved chronologically),
@@ -153,6 +160,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ]
         doc.slots[leftIndex].items = items
         return doc
+    }
+
+    /// Fetch calendar data off the main actor's blocking path, then re-render
+    /// the agenda slot when results arrive. Skips if a fetch is already in flight.
+    private func refreshCalendar() {
+        guard currentConfig.calendarEvents else {
+            if !calendarItems.isEmpty {
+                calendarItems = []
+                rerenderWithAgenda()
+            }
+            return
+        }
+        guard calendarFetchTask == nil else { return }
+        calendarFetchTask = Task { [weak self] in
+            let items = await CalendarReader.fetch()
+            guard let self else { return }
+            self.calendarFetchTask = nil
+            guard items != self.calendarItems else { return }
+            self.calendarItems = items
+            self.rerenderWithAgenda()
+        }
+    }
+
+    private func rerenderWithAgenda() {
+        currentDocument = mergeAgendaSources(into: currentDocument)
+        applyConfigAndDocument()
     }
 
     private func applyConfigAndDocument() {
@@ -280,6 +313,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         self?.renderInitialHUD()
                     } else {
                         self?.windowManager.reconfigure(config: newConfig)
+                        self?.refreshCalendar()
                     }
                 }
             }

@@ -3,14 +3,17 @@ import EventKit
 
 /// Reads today's calendar events and incomplete reminders from macOS Calendar.
 /// Returns `[HUDItem]` suitable for direct insertion into an agenda section.
+///
+/// Items produced here use `cal-`/`rem-` id prefixes so the merge step in
+/// AppDelegate can recognize and replace them on re-merge.
 @MainActor
 enum CalendarReader {
     private static let store = EKEventStore()
 
     /// Fetch today's events + incomplete reminders as HUDItems.
     /// Requests permissions on first call; silently returns [] if denied.
-    static func fetch() -> [HUDItem] {
-        guard requestAccess() else { return [] }
+    static func fetch() async -> [HUDItem] {
+        guard await requestAccess() else { return [] }
 
         let now = Date()
         let calendar = Calendar.current
@@ -48,10 +51,12 @@ enum CalendarReader {
             withDueDateStarting: nil, ending: todayEnd,
             calendars: nil
         )
-        let semaphore = DispatchSemaphore(value: 0)
-        store.fetchReminders(matching: reminderPredicate) { reminders in
-            defer { semaphore.signal() }
-            guard let reminders else { return }
+        let reminders: [EKReminder]? = await withCheckedContinuation { continuation in
+            store.fetchReminders(matching: reminderPredicate) { reminders in
+                continuation.resume(returning: reminders)
+            }
+        }
+        if let reminders {
             for reminder in reminders {
                 items.append(HUDItem(
                     id: "rem-\(reminder.calendarItemIdentifier)",
@@ -63,7 +68,6 @@ enum CalendarReader {
                 ))
             }
         }
-        semaphore.wait()
 
         // Sort: all-day first, then by time
         items.sort { a, b in
@@ -74,22 +78,10 @@ enum CalendarReader {
         return items
     }
 
-    private static func requestAccess() -> Bool {
-        let semaphore = DispatchSemaphore(value: 0)
-        var granted = false
-        store.requestFullAccessToEvents { ok, _ in
-            granted = ok
-            semaphore.signal()
-        }
-        semaphore.wait()
-
-        let reminderSemaphore = DispatchSemaphore(value: 0)
-        store.requestFullAccessToReminders { ok, _ in
-            // Reminders access is additive — proceed even if denied
-            reminderSemaphore.signal()
-        }
-        reminderSemaphore.wait()
-
+    private static func requestAccess() async -> Bool {
+        let granted = (try? await store.requestFullAccessToEvents()) ?? false
+        // Reminders access is additive — proceed even if denied
+        _ = try? await store.requestFullAccessToReminders()
         return granted
     }
 
