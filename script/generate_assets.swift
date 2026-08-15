@@ -4,7 +4,7 @@ import Foundation
 
 let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 let script = root.appendingPathComponent("script")
-let iconset = script.appendingPathComponent("DeskHUD.iconset")
+let iconset = script.appendingPathComponent("DockCue.iconset")
 try FileManager.default.createDirectory(at: iconset, withIntermediateDirectories: true)
 
 func png(_ image: NSImage, _ url: URL, _ px: Int) throws {
@@ -50,11 +50,10 @@ func appIcon(_ px: Int) -> NSImage {
     inner.lineWidth = max(1, s * 0.004); inner.stroke()
 
     let para = NSMutableParagraphStyle(); para.alignment = .center
-    ("HUD" as NSString).draw(in: NSRect(x: s * 0.065, y: s * 0.38, width: s * 0.87, height: s * 0.30), withAttributes: [
-        .font: NSFont.systemFont(ofSize: s * 0.215, weight: .heavy),
+    ("C" as NSString).draw(in: NSRect(x: s * 0.08, y: s * 0.34, width: s * 0.84, height: s * 0.38), withAttributes: [
+        .font: NSFont.systemFont(ofSize: s * 0.34, weight: .heavy),
         .foregroundColor: NSColor(calibratedWhite: 0.94, alpha: 1),
-        .paragraphStyle: para,
-        .kern: s * 0.006
+        .paragraphStyle: para
     ])
 
     let barW = s * 0.245, barH = max(2, s * 0.043), y = s * 0.155, inset = s * 0.145
@@ -94,8 +93,8 @@ func dmgBackground() -> NSImage {
     NSColor(calibratedRed: 0.10, green: 0.86, blue: 0.90, alpha: 0.14).setFill()
     NSBezierPath(ovalIn: NSRect(x: 245, y: 145, width: 150, height: 150)).fill()
     let para = NSMutableParagraphStyle(); para.alignment = .center
-    ("Drag DeskHUD to Applications" as NSString).draw(in: NSRect(x: 0, y: 286, width: 640, height: 30), withAttributes: [.font: NSFont.systemFont(ofSize: 20, weight: .semibold), .foregroundColor: NSColor(calibratedWhite: 0.94, alpha: 1), .paragraphStyle: para])
-    ("Persistent Dock-side HUD for macOS" as NSString).draw(in: NSRect(x: 0, y: 262, width: 640, height: 22), withAttributes: [.font: NSFont.systemFont(ofSize: 12, weight: .regular), .foregroundColor: NSColor(calibratedWhite: 0.78, alpha: 0.72), .paragraphStyle: para])
+    ("Drag DockCue to Applications" as NSString).draw(in: NSRect(x: 0, y: 286, width: 640, height: 30), withAttributes: [.font: NSFont.systemFont(ofSize: 20, weight: .semibold), .foregroundColor: NSColor(calibratedWhite: 0.94, alpha: 1), .paragraphStyle: para])
+    ("Quiet Dock-side cues for macOS" as NSString).draw(in: NSRect(x: 0, y: 262, width: 640, height: 22), withAttributes: [.font: NSFont.systemFont(ofSize: 12, weight: .regular), .foregroundColor: NSColor(calibratedWhite: 0.78, alpha: 0.72), .paragraphStyle: para])
     NSColor(calibratedWhite: 1, alpha: 0.44).setStroke()
     let arrow = NSBezierPath(); arrow.lineWidth = 3; arrow.lineCapStyle = .round
     arrow.move(to: NSPoint(x: 250, y: 142)); arrow.curve(to: NSPoint(x: 390, y: 142), controlPoint1: NSPoint(x: 292, y: 182), controlPoint2: NSPoint(x: 348, y: 182)); arrow.stroke()
@@ -114,12 +113,12 @@ let icons: [(String, Int)] = [
     ("icon_512x512.png", 512), ("icon_512x512@2x.png", 1024)
 ]
 for (name, px) in icons { try png(appIcon(px), iconset.appendingPathComponent(name), px) }
-try png(menuIcon(18), script.appendingPathComponent("DeskHUDMenuTemplate.png"), 18)
-try png(menuIcon(36), script.appendingPathComponent("DeskHUDMenuTemplate@2x.png"), 36)
+try png(menuIcon(18), script.appendingPathComponent("DockCueMenuTemplate.png"), 18)
+try png(menuIcon(36), script.appendingPathComponent("DockCueMenuTemplate@2x.png"), 36)
 try png(dmgBackground(), script.appendingPathComponent("dmg-background.png"), width: 640, height: 360)
 
 let p = Process(); p.executableURL = URL(fileURLWithPath: "/usr/bin/iconutil")
-p.arguments = ["-c", "icns", "-o", script.appendingPathComponent("DeskHUD.icns").path, iconset.path]
+p.arguments = ["-c", "icns", "-o", script.appendingPathComponent("DockCue.icns").path, iconset.path]
 try p.run(); p.waitUntilExit()
 if p.terminationStatus != 0 { fatalError("iconutil failed") }
-print("Generated DeskHUD assets")
+print("Generated DockCue assets")

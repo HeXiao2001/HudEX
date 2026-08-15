@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Run once to set up a stable code signing identity for DeskHUD development.
+# Run once to set up a stable code signing identity for DockCue development.
 # This prevents macOS TCC from revoking Accessibility permissions on every rebuild.
 set -euo pipefail
 
-CERT_NAME="DeskHUD Development"
+CERT_NAME="DockCue Development"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CERT_DIR="$SCRIPT_DIR/certs"
 
@@ -28,8 +28,8 @@ x509_extensions = code_sign_ext
 string_mask = utf8only
 
 [ req_distinguished_name ]
-CN = DeskHUD Development
-O = DeskHUD
+CN = DockCue Development
+O = DockCue
 OU = Development
 
 [ code_sign_ext ]
@@ -42,30 +42,30 @@ CONF
 # Generate key + self-signed certificate
 openssl req -new -x509 \
   -config "$CERT_DIR/codesign.conf" \
-  -keyout "$CERT_DIR/deskhud_dev.key" \
-  -out "$CERT_DIR/deskhud_dev.cer" \
+  -keyout "$CERT_DIR/dockcue_dev.key" \
+  -out "$CERT_DIR/dockcue_dev.cer" \
   -days 3650 \
   -nodes
 
 # Package as PKCS#12 for keychain import
 openssl pkcs12 -export \
-  -in "$CERT_DIR/deskhud_dev.cer" \
-  -inkey "$CERT_DIR/deskhud_dev.key" \
-  -out "$CERT_DIR/deskhud_dev.p12" \
-  -passout pass:deskhud \
+  -in "$CERT_DIR/dockcue_dev.cer" \
+  -inkey "$CERT_DIR/dockcue_dev.key" \
+  -out "$CERT_DIR/dockcue_dev.p12" \
+  -passout pass:dockcue \
   -name "$CERT_NAME"
 
 # Import into login keychain
-security import "$CERT_DIR/deskhud_dev.p12" \
+security import "$CERT_DIR/dockcue_dev.p12" \
   -k ~/Library/Keychains/login.keychain-db \
-  -P deskhud \
+  -P dockcue \
   -A
 
 # Mark as trusted for code signing
 security add-trusted-cert -d -r trustRoot \
   -p codeSign \
   -k ~/Library/Keychains/login.keychain-db \
-  "$CERT_DIR/deskhud_dev.cer"
+  "$CERT_DIR/dockcue_dev.cer"
 
 echo ""
 echo "✓ Certificate '$CERT_NAME' installed."

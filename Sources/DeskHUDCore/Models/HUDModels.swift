@@ -93,7 +93,7 @@ public enum BackgroundStyle: String, Codable, CaseIterable, Sendable {
             throw DecodingError.dataCorrupted(
                 DecodingError.Context(
                     codingPath: decoder.codingPath,
-                    debugDescription: "Unsupported backgroundStyle: \(raw). DeskHUD now only supports clear."
+                    debugDescription: "Unsupported backgroundStyle: \(raw). DockCue now only supports clear."
                 )
             )
         }

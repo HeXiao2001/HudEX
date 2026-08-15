@@ -4,7 +4,7 @@
       "id": "now",
       "title": "Now",
       "items": [
-        { "id": "focus1", "type": "text", "kind": "focus", "title": "DeskHUD", "subtitle": "Test Settings Dock-follow fix" },
+        { "id": "focus1", "type": "text", "kind": "focus", "title": "DockCue", "subtitle": "Test Settings Dock-follow fix" },
         { "id": "next1", "type": "status", "kind": "todo", "title": "Run release checks", "label": "next", "state": "pending" }
       ]
     },

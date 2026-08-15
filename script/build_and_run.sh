@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_NAME="DeskHUD"
-BUNDLE_ID="dev.hex.deskhud"
+APP_NAME="DockCue"
+BUNDLE_ID="dev.hex.dockcue"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
 APP_DIR="$DIST_DIR/$APP_NAME.app"
 EXECUTABLE="$ROOT_DIR/.build/debug/$APP_NAME"
 BUNDLE_EXECUTABLE="$APP_DIR/Contents/MacOS/$APP_NAME"
-ICONSET_DIR="$ROOT_DIR/script/DeskHUD.iconset"
-ICNS_FILE="$ROOT_DIR/script/DeskHUD.icns"
-MENU_ICON_FILE="$ROOT_DIR/script/DeskHUDMenuTemplate.png"
-MENU_ICON_2X_FILE="$ROOT_DIR/script/DeskHUDMenuTemplate@2x.png"
+ICONSET_DIR="$ROOT_DIR/script/DockCue.iconset"
+ICNS_FILE="$ROOT_DIR/script/DockCue.icns"
+MENU_ICON_FILE="$ROOT_DIR/script/DockCueMenuTemplate.png"
+MENU_ICON_2X_FILE="$ROOT_DIR/script/DockCueMenuTemplate@2x.png"
 ASSET_SCRIPT="$ROOT_DIR/script/generate_assets.swift"
-CERT_NAME="DeskHUD Development"
+CERT_NAME="DockCue Development"
 
 cd "$ROOT_DIR"
 
@@ -77,8 +77,8 @@ if [[ "$OLD_HASH" == "$NEW_HASH" && -d "$APP_DIR" && "$METADATA_READY" == true ]
   cp "$ROOT_DIR/Examples/hud.json" "$APP_DIR/Contents/Resources/Examples/hud.json"
   cp "$ROOT_DIR/Examples/hud_leftDock.json" "$APP_DIR/Contents/Resources/Examples/hud_leftDock.json" 2>/dev/null || true
   cp "$ROOT_DIR/Examples/hud_rightDock.json" "$APP_DIR/Contents/Resources/Examples/hud_rightDock.json" 2>/dev/null || true
-  cp "$MENU_ICON_FILE" "$APP_DIR/Contents/Resources/DeskHUDMenuTemplate.png" 2>/dev/null || true
-  cp "$MENU_ICON_2X_FILE" "$APP_DIR/Contents/Resources/DeskHUDMenuTemplate@2x.png" 2>/dev/null || true
+  cp "$MENU_ICON_FILE" "$APP_DIR/Contents/Resources/DockCueMenuTemplate.png" 2>/dev/null || true
+  cp "$MENU_ICON_2X_FILE" "$APP_DIR/Contents/Resources/DockCueMenuTemplate@2x.png" 2>/dev/null || true
   /usr/bin/codesign --force --deep --sign "$SIGN_IDENTITY" "$APP_DIR" >/dev/null
 else
   # Binary changed (or first build) — full bundle setup.
@@ -92,12 +92,12 @@ else
   cp "$ROOT_DIR/Examples/hud.json" "$APP_DIR/Contents/Resources/Examples/hud.json"
   cp "$ROOT_DIR/Examples/hud_leftDock.json" "$APP_DIR/Contents/Resources/Examples/hud_leftDock.json" 2>/dev/null || true
   cp "$ROOT_DIR/Examples/hud_rightDock.json" "$APP_DIR/Contents/Resources/Examples/hud_rightDock.json" 2>/dev/null || true
-  cp "$MENU_ICON_FILE" "$APP_DIR/Contents/Resources/DeskHUDMenuTemplate.png" 2>/dev/null || true
-  cp "$MENU_ICON_2X_FILE" "$APP_DIR/Contents/Resources/DeskHUDMenuTemplate@2x.png" 2>/dev/null || true
+  cp "$MENU_ICON_FILE" "$APP_DIR/Contents/Resources/DockCueMenuTemplate.png" 2>/dev/null || true
+  cp "$MENU_ICON_2X_FILE" "$APP_DIR/Contents/Resources/DockCueMenuTemplate@2x.png" 2>/dev/null || true
 
   if [[ -f "$ICNS_FILE" ]]; then
-    cp "$ICNS_FILE" "$APP_DIR/Contents/Resources/DeskHUD.icns"
-    ICON_KEY="<key>CFBundleIconFile</key><string>DeskHUD</string>"
+    cp "$ICNS_FILE" "$APP_DIR/Contents/Resources/DockCue.icns"
+    ICON_KEY="<key>CFBundleIconFile</key><string>DockCue</string>"
   else
     ICON_KEY=""
   fi
@@ -114,7 +114,7 @@ else
   <key>CFBundleName</key>
   <string>$APP_NAME</string>
   <key>CFBundleDisplayName</key>
-  <string>DeskHUD</string>
+  <string>DockCue</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleVersion</key>
@@ -128,7 +128,7 @@ else
   <key>NSHighResolutionCapable</key>
   <true/>
   <key>NSCalendarsUsageDescription</key>
-  <string>DeskHUD shows your today's events and reminders in the left HUD panel.</string>
+  <string>DockCue shows lightweight Dock-side cues from local files.</string>
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
   $ICON_KEY

@@ -2,13 +2,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "DeskHUD",
+    name: "DockCue",
     platforms: [
         .macOS(.v14)
     ],
     products: [
         .library(name: "DeskHUDCore", targets: ["DeskHUDCore"]),
-        .executable(name: "DeskHUD", targets: ["DeskHUDApp"]),
+        .executable(name: "DockCue", targets: ["DeskHUDApp"]),
         .executable(name: "deskhudctl", targets: ["deskhudctl"])
     ],
     targets: [

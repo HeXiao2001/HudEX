@@ -4,7 +4,7 @@
       "id": "context",
       "title": null,
       "items": [
-        { "id": "ctx1", "type": "text", "kind": "focus", "title": "DeskHUD", "subtitle": "Stabilize display core before adding features" },
+        { "id": "ctx1", "type": "text", "kind": "focus", "title": "DockCue", "subtitle": "Stabilize display core before adding features" },
         { "id": "ctx2", "type": "text", "kind": "reflection", "title": "Today", "subtitle": "Prefer boundary tests over new UI ideas" }
       ]
     }

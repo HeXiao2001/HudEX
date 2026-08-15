@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_NAME="DeskHUD"
-BUNDLE_ID="dev.hex.deskhud"
+APP_NAME="DockCue"
+BUNDLE_ID="dev.hex.dockcue"
 VERSION="${1:-0.1.0}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RELEASE_DIR="$ROOT_DIR/release"
 STAGING="$RELEASE_DIR/dmg_staging"
 APP_DIR="$STAGING/$APP_NAME.app"
-CERT_NAME="DeskHUD Development"
-ICONSET_DIR="$ROOT_DIR/script/DeskHUD.iconset"
-ICNS_FILE="$ROOT_DIR/script/DeskHUD.icns"
-MENU_ICON_FILE="$ROOT_DIR/script/DeskHUDMenuTemplate.png"
-MENU_ICON_2X_FILE="$ROOT_DIR/script/DeskHUDMenuTemplate@2x.png"
+CERT_NAME="DockCue Development"
+ICONSET_DIR="$ROOT_DIR/script/DockCue.iconset"
+ICNS_FILE="$ROOT_DIR/script/DockCue.icns"
+MENU_ICON_FILE="$ROOT_DIR/script/DockCueMenuTemplate.png"
+MENU_ICON_2X_FILE="$ROOT_DIR/script/DockCueMenuTemplate@2x.png"
 DMG_BACKGROUND="$ROOT_DIR/script/dmg-background.png"
 ASSET_SCRIPT="$ROOT_DIR/script/generate_assets.swift"
 
 cd "$ROOT_DIR"
 
-echo "=== Building DeskHUD v$VERSION (release) ==="
+echo "=== Building DockCue v$VERSION (release) ==="
 
 # Clean
 rm -rf "$RELEASE_DIR"
@@ -46,13 +46,13 @@ cp "$ROOT_DIR/Examples/config.json" "$APP_DIR/Contents/Resources/Examples/config
 cp "$ROOT_DIR/Examples/hud.json" "$APP_DIR/Contents/Resources/Examples/hud.json"
 cp "$ROOT_DIR/Examples/hud_leftDock.json" "$APP_DIR/Contents/Resources/Examples/hud_leftDock.json" 2>/dev/null || true
 cp "$ROOT_DIR/Examples/hud_rightDock.json" "$APP_DIR/Contents/Resources/Examples/hud_rightDock.json" 2>/dev/null || true
-cp "$MENU_ICON_FILE" "$APP_DIR/Contents/Resources/DeskHUDMenuTemplate.png" 2>/dev/null || true
-cp "$MENU_ICON_2X_FILE" "$APP_DIR/Contents/Resources/DeskHUDMenuTemplate@2x.png" 2>/dev/null || true
+cp "$MENU_ICON_FILE" "$APP_DIR/Contents/Resources/DockCueMenuTemplate.png" 2>/dev/null || true
+cp "$MENU_ICON_2X_FILE" "$APP_DIR/Contents/Resources/DockCueMenuTemplate@2x.png" 2>/dev/null || true
 
 # Icon
 if [[ -f "$ICNS_FILE" ]]; then
-  cp "$ICNS_FILE" "$APP_DIR/Contents/Resources/DeskHUD.icns"
-  ICON_KEY="<key>CFBundleIconFile</key><string>DeskHUD</string>"
+  cp "$ICNS_FILE" "$APP_DIR/Contents/Resources/DockCue.icns"
+  ICON_KEY="<key>CFBundleIconFile</key><string>DockCue</string>"
 else
   ICON_KEY=""
 fi
@@ -70,7 +70,7 @@ cat > "$APP_DIR/Contents/Info.plist" <<PLIST
   <key>CFBundleName</key>
   <string>$APP_NAME</string>
   <key>CFBundleDisplayName</key>
-  <string>DeskHUD</string>
+  <string>DockCue</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleVersion</key>
@@ -86,7 +86,7 @@ cat > "$APP_DIR/Contents/Info.plist" <<PLIST
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
   <key>NSCalendarsUsageDescription</key>
-  <string>DeskHUD shows your today's events and reminders in the left HUD panel.</string>
+  <string>DockCue shows lightweight Dock-side cues from local files.</string>
   $ICON_KEY
 </dict>
 </plist>
@@ -108,49 +108,61 @@ mkdir -p "$STAGING/.background"
 cp "$DMG_BACKGROUND" "$STAGING/.background/dmg-background.png" 2>/dev/null || true
 cp "$ICNS_FILE" "$STAGING/.VolumeIcon.icns" 2>/dev/null || true
 
-DMG_PATH="$RELEASE_DIR/DeskHUD-v$VERSION.dmg"
-DMG_TMP="$RELEASE_DIR/DeskHUD-tmp.dmg"
-VOLNAME="DeskHUD_v$VERSION"
+DMG_PATH="$RELEASE_DIR/DockCue-v$VERSION.dmg"
+DMG_TMP="$RELEASE_DIR/DockCue-tmp.dmg"
+VOLNAME="DockCue_v$VERSION"
 
 # Create read-write DMG with enough headroom for Finder metadata.
 hdiutil create -fs HFS+ -volname "$VOLNAME" -srcfolder "$STAGING" -size 24m "$DMG_TMP" >/dev/null
 
-# Mount and set layout.
-DEV="$(hdiutil attach -readwrite -noverify -noautoopen "$DMG_TMP" 2>&1 | awk '/\/Volumes\// {print $1; exit}')"
-MOUNT="/Volumes/$VOLNAME"
+# Mount and set layout. Finder scripting is best-effort because it can fail
+# when Finder is unavailable, automation permissions are restricted, or this
+# script is running in an environment that cannot mount disk images.
+if ATTACH_OUTPUT="$(hdiutil attach -readwrite -noverify -noautoopen "$DMG_TMP" 2>&1)"; then
+  DEV="$(printf '%s\n' "$ATTACH_OUTPUT" | awk '/\/Volumes\// {print $1; exit}')"
+  MOUNT="/Volumes/$VOLNAME"
 
-if [[ -f "$MOUNT/.VolumeIcon.icns" ]]; then
-  /usr/bin/SetFile -a C "$MOUNT" 2>/dev/null || true
-  /usr/bin/SetFile -a V "$MOUNT/.VolumeIcon.icns" 2>/dev/null || true
-fi
-/usr/bin/SetFile -a V "$MOUNT/.background" 2>/dev/null || true
+  if [[ -f "$MOUNT/.VolumeIcon.icns" ]]; then
+    /usr/bin/SetFile -a C "$MOUNT" 2>/dev/null || true
+    /usr/bin/SetFile -a V "$MOUNT/.VolumeIcon.icns" 2>/dev/null || true
+  fi
+  /usr/bin/SetFile -a V "$MOUNT/.background" 2>/dev/null || true
 
-# Arrange icons (left=DeskHUD, right=Applications symlink)
-osascript <<APPLESCRIPT
-tell application "Finder"
-  tell disk "$VOLNAME"
-    open
-    set current view of container window to icon view
-    set toolbar visible of container window to false
-    set statusbar visible of container window to false
-    set bounds of container window to {200, 200, 840, 560}
-    set viewOptions to the icon view options of container window
-    set arrangement of viewOptions to not arranged
-    set icon size of viewOptions to 96
-    try
-      set background picture of viewOptions to POSIX file "$MOUNT/.background/dmg-background.png"
-    end try
-    set position of item "$APP_NAME.app" to {170, 215}
-    set position of item "Applications" to {470, 215}
-    update without registering applications
-    delay 0.5
-    close
+  # Arrange icons (left=DockCue, right=Applications symlink)
+  if ! osascript <<APPLESCRIPT
+try
+  tell application "Finder"
+    tell disk "$VOLNAME"
+      open
+      set current view of container window to icon view
+      set toolbar visible of container window to false
+      set statusbar visible of container window to false
+      set bounds of container window to {200, 200, 840, 560}
+      set viewOptions to the icon view options of container window
+      set arrangement of viewOptions to not arranged
+      set icon size of viewOptions to 96
+      try
+        set background picture of viewOptions to POSIX file "$MOUNT/.background/dmg-background.png"
+      end try
+      set position of item "$APP_NAME.app" to {170, 215}
+      set position of item "Applications" to {470, 215}
+      update without registering applications
+      delay 0.5
+      close
+    end tell
   end tell
-end tell
+end try
 APPLESCRIPT
+  then
+    echo "Warning: Finder DMG layout step failed; continuing with a functional DMG."
+  fi
 
-sync
-hdiutil detach "$DEV" >/dev/null
+  sync
+  hdiutil detach "$DEV" >/dev/null
+else
+  echo "Warning: Could not mount temporary DMG for Finder layout; continuing without custom layout."
+  echo "$ATTACH_OUTPUT"
+fi
 hdiutil convert "$DMG_TMP" -format UDZO -imagekey zlib-level=9 -o "$DMG_PATH" >/dev/null
 rm -f "$DMG_TMP"
 

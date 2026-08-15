@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_NAME="DeskHUD"
+APP_NAME="DockCue"
 APP_DIR="/Applications/$APP_NAME.app"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -9,10 +9,10 @@ DIST_DIR="$ROOT_DIR/dist"
 RELEASE_DIR="$ROOT_DIR/release"
 
 latest_dmg() {
-  find "$RELEASE_DIR" -maxdepth 1 -name 'DeskHUD-v*.dmg' -type f 2>/dev/null | sort -V | tail -1
+  find "$RELEASE_DIR" -maxdepth 1 -name 'DockCue-v*.dmg' -type f 2>/dev/null | sort -V | tail -1
 }
 
-echo "=== Installing DeskHUD ==="
+echo "=== Installing DockCue ==="
 
 pkill -x "$APP_NAME" 2>/dev/null || true
 
@@ -36,7 +36,7 @@ xattr -dr com.apple.quarantine "$APP_DIR" 2>/dev/null || true
 
 echo "Installed to $APP_DIR"
 open "$APP_DIR"
-echo "DeskHUD launched. Add to Login Items for auto-start."
+echo "DockCue launched. Add to Login Items for auto-start."
 echo ""
 echo "=== Update instructions ==="
 echo "Menu bar → Check for Updates... → download latest DMG → reinstall"
