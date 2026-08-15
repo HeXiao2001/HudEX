@@ -2,7 +2,7 @@ import DeskHUDCore
 import Foundation
 
 @main
-struct DeskHUDCTL {
+struct DockCueCTL {
     static func main() {
         let args = Array(CommandLine.arguments.dropFirst())
         guard let command = args.first else {
@@ -28,8 +28,14 @@ struct DeskHUDCTL {
             print("Reload signal sent.")
         case "validate":
             validate(Array(args.dropFirst()))
+        case "doctor":
+            doctor(Array(args.dropFirst()))
+        case "init":
+            initialize(Array(args.dropFirst()))
+        case "context":
+            context(Array(args.dropFirst()))
         case "status":
-            print("DeskHUD CLI ready.")
+            print("DockCue CLI ready.")
         default:
             fputs("Unknown command: \(command)\n", stderr)
             printUsage()
@@ -56,11 +62,11 @@ struct DeskHUDCTL {
 
     private static func validate(_ args: [String]) {
         guard args.count == 2 else {
-            fputs("Usage: deskhudctl validate hud <path>\n", stderr)
+            fputs("Usage: deskhudctl validate hud|slot|config <path> OR deskhudctl validate all <dir>\n", stderr)
             Foundation.exit(2)
         }
         let kind = args[0]
-        let url = URL(fileURLWithPath: args[1])
+        let url = URL(fileURLWithPath: expandedPath(args[1]))
         let loader = HUDFileLoader()
 
         switch kind {
@@ -70,9 +76,62 @@ struct DeskHUDCTL {
             report(loader.loadConfig(from: url))
         case "slot":
             report(loader.loadSlotContent(from: url))
+        case "all":
+            let report = DockCueWorkspaceTool().validateAll(directory: url)
+            printReport(report, includeWarnings: false)
+            if !report.isOK { Foundation.exit(1) }
         default:
             fputs("Unknown validation kind: \(kind)\n", stderr)
             Foundation.exit(2)
+        }
+    }
+
+    private static func doctor(_ args: [String]) {
+        let json = args.contains("--json")
+        let dir = directoryArgument(from: args.filter { $0 != "--json" })
+        let report = DockCueWorkspaceTool().doctor(directory: dir)
+        if json {
+            printJSON(report)
+        } else {
+            print("DockCue doctor: \(report.directory)")
+            printReport(report, includeWarnings: true)
+        }
+        if !report.isOK { Foundation.exit(1) }
+    }
+
+    private static func initialize(_ args: [String]) {
+        let overwrite = args.contains("--overwrite")
+        let dir = directoryArgument(from: args.filter { $0 != "--overwrite" })
+        do {
+            let written = try DockCueWorkspaceTool().initialize(directory: dir, overwrite: overwrite)
+            for url in written {
+                print("WROTE \(url.path)")
+            }
+        } catch {
+            fputs("ERROR: \(error)\n", stderr)
+            Foundation.exit(1)
+        }
+    }
+
+    private static func context(_ args: [String]) {
+        let json = args.contains("--json")
+        let dir = directoryArgument(from: args.filter { $0 != "--json" })
+        switch DockCueWorkspaceTool().loadContext(directory: dir) {
+        case .success(let context):
+            if json {
+                printJSON(context)
+            } else {
+                print("DockCue context: \(dir.path)")
+                print("leftWidth: \(context.leftWidth.map(String.init) ?? "?")")
+                print("rightWidth: \(context.rightWidth.map(String.init) ?? "?")")
+                print("maxCharsLeft: \(context.maxCharsLeft.map(String.init) ?? "?")")
+                print("maxCharsRight: \(context.maxCharsRight.map(String.init) ?? "?")")
+                print("maxCharsPerLine: \(context.maxCharsPerLine.map(String.init) ?? "?")")
+                print("updatedAt: \(context.updatedAt ?? "?")")
+            }
+        case .failure(let error):
+            fputs("ERROR: \(error.description)\n", stderr)
+            Foundation.exit(1)
         }
     }
 
@@ -86,31 +145,79 @@ struct DeskHUDCTL {
         }
     }
 
+    private static func printReport(_ report: DockCueDoctorReport, includeWarnings: Bool) {
+        for check in report.checks {
+            if check.status == .warn && !includeWarnings { continue }
+            let prefix: String
+            switch check.status {
+            case .ok: prefix = "OK   "
+            case .warn: prefix = "WARN "
+            case .fail: prefix = "FAIL "
+            }
+            print("\(prefix) \(check.label): \(check.message)")
+        }
+        if report.isOK {
+            print("Result: OK")
+        } else {
+            print("Result: \(report.failures) failure(s)")
+        }
+    }
+
+    private static func printJSON<T: Encodable>(_ value: T) {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        do {
+            let data = try encoder.encode(value)
+            print(String(decoding: data, as: UTF8.self))
+        } catch {
+            fputs("ERROR: JSON encode failed: \(error.localizedDescription)\n", stderr)
+            Foundation.exit(1)
+        }
+    }
+
+    private static func directoryArgument(from args: [String]) -> URL {
+        let path = args.first ?? FileManager.default.currentDirectoryPath
+        return URL(fileURLWithPath: expandedPath(path))
+    }
+
+    private static func expandedPath(_ path: String) -> String {
+        (path as NSString).expandingTildeInPath
+    }
+
     private static func printUsage() {
         print("""
-        DeskHUD CLI — validate, generate, and inspect HUD configuration.
+        DockCue CLI — validate, generate, and inspect HUD configuration.
 
         Commands:
           deskhudctl schema                  Print complete JSON field reference
           deskhudctl sample <name>           Output a ready-to-use HUD JSON template
             names: left  right  todo  full
           deskhudctl slot                    Output per-slot content template
-          deskhudctl validate hud <path>     Validate a HUD content file
+          deskhudctl validate hud <path>     Validate a full HUD document
+          deskhudctl validate slot <path>    Validate a per-slot content file
           deskhudctl validate config <path>  Validate a config file
-          deskhudctl status                  Show app status
+          deskhudctl validate all <dir>      Validate config + left/right slot files
+          deskhudctl doctor [--json] [dir]   Check config, slots, and width context
+          deskhudctl init [--overwrite] <dir> Create config + left/right slot files
+          deskhudctl context [--json] [dir]  Print hud_context.json width hints
+          deskhudctl status                  Show CLI status
 
         Examples:
           deskhudctl schema                   # AI: read this for the full format
           deskhudctl sample left > hud_leftDock.json
           deskhudctl sample right > hud_rightDock.json
           deskhudctl sample todo              # task list variant
-          deskhudctl validate hud hud_leftDock.json
+          deskhudctl validate slot hud_leftDock.json
+          deskhudctl validate all /path/to/watch-directory
+          deskhudctl doctor --json /path/to/watch-directory
+          deskhudctl init "~/Library/Application Support/DockCue"
+          deskhudctl context --json /path/to/watch-directory
         """)
     }
 
     private static func printSchema() {
         print("""
-        # DeskHUD File Format Reference
+        # DockCue File Format Reference
 
         ## Convention — which file to edit (IMPORTANT)
 
@@ -150,7 +257,7 @@ struct DeskHUDCTL {
           no dots, just color-coded text for a cleaner look.
         - Keep content concise — the panel is narrow. Read `hud_context.json`
           for live width measurements (`maxCharsLeft`, `maxCharsRight`).
-        - DeskHUD writes `hud_context.json` to the watch directory on launch and
+        - DockCue writes `hud_context.json` to the watch directory on launch and
           periodically. It contains the current available character widths.
 
         ## HUD Document (hud.json or full document)
@@ -235,6 +342,22 @@ struct DeskHUDCTL {
           }
         }
 
+        ## CLI validation and diagnostics
+        Validate a full HUD document:
+          deskhudctl validate hud hud.json
+        Validate one per-slot file:
+          deskhudctl validate slot hud_leftDock.json
+        Validate config:
+          deskhudctl validate config config.json
+        Validate the whole watch directory:
+          deskhudctl validate all ~/Library/CloudStorage/MyDrive/DockCue
+        Diagnose a watch directory:
+          deskhudctl doctor --json ~/Library/CloudStorage/MyDrive/DockCue
+        Create a starter watch directory:
+          deskhudctl init "~/Library/Application Support/DockCue"
+        Print current width hints:
+          deskhudctl context --json ~/Library/CloudStorage/MyDrive/DockCue
+
         ## Atomic write pattern (recommended)
         Write to a .tmp file, flush, then rename:
           echo '{"items":[...]}' > hud_leftDock.json.tmp && mv hud_leftDock.json.tmp hud_leftDock.json
@@ -296,7 +419,7 @@ struct DeskHUDCTL {
         {
           "id": "context", "title": null,
           "items": [
-            { "id": "r1", "type": "text", "kind": "focus", "title": "DeskHUD", "subtitle": "Stabilize before adding features" },
+            { "id": "r1", "type": "text", "kind": "focus", "title": "DockCue", "subtitle": "Stabilize before adding features" },
             { "id": "r2", "type": "text", "kind": "reflection", "title": "Today", "subtitle": "Prefer boundary tests over new UI" }
           ]
         }
@@ -315,7 +438,7 @@ struct DeskHUDCTL {
           "rotation": { "enabled": true, "intervalSeconds": 30 },
           "sections": [
             { "id": "focus", "title": "Focus", "items": [
-              { "id": "f1", "type": "text", "kind": "today", "title": "DeskHUD", "subtitle": "Ship display core" }
+              { "id": "f1", "type": "text", "kind": "today", "title": "DockCue", "subtitle": "Ship display core" }
             ]},
             { "id": "tasks", "title": "Tasks", "items": [
               { "id": "t1", "type": "status", "kind": "todo", "title": "Design schema",  "state": "done" },
