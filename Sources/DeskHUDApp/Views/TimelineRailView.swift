@@ -2,12 +2,14 @@ import DeskHUDCore
 import SwiftUI
 
 /// Bottom rail of small dots showing position in the item queue.
-/// Max 5 visible nodes; overflow shows "+N".
+/// Max 5 visible nodes; overflow shows "+N". Stacks vertically in
+/// vertical-writing panels.
 struct TimelineRailView: View {
     let section: HUDSection
     let activeIndex: Int
     let config: HUDConfig
 
+    @Environment(\.hudVerticalText) private var vertical
     private let maxNodes = 5
 
     var body: some View {
@@ -18,21 +20,34 @@ struct TimelineRailView: View {
         let visibleCount = min(count, maxNodes)
 
         return AnyView(
-            HStack(spacing: 3) {
-                ForEach(0 ..< visibleCount, id: \.self) { i in
-                    Circle()
-                        .fill(nodeColor(i == active, item: section.items[i]))
-                        .frame(width: i == active ? 5 : 3,
-                               height: i == active ? 5 : 3)
-                }
-                if count > maxNodes {
-                    Text("+\(count - maxNodes)")
-                        .font(.system(size: 8, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.35))
+            Group {
+                if vertical {
+                    VStack(alignment: .leading, spacing: 3) { nodes(active: active, visibleCount: visibleCount) }
+                } else {
+                    HStack(spacing: 3) { nodes(active: active, visibleCount: visibleCount) }
                 }
             }
             .padding(.top, 4)
         )
+    }
+
+    @ViewBuilder
+    private func nodes(active: Int, visibleCount: Int) -> some View {
+        ForEach(0 ..< visibleCount, id: \.self) { i in
+            Circle()
+                .fill(nodeColor(i == active, item: section.items[i]))
+                .frame(width: i == active ? 5 : 3,
+                       height: i == active ? 5 : 3)
+        }
+        if visibleCount < section.items.count {
+            HUDText(
+                text: "+\(section.items.count - visibleCount)",
+                fontSize: 8,
+                weight: .medium,
+                design: .monospaced,
+                color: .white.opacity(0.35)
+            )
+        }
     }
 
     private func nodeColor(_ isActive: Bool, item: HUDItem) -> Color {

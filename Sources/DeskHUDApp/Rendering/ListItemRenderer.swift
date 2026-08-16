@@ -21,10 +21,11 @@ private struct ListItemBody: View {
                 Array((item.lines ?? []).prefix(config.window.maxLines).enumerated()),
                 id: \.offset
             ) { _, line in
-                Text(line)
-                    .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(config.window.textOpacity * 0.7))
-                    .lineLimit(1)
+                HUDTypography.line(
+                    line,
+                    fontSize: 12,
+                    color: .white.opacity(config.window.textOpacity * 0.7)
+                )
             }
         }
     }

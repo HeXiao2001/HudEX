@@ -18,9 +18,12 @@ private struct MetricItemBody: View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             HUDTypography.title(for: item, opacity: config.window.textOpacity, fontSize: config.window.fontSize)
             if let value = item.value {
-                Text(value, format: .number.precision(.fractionLength(0...1)))
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(config.window.textOpacity))
+                HUDTypography.line(
+                    value.formatted(.number.precision(.fractionLength(0...1))),
+                    fontSize: 22,
+                    weight: .semibold,
+                    color: .white.opacity(config.window.textOpacity)
+                )
                 HUDTypography.optional(item.unit, style: .secondary, opacity: config.window.textOpacity, fontSize: config.window.fontSize)
             }
         }

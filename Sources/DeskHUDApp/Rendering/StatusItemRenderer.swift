@@ -25,13 +25,16 @@ private struct StatusItemBody: View {
                 Text("‼")
                     .font(.system(size: 11))
             }
-            HUDTypography.title(for: item)
-                .foregroundStyle(.white.opacity(config.window.textOpacity))
+            HUDTypography.title(
+                for: item,
+                opacity: config.window.textOpacity,
+                fontSize: config.window.fontSize
+            )
             if let label = item.label, !label.isEmpty {
-                Text(label)
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundStyle(.white.opacity(config.window.textOpacity * 0.6))
-                    .lineLimit(1)
+                HUDTypography.mono(
+                    label,
+                    color: .white.opacity(config.window.textOpacity * 0.6)
+                )
             }
         }
     }

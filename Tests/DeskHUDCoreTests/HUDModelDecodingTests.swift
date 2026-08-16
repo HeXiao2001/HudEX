@@ -78,6 +78,23 @@ final class HUDModelDecodingTests: XCTestCase {
         return try JSONDecoder().decode(HUDConfig.self, from: json).backgroundStyle
     }
 
+    func testSideDockAndPanelEnableDefaults() throws {
+        // Omitted fields fall back to defaults: vertical side-dock text, both panels on.
+        let config = try JSONDecoder().decode(HUDConfig.self, from: Data("{}".utf8))
+        XCTAssertEqual(config.sideDockTextMode, .vertical)
+        XCTAssertEqual(config.leftPanelEnabled, true)
+        XCTAssertEqual(config.rightPanelEnabled, true)
+
+        // Explicit values decode
+        let json = #"""
+        { "sideDockTextMode": "rotated", "leftPanelEnabled": false, "rightPanelEnabled": true }
+        """#.data(using: .utf8)!
+        let overridden = try JSONDecoder().decode(HUDConfig.self, from: json)
+        XCTAssertEqual(overridden.sideDockTextMode, .rotated)
+        XCTAssertEqual(overridden.leftPanelEnabled, false)
+        XCTAssertEqual(overridden.rightPanelEnabled, true)
+    }
+
     func testLoaderReportsInvalidJSONWithoutThrowing() throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)

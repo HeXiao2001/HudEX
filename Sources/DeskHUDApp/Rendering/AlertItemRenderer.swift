@@ -20,15 +20,16 @@ private struct AlertItemBody: View {
         VStack(alignment: .leading, spacing: 2) {
             HUDTypography.title(for: item,
                                 opacity: config.window.textOpacity,
-                                fontSize: config.window.fontSize)
-                .fontWeight(.bold)
-                .foregroundStyle(accentColor)
+                                fontSize: config.window.fontSize,
+                                weight: .bold,
+                                color: accentColor)
             if let subtitle = item.subtitle, !subtitle.isEmpty {
-                Text(subtitle)
-                    .font(.system(size: config.window.fontSize - 2,
-                                  weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(config.window.textOpacity * 0.8))
-                    .lineLimit(1)
+                HUDTypography.optional(
+                    subtitle,
+                    style: .primary,
+                    opacity: config.window.textOpacity,
+                    fontSize: config.window.fontSize
+                )
             }
         }
     }

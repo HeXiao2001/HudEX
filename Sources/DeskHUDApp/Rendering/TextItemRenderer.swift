@@ -20,10 +20,10 @@ private struct TextItemBody: View {
                 HUDTypography.title(for: item, opacity: config.window.textOpacity, fontSize: config.window.fontSize)
                 Spacer(minLength: 4)
                 if let time = item.time, !time.isEmpty {
-                    Text(time)
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.white.opacity(config.window.textOpacity * 0.5))
-                        .lineLimit(1)
+                    HUDTypography.mono(
+                        time,
+                        color: .white.opacity(config.window.textOpacity * 0.5)
+                    )
                 }
             }
             HUDTypography.optional(item.subtitle, style: .secondary, opacity: config.window.textOpacity, fontSize: config.window.fontSize)

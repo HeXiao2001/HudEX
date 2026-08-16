@@ -327,6 +327,9 @@ struct DockCueCTL {
           "displays": "all",               // all | primary | mouse | fixed
           "fixedDisplayID": null,          // UInt32, used when displays=fixed
           "backgroundStyle": "glass",      // glass (Liquid Glass, macOS 26+) | clear; legacy dark decodes as clear
+          "sideDockTextMode": "vertical",  // vertical (upright CJK stacking, default) | rotated — auto-applies only when Dock is on a side edge with a narrow band
+          "leftPanelEnabled": true,        // show dockLeft panel (left of bottom Dock / above side Dock)
+          "rightPanelEnabled": true,       // show dockRight panel (right of bottom Dock / below side Dock)
           "calendarEvents": false,         // bool: enable macOS Calendar?
           "watchDirectory": null,          // string or null: path to directory with config+hud JSONs
           "debugLogging": true,            // bool

@@ -92,6 +92,16 @@ private struct AppearancePane: View {
                 Text("Clear").tag(DeskHUDCore.BackgroundStyle.clear)
             }
 
+            Picker("Side Dock Text:", selection: $config.sideDockTextMode) {
+                Text("Vertical (CJK-friendly)").tag(SideDockTextMode.vertical)
+                Text("Rotated 90°").tag(SideDockTextMode.rotated)
+            }
+            if config.sideDockTextMode == .rotated {
+                Text("Rotated mode turns text sideways to read — fine for English, awkward for Chinese. Only applies when the Dock is on a side edge with a narrow band.")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+
             Picker("Effect:", selection: $config.effectProfile) {
                 Text("Low").tag(EffectProfile.low)
                 Text("Medium").tag(EffectProfile.medium)
@@ -119,6 +129,9 @@ private struct ContentPane: View {
 
     var body: some View {
         Form {
+            Toggle("Now Queue Panel", isOn: $config.leftPanelEnabled)
+            Toggle("Context Card Panel", isOn: $config.rightPanelEnabled)
+
             Picker("Left:", selection: $config.window.leftPresentation) {
                 Text("Pager Rail").tag(HUDPresentation.pagerRail)
                 Text("Stack").tag(HUDPresentation.stack)

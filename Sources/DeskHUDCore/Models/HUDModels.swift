@@ -7,6 +7,9 @@ public struct HUDConfig: Codable, Equatable, Sendable {
     public var displays: DisplayMode
     public var fixedDisplayID: UInt32?
     public var backgroundStyle: BackgroundStyle
+    public var sideDockTextMode: SideDockTextMode
+    public var leftPanelEnabled: Bool
+    public var rightPanelEnabled: Bool
     public var window: HUDWindowConfig
     public var calendarEvents: Bool
     public var launchAtLogin: Bool
@@ -21,6 +24,9 @@ public struct HUDConfig: Codable, Equatable, Sendable {
         displays: DisplayMode = .primary,
         fixedDisplayID: UInt32? = nil,
         backgroundStyle: BackgroundStyle = .glass,
+        sideDockTextMode: SideDockTextMode = .vertical,
+        leftPanelEnabled: Bool = true,
+        rightPanelEnabled: Bool = true,
         calendarEvents: Bool = false,
         launchAtLogin: Bool = false,
         hideMenuBar: Bool = false,
@@ -34,6 +40,9 @@ public struct HUDConfig: Codable, Equatable, Sendable {
         self.displays = displays
         self.fixedDisplayID = fixedDisplayID
         self.backgroundStyle = backgroundStyle
+        self.sideDockTextMode = sideDockTextMode
+        self.leftPanelEnabled = leftPanelEnabled
+        self.rightPanelEnabled = rightPanelEnabled
         self.calendarEvents = calendarEvents
         self.launchAtLogin = launchAtLogin
         self.hideMenuBar = hideMenuBar
@@ -49,6 +58,9 @@ public struct HUDConfig: Codable, Equatable, Sendable {
         case displays
         case fixedDisplayID
         case backgroundStyle
+        case sideDockTextMode
+        case leftPanelEnabled
+        case rightPanelEnabled
         case window
         case calendarEvents
         case launchAtLogin
@@ -67,6 +79,9 @@ public struct HUDConfig: Codable, Equatable, Sendable {
         displays = try container.decodeIfPresent(DisplayMode.self, forKey: .displays) ?? defaults.displays
         fixedDisplayID = try container.decodeIfPresent(UInt32.self, forKey: .fixedDisplayID) ?? defaults.fixedDisplayID
         backgroundStyle = try container.decodeIfPresent(BackgroundStyle.self, forKey: .backgroundStyle) ?? defaults.backgroundStyle
+        sideDockTextMode = try container.decodeIfPresent(SideDockTextMode.self, forKey: .sideDockTextMode) ?? defaults.sideDockTextMode
+        leftPanelEnabled = try container.decodeIfPresent(Bool.self, forKey: .leftPanelEnabled) ?? defaults.leftPanelEnabled
+        rightPanelEnabled = try container.decodeIfPresent(Bool.self, forKey: .rightPanelEnabled) ?? defaults.rightPanelEnabled
         window = try container.decodeIfPresent(HUDWindowConfig.self, forKey: .window) ?? defaults.window
         calendarEvents = try container.decodeIfPresent(Bool.self, forKey: .calendarEvents) ?? defaults.calendarEvents
         launchAtLogin = try container.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? defaults.launchAtLogin
@@ -109,6 +124,17 @@ public enum DisplayMode: String, Codable, CaseIterable, Sendable {
     case mouse
     case fixed
     case main  // deprecated, maps to primary in HUDDisplayResolver
+}
+
+/// Text strategy for side-edge Docks with a narrow band (auto-applies only
+/// when the band is too narrow for horizontal text):
+/// - `vertical`: upright CJK-style stacking, columns right-to-left (default,
+///   Chinese-friendly — "two lines" become "two columns")
+/// - `rotated`: whole panel rotated 90°; reads sideways — best for Latin
+///   content only
+public enum SideDockTextMode: String, Codable, CaseIterable, Sendable {
+    case vertical
+    case rotated
 }
 
 public struct HUDWindowConfig: Codable, Equatable, Sendable {

@@ -23,19 +23,22 @@ private struct CountdownItemBody: View {
                                     opacity: config.window.textOpacity,
                                     fontSize: config.window.fontSize)
                 if let subtitle = item.subtitle, !subtitle.isEmpty {
-                    Text(subtitle)
-                        .font(.system(size: config.window.fontSize - 2,
-                                      weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(config.window.textOpacity * 0.75))
-                        .lineLimit(1)
+                    HUDTypography.optional(
+                        subtitle,
+                        style: .secondary,
+                        opacity: config.window.textOpacity,
+                        fontSize: config.window.fontSize
+                    )
                 }
             }
             Spacer(minLength: 4)
             if let label = item.label, !label.isEmpty {
-                Text(label)
-                    .font(.system(size: config.window.fontSize - 1,
-                                  weight: .semibold, design: .monospaced))
-                    .foregroundStyle(countdownColor)
+                HUDTypography.mono(
+                    label,
+                    size: config.window.fontSize - 1,
+                    weight: .semibold,
+                    color: countdownColor
+                )
             }
         }
     }

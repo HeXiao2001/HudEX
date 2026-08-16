@@ -13,6 +13,9 @@ struct HUDPanelView: View {
     /// thickness); the physical frame is their transpose. 90 = clockwise
     /// (left-edge Dock, reads top-to-bottom), -90 = right-edge Dock.
     var rotationDegrees: Double? = nil
+    /// Side-Dock mode with upright vertical text (CJK-friendly). Content
+    /// flows natively in the physical frame; text helpers stack vertically.
+    var verticalText: Bool = false
 
     private var currentSection: HUDSection? {
         let sections = slot.resolvedSections
@@ -59,6 +62,7 @@ struct HUDPanelView: View {
         .clipped()
         .background(Color.clear)
         .shadow(color: .black.opacity(0.45), radius: 3, x: 0, y: 1)
+        .environment(\.hudVerticalText, verticalText)
     }
 
     // MARK: - Minimal (1 item, no rail)
@@ -126,10 +130,12 @@ struct HUDPanelView: View {
 
     private func sectionTitle(_ text: String) -> some View {
         HStack(spacing: 0) {
-            Text(text)
-                .font(.system(size: 10, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.45))
-                .lineLimit(1)
+            HUDText(
+                text: text,
+                fontSize: 10,
+                weight: .semibold,
+                color: .white.opacity(0.45)
+            )
             Spacer(minLength: 0)
         }
         .padding(.bottom, 4)

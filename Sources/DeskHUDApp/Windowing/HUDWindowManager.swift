@@ -48,7 +48,7 @@ final class HUDWindowManager {
 
         let screens = HUDDisplayResolver.screens(for: config)
         for screen in screens {
-            for slot in document.slots {
+            for slot in document.slots where Self.isSlotEnabled(slot, config: config) {
                 guard slot.anchor == .dockLeft || slot.anchor == .dockRight else { continue }
                 let state = slotStates[slot.id] ?? PerSlotState()
                 let frame = frameForSlot(slot, on: screen, config: config, mouseLocation: nil)
@@ -124,12 +124,15 @@ final class HUDWindowManager {
     }
 
     /// Apply config changes to existing windows without tearing them down.
-    /// When display target, fixed display ID, or background style changes,
-    /// rebuilds all windows (background lives on the window's content view).
+    /// When display target, fixed display ID, background style, side-dock
+    /// text mode, or per-panel enable flags change, rebuilds all windows.
     func reconfigure(config: HUDConfig) {
         let needsRebuild = activeConfig?.displays != config.displays
             || activeConfig?.fixedDisplayID != config.fixedDisplayID
             || activeConfig?.backgroundStyle != config.backgroundStyle
+            || activeConfig?.sideDockTextMode != config.sideDockTextMode
+            || activeConfig?.leftPanelEnabled != config.leftPanelEnabled
+            || activeConfig?.rightPanelEnabled != config.rightPanelEnabled
 
         if needsRebuild, let document = activeDocument {
             show(document: document, config: config)
@@ -554,9 +557,18 @@ final class HUDWindowManager {
         return DockGeometry(isVertical: false, onLeftEdge: false)
     }
 
-    /// Builds the panel view for a slot. For vertical Docks the logical
-    /// (length × thickness) layout is transposed and rendered rotated so text
-    /// lines run along the panel's long axis.
+    /// Per-slot enable switch (`leftPanelEnabled` / `rightPanelEnabled`).
+    private static func isSlotEnabled(_ slot: HUDSlot, config: HUDConfig) -> Bool {
+        switch slot.anchor {
+        case .dockLeft:  return config.leftPanelEnabled
+        case .dockRight: return config.rightPanelEnabled
+        }
+    }
+
+    /// Builds the panel view for a slot. Side Docks adapt automatically:
+    /// while the band is wide enough, text stays horizontal; once it is too
+    /// narrow, the configured side-dock text strategy kicks in — upright
+    /// vertical stacking (default) or whole-panel rotation.
     private func makePanelView(
         slot: HUDSlot,
         config: HUDConfig,
@@ -565,14 +577,34 @@ final class HUDWindowManager {
         state: PerSlotState
     ) -> HUDPanelView {
         let geo = dockGeometry(on: screen)
+        let needsSideStrategy = geo.isVertical && frame.width < 120
+
+        var rotationDegrees: Double? = nil
+        var verticalText = false
+        var width = frame.width
+        var height = frame.height
+
+        if needsSideStrategy {
+            switch config.sideDockTextMode {
+            case .rotated:
+                // Logical (length × thickness) layout, transposed physically.
+                rotationDegrees = geo.onLeftEdge ? 90 : -90
+                width = frame.height
+                height = frame.width
+            case .vertical:
+                verticalText = true
+            }
+        }
+
         return HUDPanelView(
             slot: slot,
             config: config,
-            width: geo.isVertical ? frame.height : frame.width,
-            height: geo.isVertical ? frame.width : frame.height,
+            width: width,
+            height: height,
             sectionIndex: state.sectionIndex,
             scrollOffset: state.scrollOffset,
-            rotationDegrees: geo.isVertical ? (geo.onLeftEdge ? 90 : -90) : nil
+            rotationDegrees: rotationDegrees,
+            verticalText: verticalText
         )
     }
 
