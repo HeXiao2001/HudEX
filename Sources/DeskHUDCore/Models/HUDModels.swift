@@ -8,6 +8,9 @@ public struct HUDConfig: Codable, Equatable, Sendable {
     public var fixedDisplayID: UInt32?
     public var backgroundStyle: BackgroundStyle
     public var sideDockTextMode: SideDockTextMode
+    /// Extra width added on top of the Dock's visual width for side-edge
+    /// Dock panels (auto-aligned; 0–40).
+    public var sidePanelExtraWidth: Double
     public var leftPanelEnabled: Bool
     public var rightPanelEnabled: Bool
     public var window: HUDWindowConfig
@@ -25,6 +28,7 @@ public struct HUDConfig: Codable, Equatable, Sendable {
         fixedDisplayID: UInt32? = nil,
         backgroundStyle: BackgroundStyle = .glass,
         sideDockTextMode: SideDockTextMode = .vertical,
+        sidePanelExtraWidth: Double = 12,
         leftPanelEnabled: Bool = true,
         rightPanelEnabled: Bool = true,
         calendarEvents: Bool = false,
@@ -41,6 +45,7 @@ public struct HUDConfig: Codable, Equatable, Sendable {
         self.fixedDisplayID = fixedDisplayID
         self.backgroundStyle = backgroundStyle
         self.sideDockTextMode = sideDockTextMode
+        self.sidePanelExtraWidth = sidePanelExtraWidth
         self.leftPanelEnabled = leftPanelEnabled
         self.rightPanelEnabled = rightPanelEnabled
         self.calendarEvents = calendarEvents
@@ -59,6 +64,7 @@ public struct HUDConfig: Codable, Equatable, Sendable {
         case fixedDisplayID
         case backgroundStyle
         case sideDockTextMode
+        case sidePanelExtraWidth
         case leftPanelEnabled
         case rightPanelEnabled
         case window
@@ -80,6 +86,7 @@ public struct HUDConfig: Codable, Equatable, Sendable {
         fixedDisplayID = try container.decodeIfPresent(UInt32.self, forKey: .fixedDisplayID) ?? defaults.fixedDisplayID
         backgroundStyle = try container.decodeIfPresent(BackgroundStyle.self, forKey: .backgroundStyle) ?? defaults.backgroundStyle
         sideDockTextMode = try container.decodeIfPresent(SideDockTextMode.self, forKey: .sideDockTextMode) ?? defaults.sideDockTextMode
+        sidePanelExtraWidth = try container.decodeIfPresent(Double.self, forKey: .sidePanelExtraWidth) ?? defaults.sidePanelExtraWidth
         leftPanelEnabled = try container.decodeIfPresent(Bool.self, forKey: .leftPanelEnabled) ?? defaults.leftPanelEnabled
         rightPanelEnabled = try container.decodeIfPresent(Bool.self, forKey: .rightPanelEnabled) ?? defaults.rightPanelEnabled
         window = try container.decodeIfPresent(HUDWindowConfig.self, forKey: .window) ?? defaults.window

@@ -541,22 +541,6 @@ final class HUDWindowManager {
         return false
     }
 
-    private struct DockGeometry {
-        let isVertical: Bool
-        let onLeftEdge: Bool
-    }
-
-    /// Which screen edge hosts the Dock (inferred from the band `visibleFrame`
-    /// reserves). Auto-hidden Docks are not detectable this way.
-    private func dockGeometry(on screen: NSScreen) -> DockGeometry {
-        let screenFrame = screen.frame
-        let visible = screen.visibleFrame
-        if visible.minY - screenFrame.minY > 24 { return DockGeometry(isVertical: false, onLeftEdge: false) }
-        if visible.minX - screenFrame.minX > 24 { return DockGeometry(isVertical: true, onLeftEdge: true) }
-        if screenFrame.maxX - visible.maxX > 24 { return DockGeometry(isVertical: true, onLeftEdge: false) }
-        return DockGeometry(isVertical: false, onLeftEdge: false)
-    }
-
     /// Per-slot enable switch (`leftPanelEnabled` / `rightPanelEnabled`).
     private static func isSlotEnabled(_ slot: HUDSlot, config: HUDConfig) -> Bool {
         switch slot.anchor {
@@ -576,8 +560,8 @@ final class HUDWindowManager {
         screen: NSScreen,
         state: PerSlotState
     ) -> HUDPanelView {
-        let geo = dockGeometry(on: screen)
-        let needsSideStrategy = geo.isVertical && frame.width < 120
+        let side = DockSide.detect(on: screen)
+        let needsSideStrategy = side.isVertical && frame.width < 120
 
         var rotationDegrees: Double? = nil
         var verticalText = false
@@ -588,7 +572,7 @@ final class HUDWindowManager {
             switch config.sideDockTextMode {
             case .rotated:
                 // Logical (length × thickness) layout, transposed physically.
-                rotationDegrees = geo.onLeftEdge ? 90 : -90
+                rotationDegrees = side == .left ? 90 : -90
                 width = frame.height
                 height = frame.width
             case .vertical:
@@ -618,7 +602,7 @@ final class HUDWindowManager {
         let visible = screen.visibleFrame
         let margin = config.window.margin
         let preferredSize = NSSize(width: config.window.width, height: config.window.height)
-        let geo = dockGeometry(on: screen)
+        let geo = DockSide.detect(on: screen)
 
         if !geo.isVertical {
             let bottomDockBandHeight = max(0, visible.minY - screenFrame.minY)
@@ -636,7 +620,7 @@ final class HUDWindowManager {
             return frameForSideDockSlot(slot, visible: visible, preferredSize: preferredSize, margin: margin)
         }
 
-        let dockBandWidth = geo.onLeftEdge
+        let dockBandWidth = geo == .left
             ? max(0, visible.minX - screenFrame.minX)
             : max(0, screenFrame.maxX - visible.maxX)
         return frameForVerticalDockSlot(
@@ -644,18 +628,20 @@ final class HUDWindowManager {
             screenFrame: screenFrame,
             visible: visible,
             dockBandWidth: dockBandWidth,
-            dockIsOnLeftEdge: geo.onLeftEdge,
+            dockIsOnLeftEdge: geo == .left,
             preferredSize: preferredSize,
             margin: margin,
+            panelExtraWidth: config.sidePanelExtraWidth,
             mouseLocation: mouseLocation
         )
     }
 
     /// Vertical Dock (left or right screen edge): panels hug the Dock's free
     /// vertical span — `dockLeft` above the Dock, `dockRight` below it
-    /// (reading order is preserved). Config axes rotate with the Dock:
-    /// `height` stays the band thickness (now the panel's width), and `width`
-    /// (0 = auto) becomes the panel's vertical length.
+    /// (reading order is preserved). Panel width auto-aligns to the Dock's
+    /// visual (AX) width plus a configurable extra margin, so it always looks
+    /// like a natural extension of the Dock. Config `width` (0 = auto) is the
+    /// panel's vertical length; `height` only applies to bottom Docks.
     private func frameForVerticalDockSlot(
         _ slot: HUDSlot,
         screenFrame: NSRect,
@@ -664,26 +650,31 @@ final class HUDWindowManager {
         dockIsOnLeftEdge: Bool,
         preferredSize: NSSize,
         margin: CGFloat,
+        panelExtraWidth: CGFloat,
         mouseLocation: NSPoint?
     ) -> NSRect {
+        // One AX query per frame: reused for both exclusion and alignment.
+        let dockVisualRect = accessibilityDockRect(in: screenFrame)
         let dockExclusion = estimatedVerticalDockExclusionRect(
             in: screenFrame,
             visible: visible,
             dockBandWidth: dockBandWidth,
             dockIsOnLeftEdge: dockIsOnLeftEdge,
+            dockVisualRect: dockVisualRect,
             mouseLocation: mouseLocation
         )
         let gap: CGFloat = 6
         let minLength: CGFloat = 150
-        let thickness = min(preferredSize.height, max(54, dockBandWidth - 10))
         let maxLen = preferredSize.width > 0 ? preferredSize.width : .greatestFiniteMagnitude
-        // Center the panel inside the Dock's horizontal band, like the bottom-Dock case.
-        let x: CGFloat
-        if dockIsOnLeftEdge {
-            x = screenFrame.minX + max(5, (dockBandWidth - thickness) / 2)
-        } else {
-            x = screenFrame.maxX - max(5, (dockBandWidth - thickness) / 2) - thickness
-        }
+        // Slightly wider than the Dock itself, centered on the Dock's visual
+        // glass rect when available (fallback: the reserved band).
+        let referenceWidth = dockVisualRect?.width ?? dockBandWidth
+        let thickness = min(160, max(54, referenceWidth + panelExtraWidth))
+        let bandCenterX = dockIsOnLeftEdge
+            ? screenFrame.minX + dockBandWidth / 2
+            : screenFrame.maxX - dockBandWidth / 2
+        let centerX = dockVisualRect?.midX ?? bandCenterX
+        let x = centerX - thickness / 2
 
         switch slot.anchor {
         case .dockLeft:  // above the Dock, top edge hugging the menu-bar margin
@@ -704,13 +695,27 @@ final class HUDWindowManager {
         visible: NSRect,
         dockBandWidth: CGFloat,
         dockIsOnLeftEdge: Bool,
+        dockVisualRect: NSRect?,
         mouseLocation: NSPoint?
     ) -> NSRect {
-        // Preferred: use Accessibility API for exact Dock bounds
-        if let accessibilityRect = accessibilityDockRect(in: screenFrame) {
+        // Preferred: use Accessibility API for exact Dock bounds.
+        // The AX list rect stays mostly static while icons magnify, so the
+        // mouse's magnification zone is unioned in regardless of source.
+        if let accessibilityRect = dockVisualRect {
             logDebug("dockSource=AX rect=\(accessibilityRect.debugDescription)")
-            // Expand along the Dock's length so panels keep a small end gap.
-            return accessibilityRect.insetBy(dx: 0, dy: -4)
+            var minY = accessibilityRect.minY - 4
+            var maxY = accessibilityRect.maxY + 4
+            if let mouseLocation, screenFrame.contains(mouseLocation) {
+                let magnifiedRadius = max(210, dockBandWidth * 2.4)
+                minY = min(minY, mouseLocation.y - magnifiedRadius)
+                maxY = max(maxY, mouseLocation.y + magnifiedRadius)
+            }
+            minY = max(screenFrame.minY, minY)
+            maxY = min(screenFrame.maxY, maxY)
+            let x = dockIsOnLeftEdge ? screenFrame.minX : screenFrame.maxX - dockBandWidth
+            let rect = NSRect(x: x, y: minY, width: dockBandWidth, height: max(0, maxY - minY))
+            logDebug("dockSource=AX+mouse rect=\(rect.debugDescription)")
+            return rect
         }
 
         // Fallback: estimate Dock length from preferences, honoring pinning.
@@ -728,7 +733,7 @@ final class HUDWindowManager {
             maxY = screenFrame.midY + estimatedLength / 2
         }
 
-        if let mouseLocation {
+        if let mouseLocation, screenFrame.contains(mouseLocation) {
             let magnifiedRadius = max(210, dockBandWidth * 2.4)
             minY = min(minY, mouseLocation.y - magnifiedRadius)
             maxY = max(maxY, mouseLocation.y + magnifiedRadius)
@@ -798,11 +803,23 @@ final class HUDWindowManager {
         dockBandHeight: CGFloat,
         mouseLocation: NSPoint?
     ) -> NSRect {
-        // Preferred: use Accessibility API for exact Dock bounds
+        // Preferred: use Accessibility API for exact Dock bounds.
+        // The AX list rect stays mostly static while icons magnify, so the
+        // mouse's magnification zone is unioned in regardless of source.
         if let accessibilityRect = accessibilityDockRect(in: screenFrame) {
             logDebug("dockSource=AX rect=\(accessibilityRect.debugDescription)")
-            // Minimal expansion for Dock visual edge padding
-            return accessibilityRect.insetBy(dx: -4, dy: 0)
+            var minX = accessibilityRect.minX - 4
+            var maxX = accessibilityRect.maxX + 4
+            if let mouseLocation, screenFrame.contains(mouseLocation) {
+                let magnifiedRadius = max(210, dockBandHeight * 2.4)
+                minX = min(minX, mouseLocation.x - magnifiedRadius)
+                maxX = max(maxX, mouseLocation.x + magnifiedRadius)
+            }
+            minX = max(screenFrame.minX, minX)
+            maxX = min(screenFrame.maxX, maxX)
+            let rect = NSRect(x: minX, y: screenFrame.minY, width: max(0, maxX - minX), height: dockBandHeight)
+            logDebug("dockSource=AX+mouse rect=\(rect.debugDescription)")
+            return rect
         }
 
         // Fallback: estimate Dock width from preferences + conservative heuristic
@@ -984,8 +1001,8 @@ final class HUDWindowManager {
         var rightWidth: CGFloat = 0
         for managedWindow in managedWindows {
             // For rotated (side-Dock) panels the text line width is the frame height.
-            let geo = dockGeometry(on: managedWindow.screen)
-            let w = geo.isVertical ? managedWindow.window.frame.height : managedWindow.window.frame.width
+            let side = DockSide.detect(on: managedWindow.screen)
+            let w = side.isVertical ? managedWindow.window.frame.height : managedWindow.window.frame.width
             switch managedWindow.slot.anchor {
             case .dockLeft:  leftWidth = w
             case .dockRight: rightWidth = w
