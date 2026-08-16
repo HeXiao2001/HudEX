@@ -8,6 +8,11 @@ struct HUDPanelView: View {
     let height: CGFloat
     let sectionIndex: Int
     let scrollOffset: Int
+    /// Side-Dock mode: render rotated so the panel's long axis becomes the
+    /// text line width. `width`/`height` keep their logical meaning (length /
+    /// thickness); the physical frame is their transpose. 90 = clockwise
+    /// (left-edge Dock, reads top-to-bottom), -90 = right-edge Dock.
+    var rotationDegrees: Double? = nil
 
     private var currentSection: HUDSection? {
         let sections = slot.resolvedSections
@@ -23,6 +28,18 @@ struct HUDPanelView: View {
     }
 
     var body: some View {
+        if let rotationDegrees {
+            content
+                .frame(width: width, height: height, alignment: .topLeading)
+                .rotationEffect(.degrees(rotationDegrees))
+                .frame(width: height, height: width)
+        } else {
+            content
+                .frame(width: width, height: height, alignment: .topLeading)
+        }
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let title = currentSection?.title, !title.isEmpty {
                 sectionTitle(title)
@@ -39,7 +56,6 @@ struct HUDPanelView: View {
             }
         }
         .padding(padding)
-        .frame(width: width, height: height, alignment: .topLeading)
         .clipped()
         .background(Color.clear)
         .shadow(color: .black.opacity(0.45), radius: 3, x: 0, y: 1)

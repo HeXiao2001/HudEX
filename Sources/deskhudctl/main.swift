@@ -331,8 +331,8 @@ struct DockCueCTL {
           "watchDirectory": null,          // string or null: path to directory with config+hud JSONs
           "debugLogging": true,            // bool
           "window": {
-            "width": 0,                    // 0 = auto-fill Dock-adjacent space
-            "height": 82,
+            "width": 0,                    // 0 = auto-fill Dock-adjacent space; panel length along the Dock
+            "height": 82,                  // panel thickness across the Dock band (panel width when Dock is on a side edge)
             "margin": 18,
             "cornerRadius": 14,            // glass corner radius (glass background only)
             "opacity": 0.84,              // legacy/reserved

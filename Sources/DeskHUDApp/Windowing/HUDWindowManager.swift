@@ -22,7 +22,7 @@ final class HUDWindowManager {
     private var idleRefreshTimer: Timer?
     private var activeConfig: HUDConfig?
     private var activeDocument: HUDDocument?
-    private var isMouseNearBottomDock = false
+    private var isMouseNearDock = false
     private var lastMouseLocation: NSPoint = .zero
     private var lastKnownDockRect: NSRect?
     private var debugEnabled = false
@@ -52,12 +52,7 @@ final class HUDWindowManager {
                 guard slot.anchor == .dockLeft || slot.anchor == .dockRight else { continue }
                 let state = slotStates[slot.id] ?? PerSlotState()
                 let frame = frameForSlot(slot, on: screen, config: config, mouseLocation: nil)
-                let view = HUDPanelView(
-                    slot: slot, config: config,
-                    width: frame.width, height: frame.height,
-                    sectionIndex: state.sectionIndex,
-                    scrollOffset: state.scrollOffset
-                )
+                let view = makePanelView(slot: slot, config: config, frame: frame, screen: screen, state: state)
                 let hostingView = NSHostingView(rootView: view)
                 hostingView.frame = NSRect(origin: .zero, size: frame.size)
                 hostingView.autoresizingMask = [.width, .height]
@@ -153,13 +148,12 @@ final class HUDWindowManager {
                 config: config,
                 mouseLocation: nil
             )
-            managedWindow.hostingView.rootView = HUDPanelView(
+            managedWindow.hostingView.rootView = makePanelView(
                 slot: managedWindow.slot,
                 config: config,
-                width: frame.width,
-                height: frame.height,
-                sectionIndex: state.sectionIndex,
-                scrollOffset: state.scrollOffset
+                frame: frame,
+                screen: managedWindow.screen,
+                state: state
             )
             managedWindow.hostingView.frame = NSRect(origin: .zero, size: frame.size)
             managedWindow.window.setFrame(frame, display: true, animate: false)
@@ -236,10 +230,10 @@ final class HUDWindowManager {
         }
 
         lastMouseLocation = NSEvent.mouseLocation
-        let shouldFollow = isInBottomDockTrackingArea(lastMouseLocation)
-        if shouldFollow == isMouseNearBottomDock { return }
+        let shouldFollow = isInDockTrackingArea(lastMouseLocation)
+        if shouldFollow == isMouseNearDock { return }
 
-        isMouseNearBottomDock = shouldFollow
+        isMouseNearDock = shouldFollow
         if shouldFollow {
             stopIdleRefreshTimer()
             startDockFollowTimer()
@@ -265,10 +259,10 @@ final class HUDWindowManager {
     private func timerTick() {
         guard let config = activeConfig else { return }
         lastMouseLocation = NSEvent.mouseLocation
-        if isInBottomDockTrackingArea(lastMouseLocation) {
+        if isInDockTrackingArea(lastMouseLocation) {
             updateFrames(config: config, mouseLocation: lastMouseLocation)
         } else {
-            isMouseNearBottomDock = false
+            isMouseNearDock = false
             stopDockFollowTimer()
             updateFrames(config: config, mouseLocation: nil)
         }
@@ -294,7 +288,7 @@ final class HUDWindowManager {
     }
 
     private func idleRefreshTick() {
-        guard !isMouseNearBottomDock,
+        guard !isMouseNearDock,
               let config = activeConfig else { return }
         // Snapshot current AX Dock rect. If different from last known, HUDs need updating.
         for screen in NSScreen.screens {
@@ -425,7 +419,7 @@ final class HUDWindowManager {
     /// Uses the current mouse location when the mouse is near the Dock so
     /// the frame accounts for Dock magnification.
     private func refreshManagedWindows(config: HUDConfig) {
-        let mouse: NSPoint? = isMouseNearBottomDock ? lastMouseLocation : nil
+        let mouse: NSPoint? = isMouseNearDock ? lastMouseLocation : nil
         for managedWindow in managedWindows {
             let state = slotStates[managedWindow.slot.id] ?? PerSlotState()
             let frame = frameForSlot(
@@ -435,13 +429,12 @@ final class HUDWindowManager {
                 mouseLocation: mouse
             )
             managedWindow.window.setFrame(frame, display: true, animate: false)
-            managedWindow.hostingView.rootView = HUDPanelView(
+            managedWindow.hostingView.rootView = makePanelView(
                 slot: managedWindow.slot,
                 config: config,
-                width: frame.width,
-                height: frame.height,
-                sectionIndex: state.sectionIndex,
-                scrollOffset: state.scrollOffset
+                frame: frame,
+                screen: managedWindow.screen,
+                state: state
             )
             managedWindow.hostingView.frame = NSRect(origin: .zero, size: frame.size)
         }
@@ -473,12 +466,12 @@ final class HUDWindowManager {
     }
 
     private func dockMayHaveChanged() {
-        guard activeConfig != nil, !isMouseNearBottomDock else { return }
+        guard activeConfig != nil, !isMouseNearDock else { return }
         // Invalidate cached rect so the next idle tick (or immediate check) picks up the change.
         lastKnownDockRect = nil
         // Immediate single check after a short debounce (the Dock animates its size change).
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-            guard let self, self.activeConfig != nil, !self.isMouseNearBottomDock else { return }
+            guard let self, self.activeConfig != nil, !self.isMouseNearDock else { return }
             self.idleRefreshTick()
         }
     }
@@ -488,35 +481,99 @@ final class HUDWindowManager {
             let state = slotStates[managedWindow.slot.id] ?? PerSlotState()
             let frame = frameForSlot(managedWindow.slot, on: managedWindow.screen, config: config, mouseLocation: mouseLocation)
             guard !managedWindow.window.frame.equalTo(frame) else { continue }
-            managedWindow.hostingView.rootView = HUDPanelView(
+            managedWindow.hostingView.rootView = makePanelView(
                 slot: managedWindow.slot,
                 config: config,
-                width: frame.width,
-                height: frame.height,
-                sectionIndex: state.sectionIndex,
-                scrollOffset: state.scrollOffset
+                frame: frame,
+                screen: managedWindow.screen,
+                state: state
             )
             managedWindow.hostingView.frame = NSRect(origin: .zero, size: frame.size)
             managedWindow.window.setFrame(frame, display: true, animate: false)
         }
     }
 
-    private func isInBottomDockTrackingArea(_ point: NSPoint) -> Bool {
+    /// Tracks proximity to the Dock regardless of which screen edge it sits on:
+    /// bottom band for horizontal Docks, side band for vertical Docks.
+    private func isInDockTrackingArea(_ point: NSPoint) -> Bool {
         for screen in NSScreen.screens {
             let screenFrame = screen.frame
             let visible = screen.visibleFrame
-            let bottomDockBandHeight = max(0, visible.minY - screenFrame.minY)
-            guard bottomDockBandHeight > 24 else { continue }
-            let trackingHeight = max(bottomDockBandHeight + 100, 180)
-            let trackingRect = NSRect(
-                x: screenFrame.minX,
-                y: screenFrame.minY,
-                width: screenFrame.width,
-                height: trackingHeight
-            )
-            if trackingRect.contains(point) { return true }
+            let bottomBand = max(0, visible.minY - screenFrame.minY)
+            if bottomBand > 24 {
+                let trackingHeight = max(bottomBand + 100, 180)
+                let trackingRect = NSRect(
+                    x: screenFrame.minX,
+                    y: screenFrame.minY,
+                    width: screenFrame.width,
+                    height: trackingHeight
+                )
+                if trackingRect.contains(point) { return true }
+                continue
+            }
+            let leftBand = max(0, visible.minX - screenFrame.minX)
+            if leftBand > 24 {
+                let trackingWidth = max(leftBand + 100, 180)
+                let trackingRect = NSRect(
+                    x: screenFrame.minX,
+                    y: screenFrame.minY,
+                    width: trackingWidth,
+                    height: screenFrame.height
+                )
+                if trackingRect.contains(point) { return true }
+                continue
+            }
+            let rightBand = max(0, screenFrame.maxX - visible.maxX)
+            if rightBand > 24 {
+                let trackingWidth = max(rightBand + 100, 180)
+                let trackingRect = NSRect(
+                    x: screenFrame.maxX - trackingWidth,
+                    y: screenFrame.minY,
+                    width: trackingWidth,
+                    height: screenFrame.height
+                )
+                if trackingRect.contains(point) { return true }
+            }
         }
         return false
+    }
+
+    private struct DockGeometry {
+        let isVertical: Bool
+        let onLeftEdge: Bool
+    }
+
+    /// Which screen edge hosts the Dock (inferred from the band `visibleFrame`
+    /// reserves). Auto-hidden Docks are not detectable this way.
+    private func dockGeometry(on screen: NSScreen) -> DockGeometry {
+        let screenFrame = screen.frame
+        let visible = screen.visibleFrame
+        if visible.minY - screenFrame.minY > 24 { return DockGeometry(isVertical: false, onLeftEdge: false) }
+        if visible.minX - screenFrame.minX > 24 { return DockGeometry(isVertical: true, onLeftEdge: true) }
+        if screenFrame.maxX - visible.maxX > 24 { return DockGeometry(isVertical: true, onLeftEdge: false) }
+        return DockGeometry(isVertical: false, onLeftEdge: false)
+    }
+
+    /// Builds the panel view for a slot. For vertical Docks the logical
+    /// (length × thickness) layout is transposed and rendered rotated so text
+    /// lines run along the panel's long axis.
+    private func makePanelView(
+        slot: HUDSlot,
+        config: HUDConfig,
+        frame: NSRect,
+        screen: NSScreen,
+        state: PerSlotState
+    ) -> HUDPanelView {
+        let geo = dockGeometry(on: screen)
+        return HUDPanelView(
+            slot: slot,
+            config: config,
+            width: geo.isVertical ? frame.height : frame.width,
+            height: geo.isVertical ? frame.width : frame.height,
+            sectionIndex: state.sectionIndex,
+            scrollOffset: state.scrollOffset,
+            rotationDegrees: geo.isVertical ? (geo.onLeftEdge ? 90 : -90) : nil
+        )
     }
 
     private func frameForSlot(
@@ -529,24 +586,145 @@ final class HUDWindowManager {
         let visible = screen.visibleFrame
         let margin = config.window.margin
         let preferredSize = NSSize(width: config.window.width, height: config.window.height)
-        let bottomDockBandHeight = max(0, visible.minY - screenFrame.minY)
-        let leftDockBandWidth = max(0, visible.minX - screenFrame.minX)
-        let rightDockBandWidth = max(0, screenFrame.maxX - visible.maxX)
+        let geo = dockGeometry(on: screen)
 
-        if bottomDockBandHeight > 24 {
-            return frameForBottomDockSlot(
-                slot,
-                screenFrame: screenFrame,
-                dockBandHeight: bottomDockBandHeight,
-                preferredSize: preferredSize,
-                margin: margin,
-                mouseLocation: mouseLocation
-            )
-        } else if leftDockBandWidth > 24 || rightDockBandWidth > 24 {
-            return frameForSideDockSlot(slot, visible: visible, preferredSize: preferredSize, margin: margin)
-        } else {
+        if !geo.isVertical {
+            let bottomDockBandHeight = max(0, visible.minY - screenFrame.minY)
+            if bottomDockBandHeight > 24 {
+                return frameForBottomDockSlot(
+                    slot,
+                    screenFrame: screenFrame,
+                    dockBandHeight: bottomDockBandHeight,
+                    preferredSize: preferredSize,
+                    margin: margin,
+                    mouseLocation: mouseLocation
+                )
+            }
+            // No Dock detected: fall back to plain corner placement.
             return frameForSideDockSlot(slot, visible: visible, preferredSize: preferredSize, margin: margin)
         }
+
+        let dockBandWidth = geo.onLeftEdge
+            ? max(0, visible.minX - screenFrame.minX)
+            : max(0, screenFrame.maxX - visible.maxX)
+        return frameForVerticalDockSlot(
+            slot,
+            screenFrame: screenFrame,
+            visible: visible,
+            dockBandWidth: dockBandWidth,
+            dockIsOnLeftEdge: geo.onLeftEdge,
+            preferredSize: preferredSize,
+            margin: margin,
+            mouseLocation: mouseLocation
+        )
+    }
+
+    /// Vertical Dock (left or right screen edge): panels hug the Dock's free
+    /// vertical span — `dockLeft` above the Dock, `dockRight` below it
+    /// (reading order is preserved). Config axes rotate with the Dock:
+    /// `height` stays the band thickness (now the panel's width), and `width`
+    /// (0 = auto) becomes the panel's vertical length.
+    private func frameForVerticalDockSlot(
+        _ slot: HUDSlot,
+        screenFrame: NSRect,
+        visible: NSRect,
+        dockBandWidth: CGFloat,
+        dockIsOnLeftEdge: Bool,
+        preferredSize: NSSize,
+        margin: CGFloat,
+        mouseLocation: NSPoint?
+    ) -> NSRect {
+        let dockExclusion = estimatedVerticalDockExclusionRect(
+            in: screenFrame,
+            visible: visible,
+            dockBandWidth: dockBandWidth,
+            dockIsOnLeftEdge: dockIsOnLeftEdge,
+            mouseLocation: mouseLocation
+        )
+        let gap: CGFloat = 6
+        let minLength: CGFloat = 150
+        let thickness = min(preferredSize.height, max(54, dockBandWidth - 10))
+        let maxLen = preferredSize.width > 0 ? preferredSize.width : .greatestFiniteMagnitude
+        // Center the panel inside the Dock's horizontal band, like the bottom-Dock case.
+        let x: CGFloat
+        if dockIsOnLeftEdge {
+            x = screenFrame.minX + max(5, (dockBandWidth - thickness) / 2)
+        } else {
+            x = screenFrame.maxX - max(5, (dockBandWidth - thickness) / 2) - thickness
+        }
+
+        switch slot.anchor {
+        case .dockLeft:  // above the Dock, top edge hugging the menu-bar margin
+            let available = max(0, visible.maxY - margin - (dockExclusion.maxY + gap))
+            let length = min(maxLen, max(minLength, available))
+            let y = visible.maxY - margin - length
+            return NSRect(x: x.rounded(), y: y.rounded(), width: thickness.rounded(), height: length.rounded())
+        case .dockRight:  // below the Dock, bottom edge hugging the screen corner
+            let available = max(0, (dockExclusion.minY - gap) - (screenFrame.minY + margin))
+            let length = min(maxLen, max(minLength, available))
+            let y = screenFrame.minY + margin
+            return NSRect(x: x.rounded(), y: y.rounded(), width: thickness.rounded(), height: length.rounded())
+        }
+    }
+
+    private func estimatedVerticalDockExclusionRect(
+        in screenFrame: NSRect,
+        visible: NSRect,
+        dockBandWidth: CGFloat,
+        dockIsOnLeftEdge: Bool,
+        mouseLocation: NSPoint?
+    ) -> NSRect {
+        // Preferred: use Accessibility API for exact Dock bounds
+        if let accessibilityRect = accessibilityDockRect(in: screenFrame) {
+            logDebug("dockSource=AX rect=\(accessibilityRect.debugDescription)")
+            // Expand along the Dock's length so panels keep a small end gap.
+            return accessibilityRect.insetBy(dx: 0, dy: -4)
+        }
+
+        // Fallback: estimate Dock length from preferences, honoring pinning.
+        let estimatedLength = estimateDockLengthFromPreferences(axisLength: screenFrame.height)
+        var minY: CGFloat, maxY: CGFloat
+        switch dockPinning() {
+        case "start":  // pinned to the top edge, below the menu bar
+            maxY = visible.maxY
+            minY = maxY - estimatedLength
+        case "end":    // pinned to the bottom edge
+            minY = visible.minY
+            maxY = minY + estimatedLength
+        default:       // centered on the screen edge
+            minY = screenFrame.midY - estimatedLength / 2
+            maxY = screenFrame.midY + estimatedLength / 2
+        }
+
+        if let mouseLocation {
+            let magnifiedRadius = max(210, dockBandWidth * 2.4)
+            minY = min(minY, mouseLocation.y - magnifiedRadius)
+            maxY = max(maxY, mouseLocation.y + magnifiedRadius)
+        }
+        minY = max(screenFrame.minY, minY)
+        maxY = min(screenFrame.maxY, maxY)
+
+        let x = dockIsOnLeftEdge ? screenFrame.minX : screenFrame.maxX - dockBandWidth
+        let rect = NSRect(x: x, y: minY, width: dockBandWidth, height: max(0, maxY - minY))
+        logDebug("dockSource=prefs rect=\(rect.debugDescription)")
+        return rect
+    }
+
+    /// Dock pinning preference: "start" / "middle" / "end" (string) on modern
+    /// macOS, legacy integers on older systems.
+    private func dockPinning() -> String {
+        guard let obj = UserDefaults(suiteName: "com.apple.dock")?.object(forKey: "pinning") else {
+            return "middle"
+        }
+        if let s = obj as? String { return s }
+        if let n = obj as? Int {
+            switch n {
+            case -1: return "start"
+            case 1: return "end"
+            default: return "middle"
+            }
+        }
+        return "middle"
     }
 
     private func frameForBottomDockSlot(
@@ -596,7 +774,7 @@ final class HUDWindowManager {
         }
 
         // Fallback: estimate Dock width from preferences + conservative heuristic
-        let estimatedWidth = estimateDockWidthFromPreferences(screenWidth: screenFrame.width)
+        let estimatedWidth = estimateDockLengthFromPreferences(axisLength: screenFrame.width)
         var minX = screenFrame.midX - estimatedWidth / 2
         var maxX = screenFrame.midX + estimatedWidth / 2
 
@@ -613,9 +791,10 @@ final class HUDWindowManager {
         return rect
     }
 
-    /// Estimate Dock width from `com.apple.dock` preferences.
-    /// Biases conservative (wider estimate) to avoid HUD panels overlapping the Dock.
-    private func estimateDockWidthFromPreferences(screenWidth: CGFloat) -> CGFloat {
+    /// Estimate Dock length along its axis from `com.apple.dock` preferences.
+    /// Biases conservative (longer estimate) to avoid HUD panels overlapping the Dock.
+    /// Pass screen width for bottom Docks, screen height for side Docks.
+    private func estimateDockLengthFromPreferences(axisLength: CGFloat) -> CGFloat {
         let dockDefaults = UserDefaults(suiteName: "com.apple.dock")
         let tileSize = CGFloat(dockDefaults?.double(forKey: "tilesize") ?? 64)
         let persistentAppCount = dockDefaults?.array(forKey: "persistent-apps")?.count ?? 0
@@ -624,10 +803,10 @@ final class HUDWindowManager {
         // Always-visible Dock fixtures (Finder, Trash) + generous running-app buffer
         let estimatedIcons = max(persistentAppCount + persistentOtherCount + 10, 12)
         let spacingPerIcon: CGFloat = 10
-        let rawWidth = tileSize * CGFloat(estimatedIcons) + spacingPerIcon * CGFloat(estimatedIcons - 1)
+        let rawLength = tileSize * CGFloat(estimatedIcons) + spacingPerIcon * CGFloat(estimatedIcons - 1)
 
-        // Clamp: never narrower than 50% or wider than 92% of screen width
-        let clamped = min(screenWidth * 0.92, max(screenWidth * 0.50, rawWidth))
+        // Clamp: never shorter than 50% or longer than 92% of the screen axis
+        let clamped = min(axisLength * 0.92, max(axisLength * 0.50, rawLength))
         return clamped.rounded()
     }
 
@@ -641,8 +820,9 @@ final class HUDWindowManager {
         guard let children = accessibilityChildren(of: dockElement) else { return nil }
 
         for child in children {
+            // The Dock's icon list reports either orientation depending on
+            // which screen edge it is pinned to, so accept both.
             guard accessibilityString(kAXRoleAttribute, of: child) == kAXListRole else { continue }
-            guard accessibilityString(kAXOrientationAttribute, of: child) == kAXHorizontalOrientationValue else { continue }
             guard let topLeftRect = accessibilityRect(of: child) else { continue }
             let appKitRect = convertTopLeftRectToAppKit(topLeftRect, in: screenFrame)
             guard appKitRect.intersects(screenFrame) else { continue }
@@ -771,7 +951,9 @@ final class HUDWindowManager {
         var leftWidth: CGFloat = 0
         var rightWidth: CGFloat = 0
         for managedWindow in managedWindows {
-            let w = managedWindow.window.frame.width
+            // For rotated (side-Dock) panels the text line width is the frame height.
+            let geo = dockGeometry(on: managedWindow.screen)
+            let w = geo.isVertical ? managedWindow.window.frame.height : managedWindow.window.frame.width
             switch managedWindow.slot.anchor {
             case .dockLeft:  leftWidth = w
             case .dockRight: rightWidth = w
