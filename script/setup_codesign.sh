@@ -47,8 +47,16 @@ openssl req -new -x509 \
   -days 3650 \
   -nodes
 
-# Package as PKCS#12 for keychain import
-openssl pkcs12 -export \
+# Package as PKCS#12 for keychain import.
+# -legacy: OpenSSL 3.x defaults to PBES2, which macOS `security import`
+# rejects ("MAC verification failed"). LibreSSL has no -legacy flag but
+# already emits the compatible format, so fall back without it.
+openssl pkcs12 -export -legacy \
+  -in "$CERT_DIR/dockcue_dev.cer" \
+  -inkey "$CERT_DIR/dockcue_dev.key" \
+  -out "$CERT_DIR/dockcue_dev.p12" \
+  -passout pass:dockcue \
+  -name "$CERT_NAME" 2>/dev/null || openssl pkcs12 -export \
   -in "$CERT_DIR/dockcue_dev.cer" \
   -inkey "$CERT_DIR/dockcue_dev.key" \
   -out "$CERT_DIR/dockcue_dev.p12" \
