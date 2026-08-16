@@ -49,6 +49,15 @@ cp "$ROOT_DIR/Examples/hud_rightDock.json" "$APP_DIR/Contents/Resources/Examples
 cp "$MENU_ICON_FILE" "$APP_DIR/Contents/Resources/DockCueMenuTemplate.png" 2>/dev/null || true
 cp "$MENU_ICON_2X_FILE" "$APP_DIR/Contents/Resources/DockCueMenuTemplate@2x.png" 2>/dev/null || true
 
+# SPM resources bundle (localization .lproj files)
+for SPM_BUNDLE in "$ROOT_DIR"/.build/*/release/DockCue_DeskHUDApp.bundle; do
+  if [[ -d "$SPM_BUNDLE" ]]; then
+    rm -rf "$APP_DIR/Contents/Resources/DockCue_DeskHUDApp.bundle"
+    cp -R "$SPM_BUNDLE" "$APP_DIR/Contents/Resources/"
+    break
+  fi
+done
+
 # Icon
 if [[ -f "$ICNS_FILE" ]]; then
   cp "$ICNS_FILE" "$APP_DIR/Contents/Resources/DockCue.icns"

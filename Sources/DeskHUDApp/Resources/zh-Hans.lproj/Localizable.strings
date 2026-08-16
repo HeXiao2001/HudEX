@@ -1,0 +1,89 @@
+/* DockCue 设置 — 简体中文 */
+
+"DockCue Settings" = "DockCue 设置";
+
+/* 侧边栏 */
+"Layout" = "布局";
+"Appearance" = "外观";
+"Content" = "内容";
+"Advanced" = "高级";
+
+/* 布局页 */
+"Panel Placement" = "面板位置";
+"Live preview of where the panels sit next to your Dock. Changes apply instantly." = "面板在 Dock 旁位置的实时预览，修改即时生效。";
+"Dock" = "Dock";
+"Menu Bar" = "菜单栏";
+"Now Queue" = "任务队列";
+"Context Card" = "上下文卡片";
+"Panels" = "面板开关";
+"Now Queue Panel" = "任务队列面板";
+"Upcoming agenda: left of the bottom Dock, above a side Dock." = "即将处理的事项：底部 Dock 左侧、侧边 Dock 上方。";
+"Context Card Panel" = "上下文卡片面板";
+"Why the work matters: right of the bottom Dock, below a side Dock." = "正在做的缘由与决策：底部 Dock 右侧、侧边 Dock 下方。";
+"Side Dock" = "侧边 Dock";
+"Extra panel width" = "面板额外加宽";
+"Side-Dock panels are slightly wider than the Dock itself; adjust the extra margin." = "侧边 Dock 的面板比 Dock 本体稍宽，可在此调整加宽量。";
+"Display" = "显示器";
+"Display Target" = "显示位置";
+"All Displays" = "全部显示器";
+"Primary Display" = "主显示器";
+"Mouse Display" = "跟随鼠标";
+"Fixed Display" = "指定显示器";
+"Full-Screen Behavior" = "全屏行为";
+"Show in Full-Screen Spaces" = "全屏空间内也显示";
+"Desktop Spaces Only" = "仅桌面空间";
+
+/* 外观页 */
+"Background" = "背景";
+"Liquid Glass (Dock-like)" = "液态玻璃（贴近 Dock）";
+"Clear" = "透明无背景";
+"Side Dock Text" = "侧边 Dock 文字";
+"Vertical (CJK-friendly)" = "竖排（中文友好）";
+"Rotated 90°" = "旋转 90°";
+"Rotated text reads sideways — fine for English, awkward for Chinese. Only applies to narrow side Docks." = "旋转文字需侧头阅读——英文尚可、中文别扭。仅在侧边 Dock 且条带较窄时生效。";
+"Typography" = "字体";
+"Font Size" = "字号";
+"Density" = "信息密度";
+"Compact" = "紧凑";
+"Comfortable" = "舒适";
+"Spacious" = "宽松";
+"Effect" = "特效";
+"Low" = "低";
+"Medium" = "中";
+"High" = "高";
+
+/* 内容页 */
+"Presentation" = "展示方式";
+"Pager Rail" = "分页导轨";
+"Stack" = "堆叠";
+"Minimal" = "极简";
+"Scroll Speed" = "滚动速度";
+"Max Lines" = "最大行数";
+"Calendar" = "日历";
+"Show calendar events and reminders in the Now Queue." = "在任务队列中显示日历事件与提醒事项。";
+"Data Source" = "数据源";
+"Watch Directory" = "监听目录";
+"Choose…" = "选择…";
+
+/* 高级页 */
+"Startup" = "启动";
+"Launch at Login" = "登录时启动";
+"Hide Menu Bar Item" = "隐藏菜单栏图标";
+"Debug Logging" = "调试日志";
+"Bottom-Dock Panel Size" = "底部 Dock 面板尺寸";
+"Applies to bottom Docks; side-Dock panels size themselves automatically." = "仅对底部 Dock 生效；侧边 Dock 的面板尺寸自动适配。";
+"Width (0 = auto)" = "宽度（0 = 自动）";
+"Height" = "高度";
+"Margin" = "边距";
+"Diagnostics" = "诊断";
+"Status" = "状态";
+"OK" = "正常";
+"Error" = "错误";
+"Watch:" = "监听目录：";
+"Reloaded:" = "上次重载：";
+
+/* 菜单栏 */
+"Settings…" = "设置…";
+"Reload" = "重新加载";
+"Check for Updates…" = "检查更新…";
+"Quit" = "退出";

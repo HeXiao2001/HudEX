@@ -283,14 +283,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Settings...",
+        menu.addItem(NSMenuItem(title: tr("Settings…"),
                                  action: #selector(openSettings),
                                  keyEquivalent: ","))
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Reload", action: #selector(reloadHUD), keyEquivalent: "r"))
-        menu.addItem(NSMenuItem(title: "Check for Updates...", action: #selector(checkForUpdates), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: tr("Reload"), action: #selector(reloadHUD), keyEquivalent: "r"))
+        menu.addItem(NSMenuItem(title: tr("Check for Updates…"), action: #selector(checkForUpdates), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: tr("Quit"), action: #selector(quit), keyEquivalent: "q"))
 
         item.menu = menu
         statusItem = item

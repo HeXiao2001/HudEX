@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "DockCue",
+    defaultLocalization: "en",
     platforms: [
         .macOS(.v14)
     ],
@@ -15,7 +16,10 @@ let package = Package(
         .target(name: "DeskHUDCore"),
         .executableTarget(
             name: "DeskHUDApp",
-            dependencies: ["DeskHUDCore"]
+            dependencies: ["DeskHUDCore"],
+            resources: [
+                .process("Resources")
+            ]
         ),
         .executableTarget(
             name: "deskhudctl",

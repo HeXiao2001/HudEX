@@ -3,76 +3,150 @@ import DeskHUDCore
 import SwiftUI
 
 struct SettingsView: View {
+    /// Working copy the user edits; changes propagate via `onConfigChanged`.
     @State private var config: HUDConfig
+    /// Config pushed from the app (file reloads, external updates).
+    private let incomingConfig: HUDConfig
     let status: HUDRuntimeStatus
     let onConfigChanged: (HUDConfig) -> Void
 
+    @State private var selectedPage: Page = .layout
+
+    enum Page: String, CaseIterable, Identifiable {
+        case layout, appearance, content, advanced
+        var id: String { rawValue }
+
+        var label: String {
+            switch self {
+            case .layout: return tr("Layout")
+            case .appearance: return tr("Appearance")
+            case .content: return tr("Content")
+            case .advanced: return tr("Advanced")
+            }
+        }
+
+        var icon: String {
+            switch self {
+            case .layout: return "rectangle.2.group"
+            case .appearance: return "paintbrush"
+            case .content: return "list.bullet.rectangle"
+            case .advanced: return "gearshape"
+            }
+        }
+    }
+
     init(config: HUDConfig, status: HUDRuntimeStatus = HUDRuntimeStatus(), onConfigChanged: @escaping (HUDConfig) -> Void) {
         _config = State(initialValue: config)
+        self.incomingConfig = config
         self.status = status
         self.onConfigChanged = onConfigChanged
     }
 
     var body: some View {
-        TabView {
-            DisplayPane(config: $config, status: status)
-                .tabItem { Label("Display", systemImage: "display") }
-                .frame(width: 500, height: 360)
-            AppearancePane(config: $config)
-                .tabItem { Label("Appearance", systemImage: "paintbrush") }
-                .frame(width: 500, height: 360)
-            ContentPane(config: $config)
-                .tabItem { Label("Content", systemImage: "list.bullet.rectangle") }
-                .frame(width: 500, height: 360)
-            AdvancedPane(config: $config, status: status)
-                .tabItem { Label("Advanced", systemImage: "gearshape") }
-                .frame(width: 500, height: 360)
+        HStack(spacing: 0) {
+            List(selection: $selectedPage) {
+                ForEach(Page.allCases) { page in
+                    Label(page.label, systemImage: page.icon)
+                        .tag(page)
+                }
+            }
+            .listStyle(.sidebar)
+            .frame(width: 180)
+
+            Divider()
+
+            Group {
+                switch selectedPage {
+                case .layout: LayoutPane(config: $config, status: status)
+                case .appearance: AppearancePane(config: $config)
+                case .content: ContentPane(config: $config)
+                case .advanced: AdvancedPane(config: $config, status: status)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 540, height: 420)
-        .padding(.top, 8)
-        .scenePadding()
+        .frame(minWidth: 680, minHeight: 470)
+        .onChange(of: incomingConfig) { _, newValue in
+            // External refresh (file reload); never clobber identical values.
+            if newValue != config { config = newValue }
+        }
         .onChange(of: config) { _, newValue in
             onConfigChanged(newValue)
         }
     }
 }
 
-// MARK: - Display
+// MARK: - Layout
 
-private struct DisplayPane: View {
+private struct LayoutPane: View {
     @Binding var config: HUDConfig
     let status: HUDRuntimeStatus
 
     var body: some View {
         Form {
-            Picker("Display Target:", selection: $config.displays) {
-                Text("All Displays").tag(DisplayMode.all)
-                Text("Primary Display").tag(DisplayMode.primary)
-                Text("Mouse Display").tag(DisplayMode.mouse)
-                Text("Fixed Display").tag(DisplayMode.fixed)
+            Section {
+                DockLayoutPreview(config: config)
+                    .frame(height: 240)
+            } header: {
+                Text(tr("Panel Placement"))
+            } footer: {
+                Text(tr("Live preview of where the panels sit next to your Dock. Changes apply instantly."))
             }
 
-            if config.displays == .fixed {
-                Picker("Fixed Display:", selection: Binding(
-                    get: { config.fixedDisplayID ?? 0 },
-                    set: { config.fixedDisplayID = $0 }
-                )) {
-                    ForEach(NSScreen.screens, id: \.hash) { screen in
-                        Text(HUDDisplayResolver.displayName(for: screen))
-                            .tag(screenDisplayID(screen))
+            Section {
+                Toggle(tr("Now Queue Panel"), isOn: $config.leftPanelEnabled)
+                    .help(tr("Now Queue Panel"))
+                Text(tr("Upcoming agenda: left of the bottom Dock, above a side Dock."))
+                    .font(.caption).foregroundStyle(.secondary)
+                Toggle(tr("Context Card Panel"), isOn: $config.rightPanelEnabled)
+                Text(tr("Why the work matters: right of the bottom Dock, below a side Dock."))
+                    .font(.caption).foregroundStyle(.secondary)
+            } header: {
+                Text(tr("Panels"))
+            }
+
+            Section {
+                LabeledContent(tr("Extra panel width")) {
+                    Stepper("\(Int(config.sidePanelExtraWidth))pt",
+                            value: $config.sidePanelExtraWidth, in: 0 ... 40, step: 2)
+                }
+            } header: {
+                Text(tr("Side Dock"))
+            } footer: {
+                Text(tr("Side-Dock panels are slightly wider than the Dock itself; adjust the extra margin."))
+            }
+
+            Section {
+                Picker(tr("Display Target"), selection: $config.displays) {
+                    Text(tr("All Displays")).tag(DisplayMode.all)
+                    Text(tr("Primary Display")).tag(DisplayMode.primary)
+                    Text(tr("Mouse Display")).tag(DisplayMode.mouse)
+                    Text(tr("Fixed Display")).tag(DisplayMode.fixed)
+                }
+                if config.displays == .fixed {
+                    Picker(tr("Fixed Display"), selection: Binding(
+                        get: { config.fixedDisplayID ?? 0 },
+                        set: { config.fixedDisplayID = $0 }
+                    )) {
+                        ForEach(NSScreen.screens, id: \.hash) { screen in
+                            Text(HUDDisplayResolver.displayName(for: screen))
+                                .tag(screenDisplayID(screen))
+                        }
                     }
                 }
-            }
-
-            Picker("Full-Screen:", selection: $config.fullscreenMode) {
-                Text("Show in Full-Screen Spaces").tag(FullscreenMode.overlay)
-                Text("Desktop Spaces Only").tag(FullscreenMode.desktopOnly)
-            }
-
-            if let err = status.lastError, config.displays == .fixed {
-                Text(err).font(.caption).foregroundStyle(.red)
+                Picker(tr("Full-Screen Behavior"), selection: $config.fullscreenMode) {
+                    Text(tr("Show in Full-Screen Spaces")).tag(FullscreenMode.overlay)
+                    Text(tr("Desktop Spaces Only")).tag(FullscreenMode.desktopOnly)
+                }
+                if let err = status.lastError, config.displays == .fixed {
+                    Text(err).font(.caption).foregroundStyle(.red)
+                }
+            } header: {
+                Text(tr("Display"))
             }
         }
+        .formStyle(.grouped)
+        .padding()
     }
 
     private func screenDisplayID(_ screen: NSScreen) -> UInt32 {
@@ -87,38 +161,55 @@ private struct AppearancePane: View {
 
     var body: some View {
         Form {
-            Picker("Background:", selection: $config.backgroundStyle) {
-                Text("Liquid Glass (Dock-like)").tag(DeskHUDCore.BackgroundStyle.glass)
-                Text("Clear").tag(DeskHUDCore.BackgroundStyle.clear)
+            Section {
+                Picker(tr("Background"), selection: $config.backgroundStyle) {
+                    Text(tr("Liquid Glass (Dock-like)")).tag(DeskHUDCore.BackgroundStyle.glass)
+                    Text(tr("Clear")).tag(DeskHUDCore.BackgroundStyle.clear)
+                }
+                .pickerStyle(.radioGroup)
+            } header: {
+                Text(tr("Background"))
             }
 
-            Picker("Side Dock Text:", selection: $config.sideDockTextMode) {
-                Text("Vertical (CJK-friendly)").tag(SideDockTextMode.vertical)
-                Text("Rotated 90°").tag(SideDockTextMode.rotated)
-            }
-            if config.sideDockTextMode == .rotated {
-                Text("Rotated mode turns text sideways to read — fine for English, awkward for Chinese. Only applies when the Dock is on a side edge with a narrow band.")
+            Section {
+                Picker(tr("Side Dock Text"), selection: $config.sideDockTextMode) {
+                    Text(tr("Vertical (CJK-friendly)")).tag(SideDockTextMode.vertical)
+                    Text(tr("Rotated 90°")).tag(SideDockTextMode.rotated)
+                }
+                .pickerStyle(.radioGroup)
+                if config.sideDockTextMode == .rotated {
+                    Label(
+                        tr("Rotated text reads sideways — fine for English, awkward for Chinese. Only applies to narrow side Docks."),
+                        systemImage: "exclamationmark.triangle"
+                    )
                     .font(.caption)
                     .foregroundStyle(.orange)
+                }
+            } header: {
+                Text(tr("Side Dock Text"))
             }
 
-            Picker("Effect:", selection: $config.effectProfile) {
-                Text("Low").tag(EffectProfile.low)
-                Text("Medium").tag(EffectProfile.medium)
-                Text("High").tag(EffectProfile.high)
-            }
-
-            Picker("Density:", selection: $config.window.contentDensity) {
-                Text("Compact").tag(ContentDensity.compact)
-                Text("Comfortable").tag(ContentDensity.comfortable)
-                Text("Spacious").tag(ContentDensity.spacious)
-            }
-
-            LabeledContent("Font Size:") {
-                Stepper("\(Int(config.window.fontSize))pt",
-                        value: $config.window.fontSize, in: 9 ... 18, step: 1)
+            Section {
+                LabeledContent(tr("Font Size")) {
+                    Stepper("\(Int(config.window.fontSize))pt",
+                            value: $config.window.fontSize, in: 9 ... 18, step: 1)
+                }
+                Picker(tr("Density"), selection: $config.window.contentDensity) {
+                    Text(tr("Compact")).tag(ContentDensity.compact)
+                    Text(tr("Comfortable")).tag(ContentDensity.comfortable)
+                    Text(tr("Spacious")).tag(ContentDensity.spacious)
+                }
+                Picker(tr("Effect"), selection: $config.effectProfile) {
+                    Text(tr("Low")).tag(EffectProfile.low)
+                    Text(tr("Medium")).tag(EffectProfile.medium)
+                    Text(tr("High")).tag(EffectProfile.high)
+                }
+            } header: {
+                Text(tr("Typography"))
             }
         }
+        .formStyle(.grouped)
+        .padding()
     }
 }
 
@@ -129,45 +220,55 @@ private struct ContentPane: View {
 
     var body: some View {
         Form {
-            Toggle("Now Queue Panel", isOn: $config.leftPanelEnabled)
-            Toggle("Context Card Panel", isOn: $config.rightPanelEnabled)
-
-            Picker("Left:", selection: $config.window.leftPresentation) {
-                Text("Pager Rail").tag(HUDPresentation.pagerRail)
-                Text("Stack").tag(HUDPresentation.stack)
-                Text("Minimal").tag(HUDPresentation.minimal)
-            }
-
-            Picker("Right:", selection: $config.window.rightPresentation) {
-                Text("Stack").tag(HUDPresentation.stack)
-                Text("Pager Rail").tag(HUDPresentation.pagerRail)
-                Text("Minimal").tag(HUDPresentation.minimal)
-            }
-
-            LabeledContent("Scroll speed:") {
-                Stepper("\(Int(config.window.scrollIntervalSeconds))s",
-                        value: $config.window.scrollIntervalSeconds, in: 2 ... 15, step: 1)
-            }
-
-            LabeledContent("Max Lines:") {
-                Stepper("\(config.window.maxLines)",
-                        value: Binding(get: { Double(config.window.maxLines) },
-                                       set: { config.window.maxLines = Int($0) }),
-                        in: 1 ... 6, step: 1)
-            }
-
-            Toggle("Calendar Events", isOn: $config.calendarEvents)
-
-            LabeledContent("Watch Dir:") {
-                HStack(spacing: 4) {
-                    TextField("path", text: Binding(
-                        get: { config.watchDirectory ?? "" },
-                        set: { config.watchDirectory = $0.isEmpty ? nil : $0 }))
-                    .frame(minWidth: 160)
-                    Button("Choose...") { browseWatchDir() }
+            Section {
+                Picker(tr("Now Queue"), selection: $config.window.leftPresentation) {
+                    Text(tr("Pager Rail")).tag(HUDPresentation.pagerRail)
+                    Text(tr("Stack")).tag(HUDPresentation.stack)
+                    Text(tr("Minimal")).tag(HUDPresentation.minimal)
                 }
+                Picker(tr("Context Card"), selection: $config.window.rightPresentation) {
+                    Text(tr("Stack")).tag(HUDPresentation.stack)
+                    Text(tr("Pager Rail")).tag(HUDPresentation.pagerRail)
+                    Text(tr("Minimal")).tag(HUDPresentation.minimal)
+                }
+                LabeledContent(tr("Scroll Speed")) {
+                    Stepper("\(Int(config.window.scrollIntervalSeconds))s",
+                            value: $config.window.scrollIntervalSeconds, in: 2 ... 15, step: 1)
+                }
+                LabeledContent(tr("Max Lines")) {
+                    Stepper("\(config.window.maxLines)",
+                            value: Binding(get: { Double(config.window.maxLines) },
+                                           set: { config.window.maxLines = Int($0) }),
+                            in: 1 ... 6, step: 1)
+                }
+            } header: {
+                Text(tr("Presentation"))
+            }
+
+            Section {
+                Toggle(tr("Calendar"), isOn: $config.calendarEvents)
+                Text(tr("Show calendar events and reminders in the Now Queue."))
+                    .font(.caption).foregroundStyle(.secondary)
+            } header: {
+                Text(tr("Calendar"))
+            }
+
+            Section {
+                LabeledContent(tr("Watch Directory")) {
+                    HStack(spacing: 4) {
+                        TextField("path", text: Binding(
+                            get: { config.watchDirectory ?? "" },
+                            set: { config.watchDirectory = $0.isEmpty ? nil : $0 }))
+                            .frame(minWidth: 200)
+                        Button(tr("Choose…")) { browseWatchDir() }
+                    }
+                }
+            } header: {
+                Text(tr("Data Source"))
             }
         }
+        .formStyle(.grouped)
+        .padding()
     }
 
     private func browseWatchDir() {
@@ -175,7 +276,7 @@ private struct ContentPane: View {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = false
-        panel.prompt = "Select Watch Directory"
+        panel.prompt = tr("Choose…")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         config.watchDirectory = url.path
     }
@@ -189,43 +290,53 @@ private struct AdvancedPane: View {
 
     var body: some View {
         Form {
-            Toggle("Launch at Login", isOn: $config.launchAtLogin)
-            Toggle("Hide Menu Bar", isOn: $config.hideMenuBar)
-            Toggle("Debug Logging", isOn: $config.debugLogging)
-
-            LabeledContent("Width (0=auto):") {
-                TextField("", value: $config.window.width, format: .number).frame(width: 70)
-                Stepper("", value: $config.window.width, in: 0 ... 600, step: 4)
+            Section {
+                Toggle(tr("Launch at Login"), isOn: $config.launchAtLogin)
+                Toggle(tr("Hide Menu Bar Item"), isOn: $config.hideMenuBar)
+                Toggle(tr("Debug Logging"), isOn: $config.debugLogging)
+            } header: {
+                Text(tr("Startup"))
             }
 
-            LabeledContent("Height:") {
-                TextField("", value: $config.window.height, format: .number).frame(width: 70)
-                Stepper("", value: $config.window.height, in: 40 ... 200, step: 2)
+            Section {
+                LabeledContent(tr("Width (0 = auto)")) {
+                    TextField("", value: $config.window.width, format: .number).frame(width: 70)
+                    Stepper("", value: $config.window.width, in: 0 ... 600, step: 4)
+                }
+                LabeledContent(tr("Height")) {
+                    TextField("", value: $config.window.height, format: .number).frame(width: 70)
+                    Stepper("", value: $config.window.height, in: 40 ... 200, step: 2)
+                }
+                LabeledContent(tr("Margin")) {
+                    TextField("", value: $config.window.margin, format: .number).frame(width: 70)
+                    Stepper("", value: $config.window.margin, in: 2 ... 40, step: 2)
+                }
+            } header: {
+                Text(tr("Bottom-Dock Panel Size"))
+            } footer: {
+                Text(tr("Applies to bottom Docks; side-Dock panels size themselves automatically."))
             }
 
-            LabeledContent("Margin:") {
-                TextField("", value: $config.window.margin, format: .number).frame(width: 70)
-                Stepper("", value: $config.window.margin, in: 2 ... 40, step: 2)
-            }
-
-            Divider()
-
-            Group {
+            Section {
                 HStack {
-                    Text("Status:")
-                    Text(status.lastError == nil ? "OK" : "Error")
+                    Text(tr("Status"))
+                    Text(status.lastError == nil ? tr("OK") : tr("Error"))
                         .foregroundStyle(status.lastError == nil ? Color.green : Color.red)
                 }
                 if let err = status.lastError {
                     Text(err).font(.caption).foregroundStyle(.red)
                 }
                 if let dir = status.watchDirectory {
-                    Text("Watch: \(dir)").font(.caption).foregroundStyle(.secondary)
+                    Text("\(tr("Watch:")) \(dir)").font(.caption).foregroundStyle(.secondary)
                 }
                 if let time = status.lastReloadAt {
-                    Text("Reloaded: \(time)").font(.caption).foregroundStyle(.secondary)
+                    Text("\(tr("Reloaded:")) \(time)").font(.caption).foregroundStyle(.secondary)
                 }
+            } header: {
+                Text(tr("Diagnostics"))
             }
         }
+        .formStyle(.grouped)
+        .padding()
     }
 }

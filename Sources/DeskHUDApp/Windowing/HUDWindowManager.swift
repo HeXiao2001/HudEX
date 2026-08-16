@@ -655,16 +655,21 @@ final class HUDWindowManager {
     ) -> NSRect {
         // One AX query per frame: reused for both exclusion and alignment.
         let dockVisualRect = accessibilityDockRect(in: screenFrame)
+        if let dockVisualRect {
+            lastKnownDockRect = dockVisualRect
+        }
         let dockExclusion = estimatedVerticalDockExclusionRect(
             in: screenFrame,
             visible: visible,
             dockBandWidth: dockBandWidth,
             dockIsOnLeftEdge: dockIsOnLeftEdge,
-            dockVisualRect: dockVisualRect,
+            dockVisualRect: dockVisualRect ?? lastKnownDockRect,
             mouseLocation: mouseLocation
         )
         let gap: CGFloat = 6
-        let minLength: CGFloat = 150
+        // Small floor so panels can visibly retreat from magnified Dock icons
+        // (the free vertical stubs are often barely 150px as it is).
+        let minLength: CGFloat = 60
         let maxLen = preferredSize.width > 0 ? preferredSize.width : .greatestFiniteMagnitude
         // Slightly wider than the Dock itself, centered on the Dock's visual
         // glass rect when available (fallback: the reserved band).
@@ -706,7 +711,9 @@ final class HUDWindowManager {
             var minY = accessibilityRect.minY - 4
             var maxY = accessibilityRect.maxY + 4
             if let mouseLocation, screenFrame.contains(mouseLocation) {
-                let magnifiedRadius = max(210, dockBandWidth * 2.4)
+                // Magnified icon spread scales with the band, not the fixed
+                // bottom-Dock radius.
+                let magnifiedRadius = max(140, dockBandWidth * 3)
                 minY = min(minY, mouseLocation.y - magnifiedRadius)
                 maxY = max(maxY, mouseLocation.y + magnifiedRadius)
             }
@@ -714,7 +721,7 @@ final class HUDWindowManager {
             maxY = min(screenFrame.maxY, maxY)
             let x = dockIsOnLeftEdge ? screenFrame.minX : screenFrame.maxX - dockBandWidth
             let rect = NSRect(x: x, y: minY, width: dockBandWidth, height: max(0, maxY - minY))
-            logDebug("dockSource=AX+mouse rect=\(rect.debugDescription)")
+            logDebug("dockSource=AX\(mouseLocation != nil ? "+mouse" : "") rect=\(rect.debugDescription)")
             return rect
         }
 
@@ -734,7 +741,7 @@ final class HUDWindowManager {
         }
 
         if let mouseLocation, screenFrame.contains(mouseLocation) {
-            let magnifiedRadius = max(210, dockBandWidth * 2.4)
+            let magnifiedRadius = max(140, dockBandWidth * 3)
             minY = min(minY, mouseLocation.y - magnifiedRadius)
             maxY = max(maxY, mouseLocation.y + magnifiedRadius)
         }
@@ -818,7 +825,7 @@ final class HUDWindowManager {
             minX = max(screenFrame.minX, minX)
             maxX = min(screenFrame.maxX, maxX)
             let rect = NSRect(x: minX, y: screenFrame.minY, width: max(0, maxX - minX), height: dockBandHeight)
-            logDebug("dockSource=AX+mouse rect=\(rect.debugDescription)")
+            logDebug("dockSource=AX\(mouseLocation != nil ? "+mouse" : "") rect=\(rect.debugDescription)")
             return rect
         }
 
@@ -859,7 +866,20 @@ final class HUDWindowManager {
         return clamped.rounded()
     }
 
+    /// Sub-second cache for the AX Dock query: the 60Hz follow timer calls
+    /// this per slot per tick, and hammering the Dock's AX server can get
+    /// throttled into transient failures (which used to flicker panels to the
+    /// coarse prefs estimate).
+    private var axDockRectCache: (rect: NSRect, screenFrame: NSRect, at: CFTimeInterval)?
+
     private func accessibilityDockRect(in screenFrame: NSRect) -> NSRect? {
+        let now = Date().timeIntervalSinceReferenceDate
+        if let cache = axDockRectCache,
+           cache.screenFrame == screenFrame,
+           now - cache.at < 0.08 {
+            return cache.rect
+        }
+
         guard AXIsProcessTrusted() else { return nil }
         guard let dockApp = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == "com.apple.dock" }) else {
             return nil
@@ -875,7 +895,9 @@ final class HUDWindowManager {
             guard let topLeftRect = accessibilityRect(of: child) else { continue }
             let appKitRect = convertTopLeftRectToAppKit(topLeftRect, in: screenFrame)
             guard appKitRect.intersects(screenFrame) else { continue }
-            return appKitRect.intersection(screenFrame)
+            let rect = appKitRect.intersection(screenFrame)
+            axDockRectCache = (rect, screenFrame, now)
+            return rect
         }
 
         return nil

@@ -82,6 +82,7 @@ final class HUDModelDecodingTests: XCTestCase {
         // Omitted fields fall back to defaults: vertical side-dock text, both panels on.
         let config = try JSONDecoder().decode(HUDConfig.self, from: Data("{}".utf8))
         XCTAssertEqual(config.sideDockTextMode, .vertical)
+        XCTAssertEqual(config.sidePanelExtraWidth, 12)
         XCTAssertEqual(config.leftPanelEnabled, true)
         XCTAssertEqual(config.rightPanelEnabled, true)
 

@@ -79,6 +79,13 @@ if [[ "$OLD_HASH" == "$NEW_HASH" && -d "$APP_DIR" && "$METADATA_READY" == true ]
   cp "$ROOT_DIR/Examples/hud_rightDock.json" "$APP_DIR/Contents/Resources/Examples/hud_rightDock.json" 2>/dev/null || true
   cp "$MENU_ICON_FILE" "$APP_DIR/Contents/Resources/DockCueMenuTemplate.png" 2>/dev/null || true
   cp "$MENU_ICON_2X_FILE" "$APP_DIR/Contents/Resources/DockCueMenuTemplate@2x.png" 2>/dev/null || true
+  for SPM_BUNDLE in "$ROOT_DIR"/.build/*/debug/DockCue_DeskHUDApp.bundle; do
+    if [[ -d "$SPM_BUNDLE" ]]; then
+      rm -rf "$APP_DIR/Contents/Resources/DockCue_DeskHUDApp.bundle"
+      cp -R "$SPM_BUNDLE" "$APP_DIR/Contents/Resources/"
+      break
+    fi
+  done
   /usr/bin/codesign --force --deep --sign "$SIGN_IDENTITY" "$APP_DIR" >/dev/null
 else
   # Binary changed (or first build) — full bundle setup.
@@ -94,6 +101,13 @@ else
   cp "$ROOT_DIR/Examples/hud_rightDock.json" "$APP_DIR/Contents/Resources/Examples/hud_rightDock.json" 2>/dev/null || true
   cp "$MENU_ICON_FILE" "$APP_DIR/Contents/Resources/DockCueMenuTemplate.png" 2>/dev/null || true
   cp "$MENU_ICON_2X_FILE" "$APP_DIR/Contents/Resources/DockCueMenuTemplate@2x.png" 2>/dev/null || true
+  for SPM_BUNDLE in "$ROOT_DIR"/.build/*/debug/DockCue_DeskHUDApp.bundle; do
+    if [[ -d "$SPM_BUNDLE" ]]; then
+      rm -rf "$APP_DIR/Contents/Resources/DockCue_DeskHUDApp.bundle"
+      cp -R "$SPM_BUNDLE" "$APP_DIR/Contents/Resources/"
+      break
+    fi
+  done
 
   if [[ -f "$ICNS_FILE" ]]; then
     cp "$ICNS_FILE" "$APP_DIR/Contents/Resources/DockCue.icns"
