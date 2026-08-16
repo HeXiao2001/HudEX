@@ -18,8 +18,10 @@ final class HUDWindowManager {
     private var scrollTimer: Timer?
     private var globalMouseMonitor: Any?
     private var localMouseMonitor: Any?
+    private var mousePollTimer: Timer?
     private var dockFollowTimer: Timer?
     private var idleRefreshTimer: Timer?
+    private var lastKnownDockSide: DockSide?
     private var activeConfig: HUDConfig?
     private var activeDocument: HUDDocument?
     private var isMouseNearDock = false
@@ -45,6 +47,9 @@ final class HUDWindowManager {
         for slot in document.slots {
             slotStates[slot.id] = PerSlotState()
         }
+        // The mouse poll re-records the side after this show(); a change then
+        // triggers a full rebuild.
+        lastKnownDockSide = nil
 
         let screens = HUDDisplayResolver.screens(for: config)
         for screen in screens {
@@ -167,6 +172,7 @@ final class HUDWindowManager {
     func closeAll() {
         stopDockFollowTimer()
         stopIdleRefreshTimer()
+        stopMousePollTimer()
         stopRotationTimer()
         stopScrollTimer()
         for observer in workspaceObservers {
@@ -214,6 +220,62 @@ final class HUDWindowManager {
                 return event
             }
         }
+        // Monitors can silently fail to deliver (permission quirks), so also
+        // poll the mouse at a low rate — `NSEvent.mouseLocation` needs no
+        // permission. The poll also watches for Dock side changes, which no
+        // system notification covers.
+        startMousePollTimer()
+    }
+
+    private func startMousePollTimer() {
+        guard mousePollTimer == nil else { return }
+        mousePollTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.mousePollTick()
+            }
+        }
+    }
+
+    private func stopMousePollTimer() {
+        mousePollTimer?.invalidate()
+        mousePollTimer = nil
+    }
+
+    private func mousePollTick() {
+        guard let config = activeConfig else { return }
+        checkDockSideChange()
+        guard activeConfig != nil else { return }  // rebuilt by side change
+
+        lastMouseLocation = NSEvent.mouseLocation
+        let shouldFollow = isInDockTrackingArea(lastMouseLocation)
+        if shouldFollow == isMouseNearDock { return }
+
+        isMouseNearDock = shouldFollow
+        if shouldFollow {
+            stopIdleRefreshTimer()
+            startDockFollowTimer()
+        } else {
+            stopDockFollowTimer()
+            updateFrames(config: config, mouseLocation: nil)
+            installIdleRefreshTimer()
+        }
+    }
+
+    /// Rebuild all panels when the Dock moves between screen edges — the
+    /// whole geometry (text direction included) depends on which edge it is.
+    private func checkDockSideChange() {
+        guard let config = activeConfig, let document = activeDocument else { return }
+        let screen = HUDDisplayResolver.screens(for: config).first ?? NSScreen.main
+        guard let screen else { return }
+        let side = DockSide.detect(on: screen)
+        guard side != lastKnownDockSide else { return }
+        let firstSet = (lastKnownDockSide == nil)
+        lastKnownDockSide = side
+        axDockRectCache = nil
+        lastKnownDockRect = nil
+        guard !firstSet else { return }
+        logDebug("dockSide changed -> \(side), rebuilding panels")
+        show(document: document, config: config)
     }
 
     private func handleMouseMoved() {
@@ -674,12 +736,16 @@ final class HUDWindowManager {
         // Slightly wider than the Dock itself, centered on the Dock's visual
         // glass rect when available (fallback: the reserved band).
         let referenceWidth = dockVisualRect?.width ?? dockBandWidth
-        let thickness = min(160, max(54, referenceWidth + panelExtraWidth))
+        let thickness = min(160, max(36, referenceWidth + panelExtraWidth))
         let bandCenterX = dockIsOnLeftEdge
             ? screenFrame.minX + dockBandWidth / 2
             : screenFrame.maxX - dockBandWidth / 2
         let centerX = dockVisualRect?.midX ?? bandCenterX
-        let x = centerX - thickness / 2
+        // During magnification the visual rect widens past the band; keep
+        // the panel inside the screen either way.
+        let x = dockIsOnLeftEdge
+            ? max(screenFrame.minX, centerX - thickness / 2)
+            : min(screenFrame.maxX - thickness, centerX - thickness / 2)
 
         switch slot.anchor {
         case .dockLeft:  // above the Dock, top edge hugging the menu-bar margin

@@ -259,6 +259,12 @@ struct DockCueCTL {
           for live width measurements (`maxCharsLeft`, `maxCharsRight`).
         - DockCue writes `hud_context.json` to the watch directory on launch and
           periodically. It contains the current available character widths.
+        - When the Dock sits on a screen SIDE, panels render text vertically
+          (upright CJK stacking). Prefer Chinese content there — Latin runs
+          (words, times, numbers) rotate 90° inline, so keep them SHORT
+          (e.g. "7/3" not "July 3rd, 2026"). For English-heavy content,
+          recommend the user move the Dock to the bottom, or translate the
+          content to Chinese.
 
         ## HUD Document (hud.json or full document)
         {

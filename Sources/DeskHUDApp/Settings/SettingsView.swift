@@ -185,6 +185,12 @@ private struct AppearancePane: View {
                     .font(.caption)
                     .foregroundStyle(.orange)
                 }
+                Label(
+                    tr("Tip: vertical side-Dock panels read best with Chinese content — Latin runs rotate 90° automatically. For English-heavy content, prefer the Dock at the bottom or translate to Chinese."),
+                    systemImage: "lightbulb"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             } header: {
                 Text(tr("Side Dock Text"))
             }

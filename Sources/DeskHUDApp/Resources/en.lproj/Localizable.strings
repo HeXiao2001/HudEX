@@ -87,3 +87,6 @@
 "Reload" = "Reload";
 "Check for Updates…" = "Check for Updates…";
 "Quit" = "Quit";
+
+/* Guidance */
+"Tip: vertical side-Dock panels read best with Chinese content — Latin runs rotate 90° automatically. For English-heavy content, prefer the Dock at the bottom or translate to Chinese." = "Tip: vertical side-Dock panels read best with Chinese content — Latin runs rotate 90° automatically. For English-heavy content, prefer the Dock at the bottom or translate to Chinese.";

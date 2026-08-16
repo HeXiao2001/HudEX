@@ -14,6 +14,8 @@ private struct ProgressItemBody: View {
     let item: HUDItem
     let config: HUDConfig
 
+    @Environment(\.hudVerticalText) private var vertical
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
@@ -21,9 +23,22 @@ private struct ProgressItemBody: View {
                 Spacer(minLength: 8)
                 HUDTypography.optional(item.label, style: .secondary, opacity: config.window.textOpacity, fontSize: config.window.fontSize)
             }
-            ProgressView(value: clamped)
-                .progressViewStyle(.linear)
-                .tint(HUDTypography.progressTint(for: config.effectProfile))
+            if vertical {
+                // Vertical capsule track — a horizontal bar reads as a
+                // broken slider inside a narrow vertical panel.
+                Capsule()
+                    .fill(Color.white.opacity(0.16))
+                    .frame(width: 4, height: 34)
+                    .overlay(alignment: .bottom) {
+                        Capsule()
+                            .fill(HUDTypography.progressTint(for: config.effectProfile))
+                            .frame(width: 4, height: max(2, 34 * CGFloat(clamped)))
+                    }
+            } else {
+                ProgressView(value: clamped)
+                    .progressViewStyle(.linear)
+                    .tint(HUDTypography.progressTint(for: config.effectProfile))
+            }
         }
     }
 
