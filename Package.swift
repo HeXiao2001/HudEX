@@ -1,33 +1,34 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.2
 import PackageDescription
 
+// HudEX — a tiny, always-present, almost-invisible display of recent
+// research-project context that lives in the free space next to the Dock.
+//
+// Two targets only:
+//   HudEXCore — pure Swift (Foundation), no AppKit UI.
+//   HudEXApp  — SwiftUI/AppKit shell: edge panels, settings, menu bar.
 let package = Package(
-    name: "DockCue",
-    defaultLocalization: "en",
+    name: "HudEX",
     platforms: [
-        .macOS(.v14)
+        .macOS(.v26)
     ],
     products: [
-        .library(name: "DeskHUDCore", targets: ["DeskHUDCore"]),
-        .executable(name: "DockCue", targets: ["DeskHUDApp"]),
-        .executable(name: "deskhudctl", targets: ["deskhudctl"])
+        .library(name: "HudEXCore", targets: ["HudEXCore"]),
+        .executable(name: "HudEX", targets: ["HudEXApp"])
     ],
     targets: [
-        .target(name: "DeskHUDCore"),
+        .target(name: "HudEXCore"),
         .executableTarget(
-            name: "DeskHUDApp",
-            dependencies: ["DeskHUDCore"],
-            resources: [
-                .process("Resources")
-            ]
-        ),
-        .executableTarget(
-            name: "deskhudctl",
-            dependencies: ["DeskHUDCore"]
+            name: "HudEXApp",
+            dependencies: ["HudEXCore"]
         ),
         .testTarget(
-            name: "DeskHUDCoreTests",
-            dependencies: ["DeskHUDCore"]
+            name: "HudEXCoreTests",
+            dependencies: ["HudEXCore"]
         )
-    ]
+    ],
+    // The sources are written against Swift 5 semantics; pinning the language
+    // mode keeps the manifest/SDK version independent from a Swift 6
+    // concurrency migration.
+    swiftLanguageModes: [.v5]
 )

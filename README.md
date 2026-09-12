@@ -1,146 +1,100 @@
-# DockCue
+# HudEX
 
-Native macOS persistent HUD overlay — file-driven, read-only, Dock-side.
+**Always present, almost invisible.**
 
-DockCue watches JSON files and renders lightweight status panels in the unused space beside the macOS Dock. It does **not** generate content, call APIs, or run AI models. It only reads files, parses valid state, and displays it.
+HudEX 是常驻在 macOS 屏幕边缘的「近期项目上下文显示器」。
+它只在 Dock 没有占用的边缘空间里放几个纯色小标签，鼠标悬停时才展开简介。
 
-## Install
+它不是任务管理器、不是看板、不是知识库、不是 AI：只是让你同时推进几个项目时，
+随时知道「每个项目最近做到哪、下一步做什么、最近一次重要的对话叫什么」。
 
-DockCue is **source-first** — building from source is the recommended install path. DMG builds are self-signed for local testing and may trigger macOS security prompts. Official notarized builds require Apple Developer Program membership and are not yet available.
+## 一分钟上手
 
-**Source build (recommended):**
-```bash
-git clone https://github.com/HeXiao2001/DeskHUD.git
-cd DeskHUD
-./script/build_and_run.sh --verify
+1. 在 Obsidian / 任意编辑器里写好一个 `HudEX.md`（格式见下）。
+2. 打开 HudEX，在「设置 › 数据源」里选中这个文件。
+3. 完成。之后 HudEX 只做两件事：读这个文件、在边缘显示标签。
+
+默认会依次尝试：`~/Documents/HudEX.md`、`~/Library/CloudStorage/OneDrive-*/HudEX.md`、
+`~/Desktop/HudEX.md`。也可以在设置里指定任意路径。
+
+## 数据格式
+
+```markdown
+# HudEX
+
+## GeoRule
+
+短名：GR
+状态：进行中
+更新：2026-09-12 16:30
+
+### 当前
+
+2019-01、2019-02、2019-12 三期正式数据已经开始运行。
+
+### 下一步
+
+检查规则稳定性、K 数量和 h 是否触及搜索边界。
+
+### 最新对话
+
+模型发展总结20260907
+
+### 备注
+
+- 需要整理实验脚本最新版本
 ```
 
-**DMG (self-signed, experimental):**
-```bash
-VERSION=$(curl -s https://api.github.com/repos/HeXiao2001/DeskHUD/releases/latest | grep tag_name | head -1 | cut -d'"' -f4) && curl -fsSL "https://github.com/HeXiao2001/DeskHUD/releases/download/$VERSION/DockCue-${VERSION}.dmg" -o /tmp/DockCue.dmg && hdiutil attach /tmp/DockCue.dmg -nobrowse && cp -R /Volumes/DockCue*/DockCue.app /Applications/ && hdiutil detach /Volumes/DockCue* && open /Applications/DockCue.app
-```
+* `##` 是一个项目；`#` 是可选的文档标题。
+* 项目下面可以有 `短名：`、`状态：`、`更新：`；短名不写就自动生成。
+* 内置小节：`当前` / `下一步` / `最新对话` / `备注`。
+* 其他 `### 标题` 也允许存在，会在「完整窗口」里原样显示。
+* 图片、附件、嵌入一律不加载；普通网页链接可以点击，交给系统浏览器打开。
 
-**Manual:**
-1. Download from [Releases](https://github.com/HeXiao2001/DeskHUD/releases)
-2. Open DMG, drag `DockCue.app` to `/Applications`
-3. Launch, grant Accessibility permission when prompted
+标签颜色就是状态：绿（最近更新）、黄（需要关注）、橙（开始变旧）、灰（长时间未更新）、
+蓝灰（暂停 / 归档 / 已完成）。阈值可以在设置里调整。
 
-**Auto-start**: System Settings → General → Login Items → add DockCue.
+## 交互
 
-**Updates**: Menu bar → Check for Updates... → download latest DMG.
+| 操作 | 结果 |
+|------|------|
+| 鼠标悬停标签 | 弹出简介窗口（项目名 / 当前 / 下一步 / 最新对话） |
+| 右键标签 | 打开项目完整内容、打开 Markdown 文件（编辑）、重新载入、设置…、退出 |
+| 菜单栏图标 | 同样的入口；可以随时关掉，右键标签仍然能进设置 |
+| 再次打开 HudEX.app | 直接打开设置窗口（菜单栏图标关掉后的第二条恢复路径） |
 
-## Development
+## 明确不做的事
 
-```bash
-git clone https://github.com/HeXiao2001/DeskHUD.git
-cd DeskHUD
-./script/build_and_run.sh --verify
-swift test
-swift run deskhudctl schema    # AI: start here
-```
+不联网、不调用任何 AI、不内置编辑器、不用 WebView / Electron / Node、不存历史、
+不做自动滚动和轮播、不显示进度条、不加载图片附件、不修改 Dock。
 
-macOS 14+, Apple Silicon.
+编辑就是「用系统默认程序打开 `HudEX.md`」——你在 Obsidian 里改，HudEX 自己刷新。
 
-## Architecture
+## 权限
 
-```
-Any writer (AI / script / app / cloud sync)
-  └─→ hud_leftDock.json   ──┐
-  └─→ hud_rightDock.json  ──┤
-  └─→ macOS Calendar      ──┼──→ DockCue ──→ Click-through HUD panels
-  └─→ Remote JSON file    ──┘     (beside the Dock, every display)
-```
+**不需要任何 TCC 权限**：不使用辅助功能、不使用屏幕录制、不联网。
+Dock 的位置和厚度来自系统保留区和 Dock 的偏好设置，屏幕变化通过系统通知获知，
+标签尺寸和数量都可以在设置里手动固定，因此也不需要持续监测 Dock。
 
-## Content Convention
-
-| Panel | Role | Shows |
-|-------|------|-------|
-| Left | Now Queue | What to pay attention to next — meetings, focus tasks, blocked items |
-| Right | Context Card | Why this matters — project direction, next decision, quiet reflection |
-
-Progress bars are reserved for real active processes (agents, builds, tests, sync, timers). Sparse > filler.
-
-## Configuration
-
-Set `watchDirectory` in `config.json` to any local or cloud-synced directory. DockCue loads all files from there and auto-reloads on changes. Merge content from multiple locations by pointing `watchDirectory` at a sync folder (iCloud, Dropbox, any cloud drive).
-
-```json
-{
-  "watchDirectory": "~/Library/CloudStorage/MyCloudDrive/DockCue",
-  "calendarEvents": true
-}
-```
-
-Left panel merges: per-slot files + macOS Calendar events/reminders. Right panel is free-form — AI decides what to show.
-
-## CLI Reference
-
-```
-deskhudctl schema             Full JSON field reference + AI writing guide
-deskhudctl sample left        Left panel template (tasks / schedule)
-deskhudctl sample right       Right panel template (status / tips)
-deskhudctl sample full        Both panels
-deskhudctl slot               Per-slot content file template
-deskhudctl validate hud <path>
-deskhudctl validate slot <path>
-deskhudctl validate config <path>
-deskhudctl validate all <watch-directory>
-deskhudctl doctor [--json] [watch-directory]
-deskhudctl init [--overwrite] <watch-directory>
-deskhudctl context [--json] [watch-directory]
-deskhudctl status
-```
-
-## Item Types
-
-| type | renders | key fields |
-|------|---------|------------|
-| `text` | title + subtitle + time | `title`, `subtitle`, `time` |
-| `metric` | title + numeric value + unit | `title`, `value`, `unit` |
-| `progress` | progress bar + label | `title`, `label`, `value` (0–1), `state` |
-| `list` | title + bullet lines | `title`, `lines[]` |
-| `status` | colored dot + title + label | `title`, `label`, `state` |
-
-**State colors**: done/ok/ready→green, running/working/thinking→cyan, blocked/warning→yellow, error/failed→red, pending/todo/idle→dim.
-
-**Icons**: Any Apple-native Unicode emoji or SF Symbol works in `title` and `subtitle`. Use the full system emoji set (🎯📅✅⏰📄💻🚀⚠️💡🕗🕙🕑📋📝🌿🔴🟡🟢🔵).
-
-## Settings
-
-Menu bar → **Settings...** (⌘,) → live-preview Appearance, Layout, Behavior.
-
-## AI Integration
+## 构建
 
 ```bash
-deskhudctl schema              # AI: learn the format + writing conventions
-deskhudctl sample left > hud_leftDock.json
-deskhudctl validate slot hud_leftDock.json
-deskhudctl doctor .
+./script/build_and_run.sh              # 构建 dist/HudEX.app 并启动
+./script/build_and_run.sh --no-launch  # 只构建
+./script/build_and_run.sh --release    # Release 构建
+swift test --disable-sandbox           # 单元测试（71 项）
 ```
 
-Write atomically: `cat > file.json.tmp && mv file.json.tmp file.json`
+要求 macOS 26 / Xcode 26。工程是纯 SwiftPM（`HudEXCore` + `HudEXApp`），
+app bundle 由脚本组装（`LSUIElement`，无 Dock 图标）。
 
-DockCue auto-detects file changes via `DispatchSource` — no manual reload needed.
+## 结构
 
-**Cross-device**: Write to a cloud-synced directory, point `watchDirectory` at it. DockCue merges content from all sources automatically.
-
-## Health Check
-
-For AI agents and scripts, `doctor` is the safest preflight check before assuming DockCue will render updates:
-
-```bash
-deskhudctl validate slot hud_leftDock.json
-deskhudctl validate slot hud_rightDock.json
-deskhudctl validate config config.json
-deskhudctl validate all .
-deskhudctl doctor --json .
-deskhudctl context .
+```
+Sources/HudEXCore    解析 / 布局 / 颜色 / 文件签名 —— 纯逻辑，可单元测试
+Sources/HudEXApp     AppKit 窗口与状态栏 + SwiftUI 内容视图
+Tests/HudEXCoreTests 71 项测试：解析、布局、颜色、文件监听、稳定 ID
+Examples/HudEX.md    示例数据文件
 ```
 
-`doctor` checks config, left/right slot files, and `hud_context.json` width hints. It exits non-zero when required render inputs are broken, so agents can stop and repair the JSON instead of silently writing unusable state. Use `--json` when another tool needs structured output.
-
-To create a clean watch directory for scripts or agents:
-
-```bash
-deskhudctl init ~/Library/Application\ Support/DockCue
-```
+设计说明与迁移记录见 `docs/HudEX-v1.md`。

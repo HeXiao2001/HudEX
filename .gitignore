@@ -1,10 +1,7 @@
 .build/
 dist/
+release/
 .DS_Store
 *.xcuserdata/
 script/certs/
-script/DeskHUD.iconset/
-release/
-.codex/
-docs/superpowers/
-script/*.png
+script/HudEX.iconset/
