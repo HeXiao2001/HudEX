@@ -89,7 +89,9 @@ final class EdgePanelController {
             return
         }
         for slot in EdgeSlot.allCases {
-            for entry in tagFrames[slot] ?? [] where entry.frame.contains(pointOnScreen) {
+            // Stacked tags overlap: the last one drawn is on top, so it wins the
+            // hover, exactly like the pixels suggest.
+            for entry in (tagFrames[slot] ?? []).reversed() where entry.frame.contains(pointOnScreen) {
                 guard entry.id != hoveredProjectID else { return }
                 // A click on a window that is neither key nor activating the app
                 // is swallowed by the first-mouse rule before it reaches SwiftUI.
