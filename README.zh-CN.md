@@ -8,7 +8,9 @@ HudEX 在你屏幕边缘空出来的地方——通常是 Dock 旁边——放�
 
 这些内容全部来自**一个 Markdown 文件**，你自己写、AI 写都行。
 
-![HudEX 标签与悬停卡片](docs/images/style-skeuomorphic.png)
+![HudEX 总览：悬停卡片、Dock 旁的书签、布局设置](docs/images/overview.jpg)
+
+*Dock 下方书签的悬停卡片 · Dock 在左侧时的书签与卡片 · 布局设置（这里把书签固定到屏幕右边）· 书签特写*
 
 ## 它是什么
 

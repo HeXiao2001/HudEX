@@ -9,7 +9,10 @@ what is next, and the name of the most recent conversation about it.
 
 Everything comes from **one Markdown file** that you — or an AI — can edit.
 
-![HudEX tags and hover card](docs/images/style-skeuomorphic.png)
+![HudEX overview: hover card, Dock bookmarks, layout options](docs/images/overview.jpg)
+
+*Hover card over the Dock bookmarks · a left-edge Dock with its card · the layout
+pane (here pinning the bookmarks to the right edge) · the bookmarks up close.*
 
 ## What it is
 
