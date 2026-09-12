@@ -4,16 +4,31 @@ import SwiftUI
 /// The settings window content. HudEX hosts it in its own window (see
 /// `SettingsWindowController`) but the controls are all native SwiftUI.
 struct SettingsView: View {
+    /// Which pane to show first. `HUDEX_SETTINGS_TAB` (general/source/layout/
+    /// appearance) selects it for development and documentation captures.
+    @State private var selection: String = {
+        switch ProcessInfo.processInfo.environment["HUDEX_SETTINGS_TAB"]?.lowercased() {
+        case "source": return "source"
+        case "layout": return "layout"
+        case "appearance": return "appearance"
+        default: return "general"
+        }
+    }()
+
     var body: some View {
-        TabView {
+        TabView(selection: $selection) {
             GeneralSettingsView()
                 .tabItem { Label(L10n.t("settings.tab.general"), systemImage: "gearshape") }
+                .tag("general")
             SourceSettingsView()
                 .tabItem { Label(L10n.t("settings.tab.source"), systemImage: "doc.text") }
+                .tag("source")
             LayoutSettingsView()
                 .tabItem { Label(L10n.t("settings.tab.layout"), systemImage: "rectangle.split.2x1") }
+                .tag("layout")
             AppearanceSettingsView()
                 .tabItem { Label(L10n.t("settings.tab.appearance"), systemImage: "paintpalette") }
+                .tag("appearance")
         }
         // Wide enough that macOS keeps the tabs visible as tabs instead of
         // collapsing them into an overflow menu.

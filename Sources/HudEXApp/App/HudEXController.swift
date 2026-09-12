@@ -144,7 +144,34 @@ final class HudEXController: ObservableObject {
             }
         )
 
+        if let stress = ProcessInfo.processInfo.environment["HUDEX_STRESS"], let count = Int(stress) {
+            // Development aid: drive the settings path as fast as a slider drag
+            // would, to check that repeated re-renders do not accumulate.
+            var step = 0
+            Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak self] timer in
+                guard let self else { timer.invalidate(); return }
+                step += 1
+                let styles = AppearanceStyle.allCases
+                self.preferences.appearanceStyle = styles[step % styles.count]
+                self.preferences.stackOverlap = 0.2 + Double(step % 20) * 0.02
+                self.preferences.thresholdAttention = 5 + (step % 30)
+                if step >= count { timer.invalidate() }
+            }
+        }
+        if ProcessInfo.processInfo.environment["HUDEX_OPEN_FILE_PANEL"] != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+                self?.chooseMarkdownFile()
+            }
+        }
+        if ProcessInfo.processInfo.environment["HUDEX_OPEN_SETTINGS"] != nil {
+            // Development aid: start with the settings window open, so memory
+            // and rendering behaviour can be measured without UI automation.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                SettingsWindowController.shared.show()
+            }
+        }
         installObservers()
+
         performanceLogTimer = PerformanceMonitor.startLoggingIfRequested()
         scheduleMidnightRefresh()
         launchAtLogin.refresh()
@@ -460,6 +487,32 @@ final class HudEXController: ObservableObject {
             hash = hash &* 0x0000_0100_0000_01B3
         }
         return hash
+    }
+
+    /// Asks the user for the Markdown file. The panel is created per call and
+    /// dropped immediately: keeping one alive (or keeping its URLs) pins the
+    /// directory listing, icons and QuickLook previews in memory.
+    func chooseMarkdownFile() {
+        let panel = NSOpenPanel()
+        panel.title = L10n.t("source.panel.title")
+        panel.prompt = L10n.t("source.panel.prompt")
+        panel.allowedContentTypes = [.init(filenameExtension: "md") ?? .plainText, .plainText]
+        panel.allowsOtherFileTypes = true
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowsMultipleSelection = false
+        panel.showsTagField = false
+        panel.isAccessoryViewDisclosed = false
+        // No QuickLook preview: the preview generator is a separate service and
+        // its caches are what made the process look heavy after using the picker.
+        panel.directoryURL = URL(fileURLWithPath: documentSummary.path).deletingLastPathComponent()
+
+        let response = panel.runModal()
+        let url = panel.url
+        panel.orderOut(nil)
+        if response == .OK, let url {
+            setSourceURL(url)
+        }
     }
 
     /// The exact point where the hovered tag's card-facing edge crosses its

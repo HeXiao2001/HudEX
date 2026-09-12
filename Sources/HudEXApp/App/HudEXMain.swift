@@ -56,8 +56,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .first { $0.processIdentifier != ownPID }
     }
 
-    /// Launching HudEX again (double-clicking the app while it runs) opens
-    /// Settings — the second recovery path when the Menu Bar icon is hidden.
+    /// Launching HudEX again (Spotlight, Launchpad, Finder, `open`) while it is
+    /// already running opens Settings. A menu-bar app has no window to raise, so
+    /// without this the second launch would look like nothing happened.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
         controller.openSettings()
         return true

@@ -82,9 +82,13 @@ final class HoverTrackingView<Content: View>: NSView {
     var onHover: ((CGPoint?) -> Void)?
 
     private let hostingView: FirstMouseHostingView<Content>
+    /// The view currently rendered, so callers can release it (see
+    /// `PreviewPanelController.releaseRenderedCard`).
+    private(set) var rootView: Content
     private var trackingArea: NSTrackingArea?
 
     init(rootView: Content) {
+        self.rootView = rootView
         hostingView = FirstMouseHostingView(rootView: rootView)
         super.init(frame: NSRect(x: 0, y: 0, width: 10, height: 10))
         hostingView.translatesAutoresizingMaskIntoConstraints = false
@@ -103,6 +107,7 @@ final class HoverTrackingView<Content: View>: NSView {
     }
 
     func update(rootView: Content) {
+        self.rootView = rootView
         hostingView.rootView = rootView
     }
 

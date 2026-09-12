@@ -177,7 +177,24 @@ final class PreviewPanelController {
         model = nil
         placedTagFrame = .zero
         lastTagFrame = nil
+        sectionLimit = nil
         stopRefreshTimer()
+        releaseRenderedCard()
+    }
+
+    /// Drops the rendered card once it is off screen.
+    ///
+    /// A hidden panel keeps its view tree, and a SwiftUI tree holds text layouts,
+    /// attributed strings, materials and the graphics caches built for that
+    /// project's content. Across many hovers that added up to tens of megabytes
+    /// in a long session; resetting to an empty card returns it.
+    private func releaseRenderedCard() {
+        guard let host, host.rootView.model.sections.isEmpty == false else { return }
+        host.update(rootView: PreviewView(
+            model: Self.placeholderModel,
+            style: placedStyle,
+            layout: .measuring
+        ))
     }
 
     // MARK: - Internals
@@ -259,10 +276,16 @@ final class PreviewPanelController {
 
 /// The full project window. A single window object is reused for every project.
 @MainActor
-final class DetailWindowController {
+final class DetailWindowController: NSObject, NSWindowDelegate {
+    func windowWillClose(_ notification: Notification) {
+        window = nil
+        hostingView = nil
+    }
+
     private var window: NSWindow?
     private var hostingView: NSHostingView<DetailView>?
     private var editAction: (() -> Void)?
+    private var closeObserver: NSObjectProtocol?
 
     var isVisible: Bool { window?.isVisible ?? false }
 
@@ -286,6 +309,10 @@ final class DetailWindowController {
 
     func close() {
         window?.close()
+        // Release the rendered detail view with the window: holding it for the
+        // rest of the session keeps that project's text layouts and materials.
+        window = nil
+        hostingView = nil
     }
 
     private func ensureWindow() -> NSWindow {
@@ -306,6 +333,7 @@ final class DetailWindowController {
             )
         )
         window.contentView = hostingView
+        window.delegate = self
         self.window = window
         self.hostingView = hostingView
         return window

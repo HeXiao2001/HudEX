@@ -330,3 +330,7 @@
 
 "layout.overflowSlot" = "允许使用第二个溢出位置";
 "settingsblock.guide.overflowSlot" = "标签是否可以使用同一条边另一端的位置。关闭时只在一个地方显示，放不下的会隐藏并在设置里提示数量。";
+
+"source.path.placeholder" = "HudEX.md 的路径";
+"source.apply" = "使用这个路径";
+"source.dropHint" = "……也可以直接把 .md 文件拖到这一页。";

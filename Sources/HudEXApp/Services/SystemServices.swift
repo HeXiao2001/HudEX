@@ -93,7 +93,7 @@ enum ExternalOpenService {
 /// second scene alive makes SwiftUI rebuild the app main menu in a loop.
 /// The window still uses native controls only.
 @MainActor
-final class SettingsWindowController {
+final class SettingsWindowController: NSObject, NSWindowDelegate {
     static let shared = SettingsWindowController()
 
     private var window: NSWindow?
@@ -111,6 +111,15 @@ final class SettingsWindowController {
 
     func close() {
         window?.close()
+        // The window owns the SwiftUI tree (four panes, style previews with
+        // materials). Dropping it on close hands that memory back instead of
+        // keeping it for the rest of the session; the frame is autosaved, so
+        // reopening looks identical.
+        window = nil
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        window = nil
     }
 
     private func ensureWindow() -> NSWindow {
@@ -128,6 +137,7 @@ final class SettingsWindowController {
         // saved before: below this macOS collapses the tabs into a menu.
         window.contentMinSize = NSSize(width: 660, height: 520)
         window.contentView = hosting
+        window.delegate = self
         window.setFrameAutosaveName("HudEXSettingsWindow")
         self.window = window
         return window

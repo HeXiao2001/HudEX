@@ -330,3 +330,7 @@
 
 "layout.overflowSlot" = "Allow a second position for overflow";
 "settingsblock.guide.overflowSlot" = "Whether bookmarks may also use the overflow slot at the other end of the same edge. Off: one place only, extras are hidden and counted in Settings.";
+
+"source.path.placeholder" = "Path to HudEX.md";
+"source.apply" = "Use this path";
+"source.dropHint" = "…or drop a .md file anywhere on this pane.";

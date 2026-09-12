@@ -2,8 +2,10 @@
 #
 # Builds HudEX, assembles dist/HudEX.app and launches it.
 #
-# The bundle is what makes HudEX an agent application: LSUIElement keeps it out
-# of the Dock and gives it no main menu of its own.
+# The bundle makes HudEX a menu-bar application. It deliberately does *not* set
+# LSUIElement: that flag also hides the app from Launchpad, and users expect to
+# find it there. The Dock icon is avoided at runtime instead, with
+# `setActivationPolicy(.accessory)` in AppDelegate.
 #
 set -euo pipefail
 
@@ -70,9 +72,59 @@ if [[ "$SIGN_IDENTITY" == "-" ]] && security find-identity -v -p codesigning 2>/
 fi
 echo "Signing with: $SIGN_IDENTITY"
 
+# Written on every run: the fast path below skips re-copying the binary, but
+# the plist is the contract with LaunchServices (and with Launchpad).
+write_info_plist() {
+  cat > "$APP_DIR/Contents/Info.plist" <<PLIST
+  <?xml version="1.0" encoding="UTF-8"?>
+  <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+  <plist version="1.0">
+  <dict>
+  <key>CFBundleExecutable</key>
+  <string>$APP_NAME</string>
+  <key>CFBundleIdentifier</key>
+  <string>$BUNDLE_ID</string>
+  <key>CFBundleName</key>
+  <string>$APP_NAME</string>
+  <key>CFBundleDisplayName</key>
+  <string>$APP_NAME</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleVersion</key>
+  <string>$BUNDLE_VERSION</string>
+  <key>CFBundleShortVersionString</key>
+  <string>$BUNDLE_SHORT_VERSION</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>26.0</string>
+  <key>LSApplicationCategoryType</key>
+  <string>public.app-category.productivity</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+  <key>NSPrincipalClass</key>
+  <string>NSApplication</string>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleLocalizations</key>
+  <array>
+    <string>en</string>
+    <string>zh-Hans</string>
+  </array>
+  $ICON_KEY
+  </dict>
+  </plist>
+PLIST
+}
+
 # ------------------------------------------------------------------
 # 4. Bundle
 # ------------------------------------------------------------------
+# A bundle built by another user (or by a root-run script) cannot be refreshed.
+if [[ -d "$APP_DIR" && ! -w "$APP_DIR" ]]; then
+  echo "!! $APP_DIR is not writable by $(whoami)." >&2
+  echo "   Remove it once and run again:  sudo rm -rf \"$APP_DIR\"" >&2
+  exit 1
+fi
+
 if [[ "$OLD_HASH" == "$NEW_HASH" && -d "$APP_DIR" ]]; then
   echo "Binary unchanged — refreshing resources and re-signing"
   cp "$EXAMPLE_FILE" "$APP_DIR/Contents/Resources/Examples/HudEX.md" 2>/dev/null || true
@@ -97,46 +149,7 @@ else
     ICON_KEY="<key>CFBundleIconFile</key><string>HudEX</string>"
   fi
 
-  cat > "$APP_DIR/Contents/Info.plist" <<PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>CFBundleExecutable</key>
-  <string>$APP_NAME</string>
-  <key>CFBundleIdentifier</key>
-  <string>$BUNDLE_ID</string>
-  <key>CFBundleName</key>
-  <string>$APP_NAME</string>
-  <key>CFBundleDisplayName</key>
-  <string>$APP_NAME</string>
-  <key>CFBundlePackageType</key>
-  <string>APPL</string>
-  <key>CFBundleVersion</key>
-  <string>$BUNDLE_VERSION</string>
-  <key>CFBundleShortVersionString</key>
-  <string>$BUNDLE_SHORT_VERSION</string>
-  <key>LSMinimumSystemVersion</key>
-  <string>26.0</string>
-  <key>LSApplicationCategoryType</key>
-  <string>public.app-category.productivity</string>
-  <key>NSHighResolutionCapable</key>
-  <true/>
-  <key>LSUIElement</key>
-  <true/>
-  <key>NSPrincipalClass</key>
-  <string>NSApplication</string>
-  <key>CFBundleDevelopmentRegion</key>
-  <string>en</string>
-  <key>CFBundleLocalizations</key>
-  <array>
-    <string>en</string>
-    <string>zh-Hans</string>
-  </array>
-  $ICON_KEY
-</dict>
-</plist>
-PLIST
+  write_info_plist
 fi
 
 /usr/bin/codesign --force --deep --sign "$SIGN_IDENTITY" "$APP_DIR" >/dev/null 2>&1 \

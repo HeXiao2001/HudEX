@@ -6,6 +6,9 @@ struct SourceSettingsView: View {
     @ObservedObject private var preferences = Preferences.shared
     @ObservedObject private var controller = HudEXController.shared
 
+    @State private var pathDraft: String = ""
+    @State private var isDropping = false
+
     private var fileExists: Bool {
         FileManager.default.fileExists(atPath: controller.documentSummary.path)
     }
@@ -13,18 +16,26 @@ struct SourceSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Text(controller.documentSummary.path)
+                // Typing or pasting a path is the light option; the system file
+                // panel is only opened when it is actually wanted (it brings its
+                // own caches along, especially while browsing a big folder).
+                TextField(L10n.t("source.path.placeholder"), text: $pathDraft)
                     .font(.system(size: 11.5, design: .monospaced))
-                    .textSelection(.enabled)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit(applyDraft)
 
                 HStack(spacing: 8) {
+                    Button(L10n.t("source.apply")) { applyDraft() }
+                        .disabled(pathDraft == controller.documentSummary.path)
                     Button(L10n.t("source.choose")) { chooseFile() }
                     Button(L10n.t("source.open")) { controller.openMarkdownFile() }
                     Button(L10n.t("source.reveal")) { controller.revealInFinder() }
                     Button(L10n.t("source.reload")) { controller.reloadDocument() }
                 }
+
+                Text(L10n.t("source.dropHint"))
+                    .font(.callout)
+                    .foregroundStyle(isDropping ? Color.accentColor : .secondary)
             } header: {
                 Text(L10n.t("source.section.file"))
             } footer: {
@@ -32,6 +43,19 @@ struct SourceSettingsView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
+            .onDrop(of: [.fileURL], isTargeted: $isDropping) { providers in
+                guard let provider = providers.first else { return false }
+                _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                    guard let url, url.pathExtension.lowercased() == "md" else { return }
+                    Task { @MainActor in
+                        controller.setSourceURL(url)
+                        pathDraft = url.path
+                    }
+                }
+                return true
+            }
+            .onAppear { pathDraft = controller.documentSummary.path }
+            .onChange(of: controller.documentSummary.path) { _, new in pathDraft = new }
 
             syncSection
 
@@ -128,18 +152,13 @@ struct SourceSettingsView: View {
 
     /// Standard open panel; the app is not sandboxed, so a plain path suffices.
     private func chooseFile() {
-        let panel = NSOpenPanel()
-        panel.title = L10n.t("source.panel.title")
-        panel.prompt = L10n.t("source.panel.prompt")
-        panel.allowedContentTypes = [.init(filenameExtension: "md") ?? .plainText, .plainText]
-        panel.allowsOtherFileTypes = true
-        panel.canChooseDirectories = false
-        panel.canChooseFiles = true
-        panel.allowsMultipleSelection = false
-        panel.directoryURL = URL(fileURLWithPath: controller.documentSummary.path).deletingLastPathComponent()
+        controller.chooseMarkdownFile()
+    }
 
-        if panel.runModal() == .OK, let url = panel.url {
-            controller.setSourceURL(url)
-        }
+    private func applyDraft() {
+        let trimmed = pathDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let expanded = (trimmed as NSString).expandingTildeInPath
+        controller.setSourceURL(URL(fileURLWithPath: expanded))
     }
 }
