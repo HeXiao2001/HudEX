@@ -14,12 +14,10 @@ struct SettingsView: View {
                 .tabItem { Label(L10n.t("settings.tab.layout"), systemImage: "rectangle.split.2x1") }
             AppearanceSettingsView()
                 .tabItem { Label(L10n.t("settings.tab.appearance"), systemImage: "paintpalette") }
-            AdvancedSettingsView()
-                .tabItem { Label(L10n.t("settings.tab.advanced"), systemImage: "wrench.and.screwdriver") }
         }
-        // Wide enough that macOS keeps the five tabs visible as tabs instead of
+        // Wide enough that macOS keeps the tabs visible as tabs instead of
         // collapsing them into an overflow menu.
-        .frame(width: 660)
+        .frame(width: 620)
     }
 }
 

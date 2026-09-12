@@ -446,8 +446,20 @@ final class HudEXController: ObservableObject {
             holeEdgePoint: paintedEdgePoint(forProject: projectID),
             edge: planEdge,
             style: preferences.appearanceStyle,
-            screenVisibleFrame: screen.visibleFrame
+            screenVisibleFrame: screen.visibleFrame,
+            seed: Self.stringSeed(for: projectID)
         )
+    }
+
+    /// Stable per-project seed: each string hangs differently, but always the
+    /// same way for the same project.
+    static func stringSeed(for projectID: String) -> UInt64 {
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+        for byte in projectID.utf8 {
+            hash ^= UInt64(byte)
+            hash = hash &* 0x0000_0100_0000_01B3
+        }
+        return hash
     }
 
     /// The exact point where the hovered tag's card-facing edge crosses its

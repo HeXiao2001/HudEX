@@ -175,6 +175,48 @@ final class PreviewAnchorTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(anchor.panelFrame.minX, edgePoint.x)
     }
 
+    func testTagHoleFacesTheCardOnEveryEdge() {
+        let cases: [(DockEdge, CGRect)] = [
+            (.left, CGRect(x: 0, y: 300, width: 54, height: 30)),
+            (.right, CGRect(x: 1416, y: 300, width: 54, height: 30)),
+            (.bottom, CGRect(x: 300, y: 0, width: 30, height: 54))
+        ]
+        for (edge, tag) in cases {
+            let anchor = PreviewAnchor.solve(
+                tagFrame: tag, edge: edge, cardSize: card, visible: visible, usesConnector: true
+            )
+            XCTAssertTrue(
+                tag.insetBy(dx: -0.01, dy: -0.01).contains(anchor.holeCenter),
+                "hole escapes the tag on \(edge)"
+            )
+            // The hole is between the tag's centre and the card.
+            switch edge {
+            case .left:
+                XCTAssertGreaterThan(anchor.holeCenter.x, tag.midX)
+            case .right:
+                XCTAssertLessThan(anchor.holeCenter.x, tag.midX)
+            case .bottom:
+                XCTAssertGreaterThan(anchor.holeCenter.y, tag.midY)
+            }
+        }
+    }
+
+    func testStringsHangDifferentlyPerProject() {
+        let shapes = (0..<12).map { index in
+            PreviewAnchor.StringShape(seed: UInt64(index) &* 7919, length: 60)
+        }
+        XCTAssertGreaterThan(Set(shapes.map(\.bow1)).count, 4, "bow amplitude/direction barely varies")
+        XCTAssertTrue(shapes.contains { $0.bow1 * $0.bow2 < 0 }, "no S-shaped string at all")
+        XCTAssertTrue(shapes.contains { $0.bow1 > 0 }, "no string bows one way")
+        XCTAssertTrue(shapes.contains { $0.bow1 < 0 }, "no string bows the other way")
+
+        // Same seed → same shape: the string must not jitter while hovering.
+        XCTAssertEqual(
+            PreviewAnchor.StringShape(seed: 42, length: 60),
+            PreviewAnchor.StringShape(seed: 42, length: 60)
+        )
+    }
+
     func testBothEndsOfTheStringArePunched() {
         let tag = CGRect(x: 0, y: 300, width: 54, height: 30)
         let anchor = PreviewAnchor.solve(
@@ -197,31 +239,46 @@ final class PreviewAnchorTests: XCTestCase {
         )
     }
 
-    func testTheCurveBendsVisibly() {
-        // Tag low on the left edge, card clamped up: the string must bend.
-        let tag = CGRect(x: 0, y: 8, width: 54, height: 30)
-        let anchor = PreviewAnchor.solve(
-            tagFrame: tag,
-            edge: .left,
-            cardSize: CGSize(width: 300, height: 260),
-            visible: visible,
-            usesConnector: true
-        )
-        // Sample the cubic at t = 0.5 and compare with the straight chord.
-        let t: CGFloat = 0.5
-        let mt = 1 - t
-        let x = mt * mt * mt * anchor.connectorStart.x
-            + 3 * mt * mt * t * anchor.connectorControl1.x
-            + 3 * mt * t * t * anchor.connectorControl2.x
-            + t * t * t * anchor.connectorEnd.x
-        let y = mt * mt * mt * anchor.connectorStart.y
-            + 3 * mt * mt * t * anchor.connectorControl1.y
-            + 3 * mt * t * t * anchor.connectorControl2.y
-            + t * t * t * anchor.connectorEnd.y
-        let chordMidY = (anchor.connectorStart.y + anchor.connectorEnd.y) / 2
-        let chordMidX = (anchor.connectorStart.x + anchor.connectorEnd.x) / 2
-        let deviation = hypot(x - chordMidX, y - chordMidY)
-        XCTAssertGreaterThan(deviation, 4, "the line is nearly straight")
+    func testEveryStringBendsAndTheyAllDiffer() {
+        let tag = CGRect(x: 0, y: 300, width: 54, height: 30)
+        var deviations: [CGFloat] = []
+
+        for seed in UInt64(0)..<10 {
+            let anchor = PreviewAnchor.solve(
+                tagFrame: tag,
+                edge: .left,
+                cardSize: CGSize(width: 300, height: 260),
+                visible: visible,
+                usesConnector: true,
+                seed: seed
+            )
+            // Furthest distance from the straight chord, sampled along the curve.
+            var worst: CGFloat = 0
+            for step in 0...20 {
+                let t = CGFloat(step) / 20
+                let mt = 1 - t
+                let x = mt * mt * mt * anchor.connectorStart.x
+                    + 3 * mt * mt * t * anchor.connectorControl1.x
+                    + 3 * mt * t * t * anchor.connectorControl2.x
+                    + t * t * t * anchor.connectorEnd.x
+                let y = mt * mt * mt * anchor.connectorStart.y
+                    + 3 * mt * mt * t * anchor.connectorControl1.y
+                    + 3 * mt * t * t * anchor.connectorControl2.y
+                    + t * t * t * anchor.connectorEnd.y
+                let chordX = anchor.connectorStart.x
+                    + (anchor.connectorEnd.x - anchor.connectorStart.x) * t
+                let chordY = anchor.connectorStart.y
+                    + (anchor.connectorEnd.y - anchor.connectorStart.y) * t
+                worst = max(worst, hypot(x - chordX, y - chordY))
+            }
+            deviations.append(worst)
+        }
+
+        for (seed, deviation) in deviations.enumerated() {
+            XCTAssertGreaterThan(deviation, 2.5, "string for seed \(seed) is nearly straight")
+        }
+        let rounded = Set(deviations.map { Int($0.rounded()) })
+        XCTAssertGreaterThan(rounded.count, 2, "every string bends by the same amount")
     }
 
     func testWithoutConnectorTheCardKeepsAGap() {

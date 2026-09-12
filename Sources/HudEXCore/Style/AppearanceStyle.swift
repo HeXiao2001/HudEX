@@ -9,12 +9,9 @@ public enum AppearanceStyle: String, Sendable, CaseIterable, Hashable {
     /// Stacked bookmark cards: a hint of depth on the tags and an opaque,
     /// ruled-paper card joined to the tag by a punched hole and a curved line.
     case skeuomorphic
-    /// Frosted card: translucent material so text stays readable on any
-    /// background, tags unchanged.
+    /// Frosted glass: translucent material so text stays readable on any
+    /// background, with soft continuous corners.
     case frosted
-    /// Liquid-glass card, neatly aligned with the tags, tight continuous
-    /// corners so neighbouring surfaces look welded together.
-    case glass
     /// Minimal: no fill at all — outlined tags and an outlined card.
     case minimal
 
@@ -27,7 +24,16 @@ public enum AppearanceStyle: String, Sendable, CaseIterable, Hashable {
     public var usesHoleAndConnector: Bool { self == .skeuomorphic }
 
     /// Styles whose card is translucent and therefore needs a material.
-    public var usesMaterialCard: Bool { self == .frosted || self == .glass }
+    public var usesMaterialCard: Bool { self == .frosted }
+
+    /// Decodes a stored value, including styles that were merged away.
+    public static func parse(_ raw: String) -> AppearanceStyle? {
+        let key = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if key == "glass" || key == "liquidglass" || key == "liquid-glass" {
+            return .frosted   // merged into the frosted style
+        }
+        return AppearanceStyle(rawValue: key)
+    }
 
     public static let `default` = AppearanceStyle.skeuomorphic
 }

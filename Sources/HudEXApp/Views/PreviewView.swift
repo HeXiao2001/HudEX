@@ -95,7 +95,7 @@ struct PreviewView: View {
 
     private var card: some View {
         content
-            .padding(style == .glass ? 11 : 13)
+            .padding(style == .minimal ? 11 : 13)
             .background(cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .overlay(
@@ -107,9 +107,8 @@ struct PreviewView: View {
 
     private var cornerRadius: CGFloat {
         switch style {
-        case .glass: return 14
         case .skeuomorphic: return 6
-        case .frosted: return 10
+        case .frosted: return 14
         case .minimal: return 4
         }
     }
@@ -124,8 +123,6 @@ struct PreviewView: View {
             Color(nsColor: EdgeTagStyle.color(appearance.paper(isDark: isDark)))
         case .frosted:
             Rectangle().fill(.regularMaterial)
-        case .glass:
-            Rectangle().fill(.ultraThinMaterial)
         case .minimal:
             Color.clear
         }
@@ -136,8 +133,6 @@ struct PreviewView: View {
         case .skeuomorphic:
             return Color(nsColor: EdgeTagStyle.color(appearance.rule(isDark: isDark).withAlpha(0.9)))
         case .frosted:
-            return Color.white.opacity(isDark ? 0.12 : 0.35)
-        case .glass:
             return Color.white.opacity(isDark ? 0.16 : 0.45)
         case .minimal:
             return Color(nsColor: EdgeTagStyle.color(appearance.background)).opacity(0.75)
@@ -147,8 +142,7 @@ struct PreviewView: View {
     private var shadowColor: Color {
         switch style {
         case .skeuomorphic: return Color.black.opacity(isDark ? 0.45 : 0.20)
-        case .frosted: return Color.black.opacity(0.18)
-        case .glass: return Color.black.opacity(0.12)
+        case .frosted: return Color.black.opacity(0.16)
         case .minimal: return .clear
         }
     }

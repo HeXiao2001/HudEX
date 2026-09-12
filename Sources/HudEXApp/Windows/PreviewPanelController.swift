@@ -35,7 +35,8 @@ final class PreviewPanelController {
         holeEdgePoint: CGPoint? = nil,
         edge: DockEdge,
         style: AppearanceStyle,
-        screenVisibleFrame: CGRect
+        screenVisibleFrame: CGRect,
+        seed: UInt64 = 0
     ) {
         let unchanged = isVisible
             && self.model == model
@@ -49,6 +50,7 @@ final class PreviewPanelController {
         lastTagFrame = tagFrame
         self.placedEdge = edge
         self.placedStyle = style
+        lastSeed = seed
 
         let panel = ensurePanel()
         let host = ensureHost()
@@ -83,7 +85,8 @@ final class PreviewPanelController {
             edge: edge,
             cardSize: cardSize,
             visible: screenVisibleFrame,
-            usesConnector: style.usesHoleAndConnector
+            usesConnector: style.usesHoleAndConnector,
+            seed: seed
         )
         lastAnchor = anchor
         host.update(rootView: makeRootView(anchor: anchor))
@@ -119,7 +122,8 @@ final class PreviewPanelController {
             tagFrame: tagFrame,
             edge: placedEdge,
             style: style,
-            screenVisibleFrame: screenVisibleFrame
+            screenVisibleFrame: screenVisibleFrame,
+            seed: lastSeed
         )
     }
 
@@ -128,6 +132,7 @@ final class PreviewPanelController {
     /// How many sections the visible card is drawing.
     private var sectionLimit: Int?
     private var lastCardSize: CGSize = .zero
+    private var lastSeed: UInt64 = 0
 
     /// The anchor used for the visible preview, so refreshes keep the layout.
     private var lastAnchor: PreviewAnchor?

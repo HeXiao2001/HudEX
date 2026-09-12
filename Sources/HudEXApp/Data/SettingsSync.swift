@@ -65,7 +65,7 @@ final class SettingsSync {
             }
         }
 
-        set(SettingsKeys.appearanceStyle, { AppearanceStyle(rawValue: $0.lowercased()) }, into: \.appearanceStyle)
+        set(SettingsKeys.appearanceStyle, { AppearanceStyle.parse($0) }, into: \.appearanceStyle)
         set(SettingsKeys.layoutMode, { LayoutMode.Kind(rawValue: $0.lowercased()) }, into: \.layoutKind)
         set(SettingsKeys.layoutEdge, { DockEdge(rawValue: $0.lowercased()) }, into: \.layoutEdge)
         set(SettingsKeys.layoutAnchor, { LayoutMode.Anchor(rawValue: $0.lowercased()) }, into: \.layoutAnchor)

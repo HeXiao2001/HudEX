@@ -231,7 +231,7 @@ final class Preferences: ObservableObject {
         stackRotation = defaults.object(forKey: Key.stackRotation) as? Double ?? -5
         stackStagger = defaults.object(forKey: Key.stackStagger) as? Double ?? 2.5
         settingsWriteBack = defaults.object(forKey: Key.settingsWriteBack) as? Bool ?? true
-        appearanceStyle = AppearanceStyle(rawValue: defaults.string(forKey: Key.appearanceStyle) ?? "")
+        appearanceStyle = AppearanceStyle.parse(defaults.string(forKey: Key.appearanceStyle) ?? "")
             ?? .default
         let storedLanguage = defaults.string(forKey: Key.language) ?? ""
         language = storedLanguage

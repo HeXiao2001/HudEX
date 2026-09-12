@@ -61,6 +61,28 @@ struct SourceSettingsView: View {
             if let error = controller.documentSummary.errorMessage {
                 Section { Text(error).font(.callout).foregroundStyle(.red) }
             }
+            Section {
+                LabeledContent(L10n.t("advanced.memory")) {
+                    value(String(format: "%.1f MB", controller.performance.residentMegabytes))
+                }
+                LabeledContent(L10n.t("advanced.cpu")) {
+                    value(L10n.t("advanced.cpuValue",
+                                 controller.performance.cpuTimeSeconds,
+                                 controller.performance.averageCPUPercent))
+                }
+                HStack(spacing: 8) {
+                    Button(L10n.t("advanced.reload")) { controller.reloadDocument() }
+                    Button(L10n.t("advanced.clearGeometry")) { controller.resetDockGeometryCache() }
+                    Button(L10n.t("advanced.copyDiagnostics")) { copyDiagnostics() }
+                }
+            } header: {
+                Text(L10n.t("advanced.section.diagnostics"))
+            } footer: {
+                Text(L10n.t("advanced.permissions.footer"))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
             if !controller.documentSummary.warnings.isEmpty {
                 Section {
                     ForEach(Array(controller.documentSummary.warnings.enumerated()), id: \.offset) { _, warning in
@@ -96,6 +118,12 @@ struct SourceSettingsView: View {
 
     private func value(_ text: String) -> some View {
         Text(text).foregroundStyle(.secondary)
+    }
+
+    private func copyDiagnostics() {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(controller.diagnosticsText, forType: .string)
     }
 
     /// Standard open panel; the app is not sandboxed, so a plain path suffices.

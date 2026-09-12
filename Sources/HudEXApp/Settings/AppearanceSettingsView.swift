@@ -1,27 +1,44 @@
 import HudEXCore
 import SwiftUI
 
+/// Appearance: the style picker (each option previews itself), the hover
+/// preview switch, the stacking controls and the colour thresholds.
 struct AppearanceSettingsView: View {
     @ObservedObject private var preferences = Preferences.shared
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Form {
-            styleSection
-
             Section {
-                Toggle(L10n.t("appearance.showUpdatedTime"), isOn: $preferences.showUpdatedTime)
+                HStack(spacing: 10) {
+                    ForEach(AppearanceStyle.allCases, id: \.self) { style in
+                        StyleCardView(
+                            style: style,
+                            isSelected: preferences.appearanceStyle == style,
+                            isDark: colorScheme == .dark
+                        ) {
+                            preferences.appearanceStyle = style
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
             } header: {
-                Text(L10n.t("appearance.section.preview"))
+                Text(L10n.t("appearance.section.style"))
             } footer: {
-                Text(L10n.t("appearance.preview.footer"))
+                Text(L10n.t(preferences.appearanceStyle.guideKey))
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
 
             Section {
+                Toggle(L10n.t("appearance.showUpdatedTime"), isOn: $preferences.showUpdatedTime)
+            } header: {
+                Text(L10n.t("appearance.section.preview"))
+            }
+
+            Section {
                 Toggle(L10n.t("appearance.stack.enabled"), isOn: $preferences.stackEnabled)
-                slider(
+                SliderRow(
                     title: L10n.t("appearance.stack.overlap"),
                     value: $preferences.stackOverlap,
                     range: 0...0.8,
@@ -29,7 +46,7 @@ struct AppearanceSettingsView: View {
                     defaultValue: 0.34,
                     format: { String(format: "%.0f%%", $0 * 100) }
                 )
-                slider(
+                SliderRow(
                     title: L10n.t("appearance.stack.rotation"),
                     value: $preferences.stackRotation,
                     range: -20...20,
@@ -37,7 +54,7 @@ struct AppearanceSettingsView: View {
                     defaultValue: -5,
                     format: { String(format: "%.0f°", $0) }
                 )
-                slider(
+                SliderRow(
                     title: L10n.t("appearance.stack.stagger"),
                     value: $preferences.stackStagger,
                     range: 0...12,
@@ -47,24 +64,20 @@ struct AppearanceSettingsView: View {
                 )
             } header: {
                 Text(L10n.t("appearance.section.stack"))
-            } footer: {
-                Text(L10n.t("appearance.stack.footer"))
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
             }
 
             Section {
-                dayStepper(
+                DayStepper(
                     title: L10n.t("appearance.color.active"),
                     value: $preferences.thresholdActive,
                     range: 0...60
                 )
-                dayStepper(
+                DayStepper(
                     title: L10n.t("appearance.color.attention"),
                     value: $preferences.thresholdAttention,
                     range: 1...120
                 )
-                dayStepper(
+                DayStepper(
                     title: L10n.t("appearance.color.aging"),
                     value: $preferences.thresholdAging,
                     range: 2...365
@@ -76,95 +89,56 @@ struct AppearanceSettingsView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
-
         }
         .formStyle(.grouped)
     }
-
-    /// The look of the tags and of the hover card.
-    private var styleSection: some View {
-        Section {
-            Picker(L10n.t("appearance.style"), selection: $preferences.appearanceStyle) {
-                ForEach(AppearanceStyle.allCases, id: \.self) { style in
-                    Text(L10n.t(style.displayNameKey)).tag(style)
-                }
-            }
-            .pickerStyle(.radioGroup)
-
-            Text(L10n.t(preferences.appearanceStyle.guideKey))
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            StyleSampleView(style: preferences.appearanceStyle, isDark: colorScheme == .dark)
-                .frame(height: 118)
-                .frame(maxWidth: .infinity)
-
-            if preferences.appearanceStyle.usesHoleAndConnector {
-                LabeledContent(L10n.t("appearance.hole")) {
-                    Text(L10n.t("appearance.hole.value")).foregroundStyle(.secondary)
-                }
-            }
-        } header: {
-            Text(L10n.t("appearance.section.style"))
-        } footer: {
-            Text(L10n.t("appearance.style.footer"))
-                .font(.callout)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private func dayStepper(title: String, value: Binding<Int>, range: ClosedRange<Int>) -> some View {
-        HStack {
-            Text(title)
-            Spacer()
-            Stepper(value: value, in: range) {
-                Text(L10n.t("appearance.days", value.wrappedValue))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-        }
-    }
-
-    private func slider(
-        title: String,
-        value: Binding<Double>,
-        range: ClosedRange<Double>,
-        step: Double,
-        defaultValue: Double,
-        format: @escaping (Double) -> String
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                Text(title)
-                Spacer()
-                Text(format(value.wrappedValue))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-            HStack(spacing: 10) {
-                Slider(value: value, in: range, step: step)
-                Button(L10n.t("common.default")) { value.wrappedValue = defaultValue }
-                    .controlSize(.small)
-            }
-        }
-    }
 }
 
-/// A miniature of the selected style: one tag, the string, and the card it
-/// opens — so the choice is visible without hovering the real tags.
-struct StyleSampleView: View {
+/// One style option, drawn as the thing it produces: a tag, its string and the
+/// card it opens.
+struct StyleCardView: View {
     let style: AppearanceStyle
+    let isSelected: Bool
     let isDark: Bool
+    let action: () -> Void
 
     private let sampleRole: TagColorRole = .attention
 
     var body: some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                artwork
+                    .frame(height: 62)
+                Text(L10n.t(style.displayNameKey))
+                    .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
+                    .foregroundStyle(isSelected ? Color.accentColor : .primary)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.primary.opacity(isSelected ? 0.10 : 0.04))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(
+                        isSelected ? Color.accentColor : Color.primary.opacity(0.12),
+                        lineWidth: isSelected ? 1.5 : 1
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+
+    private var artwork: some View {
         let tag = EdgeTagStyle.backgroundColor(role: sampleRole, isDark: isDark)
         let tagText = EdgeTagStyle.textColor(role: sampleRole, isDark: isDark)
         let appearance = TagAppearanceResolver.appearance(role: sampleRole, colorOverride: nil, isDark: isDark)
 
-        HStack(alignment: .center, spacing: style.usesHoleAndConnector ? 4 : 8) {
+        return HStack(spacing: style.usesHoleAndConnector ? 2 : 6) {
             ZStack {
                 RoundedRectangle(cornerRadius: style == .minimal ? 3 : 5, style: .continuous)
                     .fill(style == .minimal ? Color.clear : Color(nsColor: tag))
@@ -173,67 +147,55 @@ struct StyleSampleView: View {
                         .strokeBorder(Color(nsColor: tag), lineWidth: 1)
                 }
                 Text("OD")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(style == .minimal ? Color(nsColor: tag) : Color(nsColor: tagText))
                 if style.usesHoleAndConnector {
                     Circle()
                         .fill(Color(nsColor: EdgeTagStyle.color(ProjectPriority.high.holeColor(isDark: isDark))))
-                        .frame(width: 6, height: 6)
-                        .offset(x: 20)
+                        .frame(width: 4, height: 4)
+                        .offset(x: 15)
                 }
             }
-            .frame(width: 52, height: 24)
+            .frame(width: 40, height: 19)
 
             if style.usesHoleAndConnector {
-                ConnectorSample(color: Color(nsColor: EdgeTagStyle.color(appearance.rule(isDark: isDark))))
-                    .frame(width: 30, height: 46)
+                SampleString(color: Color(nsColor: EdgeTagStyle.color(appearance.rule(isDark: isDark))))
+                    .frame(width: 18, height: 30)
             }
 
-            sampleCard(appearance: appearance)
-                .frame(width: 150, height: style == .glass ? 84 : 90)
+            card(appearance: appearance)
+                .frame(width: 66, height: 52)
         }
-        .frame(maxWidth: .infinity)
-        .padding(6)
     }
 
     @ViewBuilder
-    private func sampleCard(appearance: TagAppearance) -> some View {
-        let shape = RoundedRectangle(cornerRadius: style == .glass ? 12 : 6, style: .continuous)
+    private func card(appearance: TagAppearance) -> some View {
+        let shape = RoundedRectangle(cornerRadius: style == .frosted ? 10 : 5, style: .continuous)
         ZStack(alignment: .topLeading) {
             switch style {
             case .skeuomorphic:
                 shape.fill(Color(nsColor: EdgeTagStyle.color(appearance.paper(isDark: isDark))))
             case .frosted:
                 shape.fill(.regularMaterial)
-            case .glass:
-                shape.fill(.ultraThinMaterial)
             case .minimal:
                 shape.fill(Color.clear)
             }
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(L10n.t("appearance.sample.title"))
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(style == .skeuomorphic
-                        ? Color(nsColor: EdgeTagStyle.color(appearance.softInk(isDark: isDark)))
-                        : .secondary)
-                ForEach(0..<2, id: \.self) { index in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Rectangle()
-                            .fill(Color(nsColor: EdgeTagStyle.color(
-                                style == .skeuomorphic
-                                    ? appearance.rule(isDark: isDark).withAlpha(isDark ? 0.35 : 0.45)
-                                    : PaletteColor(hex: isDark ? "#FFFFFF" : "#000000")!
-                            )))
-                            .frame(height: 0.7)
-                        Text(index == 0 ? L10n.t("appearance.sample.body") : L10n.t("appearance.sample.body2"))
-                            .font(.system(size: 10))
-                            .opacity(style == .minimal ? 0.8 : 1)
-                            .lineLimit(1)
-                    }
+                    .font(.system(size: 8, weight: .semibold))
+                ForEach(0..<3, id: \.self) { _ in
+                    Rectangle()
+                        .fill(
+                            style == .skeuomorphic
+                                ? Color(nsColor: EdgeTagStyle.color(appearance.rule(isDark: isDark))).opacity(0.45)
+                                : Color.primary.opacity(0.25)
+                        )
+                        .frame(height: 0.7)
                 }
             }
-            .padding(10)
+            .padding(.horizontal, 6)
+            .padding(.top, 7)
             .foregroundStyle(style == .skeuomorphic
                 ? Color(nsColor: EdgeTagStyle.color(appearance.ink(isDark: isDark)))
                 : Color.primary)
@@ -248,23 +210,69 @@ struct StyleSampleView: View {
     }
 }
 
-/// The little curved string in the sample.
-private struct ConnectorSample: View {
+/// The little curved string in a style preview.
+private struct SampleString: View {
     let color: Color
 
     var body: some View {
         GeometryReader { geometry in
             Path { path in
                 let start = CGPoint(x: 0, y: geometry.size.height * 0.35)
-                let end = CGPoint(x: geometry.size.width, y: geometry.size.height * 0.62)
+                let end = CGPoint(x: geometry.size.width, y: geometry.size.height * 0.6)
                 path.move(to: start)
                 path.addCurve(
                     to: end,
-                    control1: CGPoint(x: geometry.size.width * 0.75, y: start.y),
-                    control2: CGPoint(x: geometry.size.width * 0.25, y: end.y)
+                    control1: CGPoint(x: geometry.size.width * 0.7, y: start.y - 4),
+                    control2: CGPoint(x: geometry.size.width * 0.3, y: end.y + 4)
                 )
             }
-            .stroke(color.opacity(0.8), style: StrokeStyle(lineWidth: 1.2, lineCap: .round))
+            .stroke(color.opacity(0.85), style: StrokeStyle(lineWidth: 1.1, lineCap: .round))
+        }
+    }
+}
+
+/// A labelled slider with a reset button, used across the settings panes.
+struct SliderRow: View {
+    let title: String
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    let step: Double
+    let defaultValue: Double
+    var format: (Double) -> String = { String(format: "%.0f", $0) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text(title)
+                Spacer()
+                Text(format(value))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+            HStack(spacing: 10) {
+                Slider(value: $value, in: range, step: step)
+                Button(L10n.t("common.default")) { value = defaultValue }
+                    .controlSize(.small)
+            }
+        }
+    }
+}
+
+/// A day-count stepper used by the colour thresholds.
+struct DayStepper: View {
+    let title: String
+    @Binding var value: Int
+    let range: ClosedRange<Int>
+
+    var body: some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Stepper(value: $value, in: range) {
+                Text(L10n.t("appearance.days", value))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
         }
     }
 }

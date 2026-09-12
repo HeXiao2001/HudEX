@@ -301,13 +301,7 @@
 /* 外观风格 */
 "appearance.section.style" = "风格";
 "style.skeuomorphic" = "拟物（叠放书签）";
-"style.frosted" = "磨砂（半透明卡片）";
-"style.glass" = "液态玻璃（对齐卡片）";
-"style.minimal" = "极简（只有线框）";
 "style.skeuomorphic.guide" = "标签像一叠小卡片、带一点立体感；弹出的卡片是不透明的横线纸，通过一个洞洞和一条曲线跟标签连起来。";
-"style.frosted.guide" = "标签保持纯色；弹出的卡片是磨砂半透明，任何背景下文字都看得清。";
-"style.glass.guide" = "标签保持纯色；弹出的卡片是薄薄的液态玻璃，圆角连续、和标签对齐。";
-"style.minimal.guide" = "完全不加填充：标签是线框，卡片也是线框，最安静的一种。";
 "appearance.style.footer" = "洞洞和连接线只在拟物风格里出现。洞洞颜色来自项目里的 `优先级：高 / 中 / 低`。";
 "priority.high" = "高";
 "priority.normal" = "中";
@@ -316,15 +310,15 @@
 
 "settingsblock.label.appearance.style" = "外观风格";
 
-"appearance.style" = "外观风格";
-"appearance.hole" = "洞洞";
-"appearance.hole.value" = "颜色 = 项目优先级";
 
 "settingsblock.guide.project.priority" = "在项目里加一行 `优先级：高`（或 中 / 低）可以给标签上的洞洞上色：高 / 中 / 低。";
 
-"appearance.sample.title" = "OD";
 "appearance.sample.body" = "卡片大概就是这个样子。";
 
 "preview.truncated" = "……其余内容在完整窗口（右键标签）";
 
-"appearance.sample.body2" = "横线和文字对齐";
+"style.frosted" = "磨砂玻璃";
+"style.frosted.guide" = "标签保持纯色；卡片是磨砂半透明，圆角柔和，任何背景下文字都清楚。";
+"style.minimal" = "极简";
+"style.minimal.guide" = "完全不加填充：标签是线框，卡片也是线框，三种里最安静的一种。";
+"appearance.sample.title" = "OD";

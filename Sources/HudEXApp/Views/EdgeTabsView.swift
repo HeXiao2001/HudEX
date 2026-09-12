@@ -106,13 +106,11 @@ struct EdgeTabView: View {
             case .skeuomorphic:
                 bevel(background)
             case .frosted:
-                // A lit top edge sells "frosted glass" without a blur pass.
-                shape.strokeBorder(Color.white.opacity(0.4), lineWidth: 0.8)
-            case .glass:
+                // A lit edge sells "frosted glass" without a blur pass.
                 shape
-                    .strokeBorder(Color.white.opacity(0.55), lineWidth: 0.8)
+                    .strokeBorder(Color.white.opacity(0.45), lineWidth: 0.8)
                     .overlay(
-                        shape.strokeBorder(Color.black.opacity(0.10), lineWidth: 0.8).offset(y: 0.6)
+                        shape.strokeBorder(Color.black.opacity(0.08), lineWidth: 0.8).offset(y: 0.6)
                     )
             case .minimal:
                 shape.strokeBorder(Color(nsColor: background), lineWidth: 1)
@@ -124,7 +122,11 @@ struct EdgeTabView: View {
                 .minimumScaleFactor(0.7)
                 .padding(.horizontal, 3)
             if model.style.usesHoleAndConnector {
-                holeStub
+                // The stub only exists while the card is open: resting tags stay
+                // clean (a permanent nub on every tag looked like a defect).
+                if tag.isHovered {
+                    holeStub
+                }
                 hole
             }
         }
@@ -139,8 +141,7 @@ struct EdgeTabView: View {
         let radius: CGFloat
         switch model.style {
         case .minimal: radius = 3
-        case .glass: radius = 7
-        case .frosted: radius = 5
+        case .frosted: radius = 6
         case .skeuomorphic: radius = 4
         }
         return RoundedRectangle(cornerRadius: radius, style: .continuous)
@@ -151,9 +152,7 @@ struct EdgeTabView: View {
         case .minimal:
             return .clear
         case .frosted:
-            return Color(nsColor: background).opacity(0.84)
-        case .glass:
-            return Color(nsColor: background).opacity(0.95)
+            return Color(nsColor: background).opacity(0.88)
         case .skeuomorphic:
             return Color(nsColor: background)
         }
@@ -218,21 +217,24 @@ struct EdgeTabView: View {
     }
 
     private var stubOffset: CGSize {
-        // Runs all the way to the tag's edge so the curve outside continues it.
+        // Runs all the way to the tag's card-facing edge so the curve outside
+        // continues it — on the correct side for every edge.
         let inset: CGFloat = 0.5
         switch model.edge {
         case .left: return CGSize(width: tag.size.width / 2 - inset, height: 0)
         case .right: return CGSize(width: -(tag.size.width / 2 - inset), height: 0)
-        case .bottom: return CGSize(width: 0, height: tag.size.height / 2 - inset)
+        case .bottom: return CGSize(width: 0, height: -(tag.size.height / 2 - inset))
         }
     }
 
     private var holeOffset: CGSize {
+        // The hole always sits on the side that faces the card: right for a
+        // left-edge tag, left for a right-edge tag, above for a bottom tag.
         let inset: CGFloat = 6.5
         switch model.edge {
         case .left: return CGSize(width: tag.size.width / 2 - inset, height: 0)
         case .right: return CGSize(width: -(tag.size.width / 2 - inset), height: 0)
-        case .bottom: return CGSize(width: 0, height: tag.size.height / 2 - inset)
+        case .bottom: return CGSize(width: 0, height: -(tag.size.height / 2 - inset))
         }
     }
 }
