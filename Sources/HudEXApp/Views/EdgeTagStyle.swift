@@ -1,47 +1,43 @@
 import AppKit
 import HudEXCore
+import SwiftUI
 
-/// Tag colours: the background *is* the status, so nothing else is drawn.
+/// Bridges the Core palette into AppKit/SwiftUI colours.
 ///
-/// Colours are macOS system colours where one exists, they are fully opaque,
-/// and they never use gradients, blur, material or transparency.
+/// Everything stays flat and opaque: no gradients, no materials, no shadows.
+/// The palette is resolved for the current light/dark appearance, and the label
+/// colour is chosen for contrast against whatever background is in use.
 enum EdgeTagStyle {
-    static func backgroundColor(for role: TagColorRole) -> NSColor {
-        switch role {
-        case .active:
-            return .systemGreen
-        case .attention:
-            return .systemYellow
-        case .aging:
-            return .systemOrange
-        case .stale:
-            return .systemGray
-        case .paused:
-            // Blue-grey, deliberately low saturation.
-            return NSColor.systemBlue.blended(withFraction: 0.55, of: .systemGray) ?? .systemBlue
-        case .archived:
-            return NSColor.systemBlue.blended(withFraction: 0.72, of: .systemGray) ?? .systemGray
-        }
+    static func color(_ rgb: PaletteColor) -> NSColor {
+        NSColor(srgbRed: rgb.red, green: rgb.green, blue: rgb.blue, alpha: 1)
     }
 
-    /// Black or white text, whichever contrasts better with the background.
-    static func textColor(on background: NSColor) -> NSColor {
-        guard let color = background.usingColorSpace(.sRGB) else { return .white }
-        let luminance = relativeLuminance(
-            red: color.redComponent,
-            green: color.greenComponent,
-            blue: color.blueComponent
+    /// Background for a tag in the given appearance.
+    static func background(role: TagColorRole, colorOverride: String?, isDark: Bool) -> NSColor {
+        let appearance = TagAppearanceResolver.appearance(
+            role: role,
+            colorOverride: colorOverride,
+            isDark: isDark
         )
-        let contrastWithWhite = (1.05) / (luminance + 0.05)
-        let contrastWithBlack = (luminance + 0.05) / 0.05
-        return contrastWithBlack >= contrastWithWhite ? .black : .white
+        return color(appearance.background)
     }
 
-    /// WCAG relative luminance.
-    static func relativeLuminance(red: CGFloat, green: CGFloat, blue: CGFloat) -> CGFloat {
-        func linear(_ component: CGFloat) -> CGFloat {
-            component <= 0.04045 ? component / 12.92 : pow((component + 0.055) / 1.055, 2.4)
-        }
-        return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
+    /// Label colour for a tag in the given appearance.
+    static func text(role: TagColorRole, colorOverride: String?, isDark: Bool) -> NSColor {
+        let appearance = TagAppearanceResolver.appearance(
+            role: role,
+            colorOverride: colorOverride,
+            isDark: isDark
+        )
+        return color(appearance.text)
+    }
+
+    /// Background for the settings legend and any other preview swatch.
+    static func backgroundColor(role: TagColorRole, isDark: Bool) -> NSColor {
+        color(TagPalette.color(for: role, isDark: isDark))
+    }
+
+    static func textColor(role: TagColorRole, isDark: Bool) -> NSColor {
+        color(TagPalette.color(for: role, isDark: isDark).contrastingTextColor)
     }
 }

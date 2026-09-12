@@ -106,7 +106,7 @@ final class DocumentStore: ObservableObject {
             // did empty the file and the tabs go away.
             if loaded.document.projects.isEmpty, !document.projects.isEmpty, !isEmptyRetryPending {
                 isEmptyRetryPending = true
-                statusMessage = "文件暂时为空（或正在写入），先保留上一次内容。"
+                statusMessage = L10n.t("error.emptyDocument")
                 Log.markdown.warning("empty document read; keeping the last good content (\(reason))")
                 scheduleForcedReload(after: 3)
                 return

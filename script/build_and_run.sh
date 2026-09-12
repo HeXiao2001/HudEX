@@ -82,6 +82,14 @@ else
   mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources/Examples"
   cp "$EXECUTABLE" "$BUNDLE_EXECUTABLE"
   cp "$EXAMPLE_FILE" "$APP_DIR/Contents/Resources/Examples/HudEX.md" 2>/dev/null || true
+  # Localisation lives in the SwiftPM resource bundle.
+  for RESOURCE_BUNDLE in "$ROOT_DIR"/.build/*/"$BUILD_CONFIG"/HudEX_HudEXCore.bundle; do
+    if [[ -d "$RESOURCE_BUNDLE" ]]; then
+      rm -rf "$APP_DIR/Contents/Resources/HudEX_HudEXCore.bundle"
+      cp -R "$RESOURCE_BUNDLE" "$APP_DIR/Contents/Resources/"
+      break
+    fi
+  done
 
   ICON_KEY=""
   if [[ -f "$ICNS_FILE" ]]; then
@@ -118,6 +126,13 @@ else
   <true/>
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleLocalizations</key>
+  <array>
+    <string>en</string>
+    <string>zh-Hans</string>
+  </array>
   $ICON_KEY
 </dict>
 </plist>

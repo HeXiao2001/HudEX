@@ -9,6 +9,7 @@ import PackageDescription
 //   HudEXApp  — SwiftUI/AppKit shell: edge panels, settings, menu bar.
 let package = Package(
     name: "HudEX",
+    defaultLocalization: "en",
     platforms: [
         .macOS(.v26)
     ],
@@ -17,7 +18,12 @@ let package = Package(
         .executable(name: "HudEX", targets: ["HudEXApp"])
     ],
     targets: [
-        .target(name: "HudEXCore"),
+        .target(
+            name: "HudEXCore",
+            resources: [
+                .process("Resources")
+            ]
+        ),
         .executableTarget(
             name: "HudEXApp",
             dependencies: ["HudEXCore"]

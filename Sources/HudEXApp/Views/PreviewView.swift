@@ -89,7 +89,7 @@ struct DetailView: View {
                     }
 
                     if model.sections.isEmpty {
-                        Text("这个项目还没有任何 三级标题 小节。")
+                        Text(L10n.t("detail.emptySections"))
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                     }
@@ -102,7 +102,7 @@ struct DetailView: View {
 
             HStack {
                 Spacer()
-                Button("编辑", action: onEdit)
+                Button(L10n.t("common.edit"), action: onEdit)
                     .buttonStyle(.borderedProminent)
                     .controlSize(.regular)
             }
@@ -119,7 +119,7 @@ struct DetailView: View {
                 .textSelection(.enabled)
 
             HStack(spacing: 6) {
-                Text("状态：\(model.statusText)")
+                Text(L10n.t("detail.statusPrefix", model.statusText))
                 if let updated = model.updatedLine {
                     Text("·")
                     Text(updated)

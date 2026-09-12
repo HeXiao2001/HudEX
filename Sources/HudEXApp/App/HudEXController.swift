@@ -26,6 +26,7 @@ final class HudEXController: ObservableObject {
     let store: DocumentStore
     let dockProvider: DockGeometryProvider
     let launchAtLogin: LaunchAtLoginService
+    private let settingsSync: SettingsSync
 
     private let edgePanels = EdgePanelController()
     private let previewPanel = PreviewPanelController()
@@ -81,11 +82,15 @@ final class HudEXController: ObservableObject {
     /// preview itself and the panel must not flicker shut on the way.
     private var previewProjectID: String?
 
+    /// When the settings block in the Markdown file was last written.
+    @Published private(set) var lastSettingsWrite: Date?
+
     private init() {
         preferences = Preferences.shared
         store = DocumentStore()
         dockProvider = DockGeometryProvider()
         launchAtLogin = LaunchAtLoginService.shared
+        settingsSync = SettingsSync(preferences: Preferences.shared)
     }
 
     // MARK: - Lifecycle
@@ -96,7 +101,19 @@ final class HudEXController: ObservableObject {
         Log.app.info("HudEX \(Self.version, privacy: .public) starting")
 
         store.onDocumentChanged = { [weak self] in
-            self?.refresh(reason: "document", allowExpensiveProbes: false)
+            guard let self else { return }
+            // The file is the source of truth for settings too: anything it
+            // carries is applied before the layout is rebuilt.
+            if self.settingsSync.apply(from: self.store.document) {
+                Log.debug(Log.settings, "settings applied from the Markdown file")
+            }
+            self.refresh(reason: "document", allowExpensiveProbes: false)
+            // A file without the block gets one, so the settings (and the guide
+            // lines an AI needs) are always documented in the file itself.
+            if self.store.document.settings == nil, let url = self.store.sourceURL {
+                self.settingsSync.scheduleWrite(to: url)
+            }
+            self.lastSettingsWrite = self.settingsSync.lastWriteAt
         }
         edgePanels.onHoverChange = { [weak self] id in
             self?.handleHover(id)
@@ -111,6 +128,16 @@ final class HudEXController: ObservableObject {
                 self?.preferencesDidChange()
             }
         }
+
+        observerTokens.append(
+            NotificationCenter.default.addObserver(
+                forName: L10n.languageDidChange,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in self?.refresh(reason: "language", allowExpensiveProbes: false) }
+            }
+        )
 
         installObservers()
         performanceLogTimer = PerformanceMonitor.startLoggingIfRequested()
@@ -149,6 +176,24 @@ final class HudEXController: ObservableObject {
         }
         preferencesBinding?.updateVisibility()
         refresh(reason: "preferences", allowExpensiveProbes: false)
+        // Reflect the change back into the Markdown block, debounced.
+        if let url = store.sourceURL {
+            settingsSync.scheduleWrite(to: url)
+        }
+    }
+
+    // MARK: - Settings sync
+
+    /// Writes the current settings into the Markdown file right away.
+    func writeSettingsToMarkdown() {
+        guard let url = store.sourceURL else { return }
+        settingsSync.writeNow(to: url)
+        lastSettingsWrite = settingsSync.lastWriteAt
+    }
+
+    /// Re-reads the settings block from the file, ignoring the write debounce.
+    func applySettingsFromMarkdown() {
+        store.reload(reason: "settings re-read")
     }
 
     /// Recomputes everything that depends on the document, the Dock and the
@@ -182,7 +227,8 @@ final class HudEXController: ObservableObject {
             protrusionOverride: preferences.tagProtrusionOverride,
             lengthOverride: preferences.tabLengthOverride,
             edgeGap: preferences.edgeGap,
-            cornerInset: preferences.cornerInset
+            cornerInset: preferences.cornerInset,
+            stack: preferences.stackStyle
         )
 
         let projects = store.document.projects
@@ -191,7 +237,8 @@ final class HudEXController: ObservableObject {
             metrics: metrics,
             screen: screenBounds,
             dock: snapshot.bounds,
-            limits: preferences.tagLimits
+            limits: preferences.tagLimits,
+            mode: preferences.layoutMode
         )
 
         let models = buildPanelModels(plan: plan, projects: projects)
@@ -249,9 +296,14 @@ final class HudEXController: ObservableObject {
                     shortTitle: project.shortTitle,
                     title: project.title,
                     role: role,
+                    colorOverride: project.colorOverride,
                     size: placement.frame.size,
                     screenFrame: placement.frame,
-                    localFrame: localFrame
+                    localFrame: localFrame,
+                    rotationDegrees: placement.rotationDegrees,
+                    stagger: plan.metrics.stack.isEnabled ? plan.metrics.stack.stagger : 0,
+                    zIndex: Double(placement.zIndex),
+                    isHovered: hoveredProjectID == project.id
                 )
             }
 
@@ -273,11 +325,11 @@ final class HudEXController: ObservableObject {
     ) {
         let bounds = snapshot.bounds
         var summary = GeometrySummary()
-        summary.edgeName = bounds.edge.displayName
+        summary.edgeName = L10n.t(bounds.edge.displayNameKey)
         summary.thickness = Int(bounds.thickness.rounded())
         summary.occupiedStart = Int(bounds.occupiedStart.rounded())
         summary.occupiedEnd = Int(bounds.occupiedEnd.rounded())
-        summary.sourceName = bounds.source.displayName
+        summary.sourceName = L10n.t(bounds.source.displayNameKey)
         summary.isDockPresent = bounds.isPresent
         summary.isDockVisible = bounds.isVisible
         summary.screenName = screen.localizedName
@@ -286,14 +338,14 @@ final class HudEXController: ObservableObject {
             summary.primaryRange = "\(Int(range.lowerBound.rounded()))–\(Int(range.upperBound.rounded())) pt"
             summary.primaryCapacity = EdgeLayoutEngine.capacity(in: range, metrics: plan.metrics)
         } else {
-            summary.primaryRange = "不可用"
+            summary.primaryRange = L10n.t("diagnostics.unavailable")
             summary.primaryCapacity = 0
         }
         if let range = plan.slotRanges[.secondary] {
             summary.secondaryRange = "\(Int(range.lowerBound.rounded()))–\(Int(range.upperBound.rounded())) pt"
             summary.secondaryCapacity = EdgeLayoutEngine.capacity(in: range, metrics: plan.metrics)
         } else {
-            summary.secondaryRange = "不可用"
+            summary.secondaryRange = L10n.t("diagnostics.unavailable")
             summary.secondaryCapacity = 0
         }
 
@@ -326,7 +378,12 @@ final class HudEXController: ObservableObject {
     // MARK: - Hover
 
     private func handleHover(_ id: String?) {
-        if hoveredProjectID != id { hoveredProjectID = id }
+        if hoveredProjectID != id {
+            hoveredProjectID = id
+            // Re-render the tabs so the hovered one can lift out of the stack.
+            // Cheap: the Dock geometry is cached and only the view values change.
+            refresh(reason: "hover", allowExpensiveProbes: false)
+        }
         guard let id else {
             // The pointer left the tabs. It may be on its way into the preview,
             // so only schedule the hide and keep the preview target alive.
@@ -570,23 +627,23 @@ final class HudEXController: ObservableObject {
 
     var diagnosticsText: String {
         var lines: [String] = []
-        lines.append("HudEX \(Self.version)")
-        lines.append("系统：\(ProcessInfo.processInfo.operatingSystemVersionString)")
-        lines.append("数据源：\(documentSummary.path)")
-        lines.append("项目数：\(documentSummary.projectCount)")
-        lines.append("Dock 边：\(geometry.edgeName)")
-        lines.append("Dock 厚度：\(geometry.thickness) pt")
-        lines.append("Dock 占用：\(geometry.occupiedStart)–\(geometry.occupiedEnd) pt")
-        lines.append("检测来源：\(geometry.sourceName)")
-        lines.append("主位置：\(geometry.primaryRange)（容量 \(geometry.primaryCapacity)）")
-        lines.append("溢出位置：\(geometry.secondaryRange)（容量 \(geometry.secondaryCapacity)）")
-        lines.append("屏幕：\(geometry.screenName)")
-        lines.append("溢出项目：\(overflowCount)")
+        lines.append(L10n.t("diagnostics.title", Self.version))
+        lines.append(L10n.t("diagnostics.system", ProcessInfo.processInfo.operatingSystemVersionString))
+        lines.append(L10n.t("diagnostics.source", documentSummary.path))
+        lines.append(L10n.t("diagnostics.projects", documentSummary.projectCount))
+        lines.append(L10n.t("diagnostics.edge", geometry.edgeName))
+        lines.append(L10n.t("diagnostics.thickness", geometry.thickness))
+        lines.append(L10n.t("diagnostics.occupied", geometry.occupiedStart, geometry.occupiedEnd))
+        lines.append(L10n.t("diagnostics.sourceOfTruth", geometry.sourceName))
+        lines.append(L10n.t("diagnostics.primary", geometry.primaryRange, geometry.primaryCapacity))
+        lines.append(L10n.t("diagnostics.secondary", geometry.secondaryRange, geometry.secondaryCapacity))
+        lines.append(L10n.t("diagnostics.screen", geometry.screenName))
+        lines.append(L10n.t("diagnostics.overflow", overflowCount))
         if let loadedAt = documentSummary.loadedAt {
-            lines.append("最近载入：\(TimestampFormatter.string(from: loadedAt))")
+            lines.append(L10n.t("diagnostics.loadedAt", TimestampFormatter.string(from: loadedAt)))
         }
         if let error = documentSummary.errorMessage {
-            lines.append("错误：\(error)")
+            lines.append(L10n.t("diagnostics.error", error))
         }
         return lines.joined(separator: "\n")
     }

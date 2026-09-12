@@ -3,6 +3,7 @@ import HudEXCore
 import SwiftUI
 
 struct SourceSettingsView: View {
+    @ObservedObject private var preferences = Preferences.shared
     @ObservedObject private var controller = HudEXController.shared
 
     private var fileExists: Bool {
@@ -19,79 +20,89 @@ struct SourceSettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: 8) {
-                    Button("选择文件…") { chooseFile() }
-                    Button("打开文件") { controller.openMarkdownFile() }
-                    Button("在 Finder 中显示") { controller.revealInFinder() }
-                    Button("重新载入") { controller.reloadDocument() }
+                    Button(L10n.t("source.choose")) { chooseFile() }
+                    Button(L10n.t("source.open")) { controller.openMarkdownFile() }
+                    Button(L10n.t("source.reveal")) { controller.revealInFinder() }
+                    Button(L10n.t("source.reload")) { controller.reloadDocument() }
                 }
             } header: {
-                Text("HudEX.md")
+                Text(L10n.t("source.section.file"))
             } footer: {
-                Text("HudEX 只读取本地已经同步好的 Markdown 文件，不连接 OneDrive，也不写入内容。")
+                Text(L10n.t("source.footer"))
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
 
+            syncSection
+
             Section {
                 if fileExists {
                     if let loadedAt = controller.documentSummary.loadedAt {
-                        LabeledContent("最近载入") {
-                            Text(TimestampFormatter.string(from: loadedAt))
-                                .foregroundStyle(.secondary)
+                        LabeledContent(L10n.t("source.lastLoaded")) {
+                            value(TimestampFormatter.string(from: loadedAt))
                         }
                     }
-                    LabeledContent("项目数") {
-                        Text("\(controller.documentSummary.projectCount)")
-                            .foregroundStyle(.secondary)
+                    LabeledContent(L10n.t("general.projectCount")) {
+                        value("\(controller.documentSummary.projectCount)")
                     }
                 } else {
-                    Text(HudEXTemplate.missingFileHint)
-                        .font(.callout)
-                    Button("创建示例文件") {
+                    Text(L10n.t("source.missingHint")).font(.callout)
+                    Button(L10n.t("source.createExample")) {
                         controller.createExampleFile(at: URL(fileURLWithPath: controller.documentSummary.path))
                     }
                 }
             } header: {
-                Text("状态")
+                Text(L10n.t("source.section.status"))
             }
 
             if let status = controller.documentSummary.statusMessage {
-                Section {
-                    Text(status)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
+                Section { Text(status).font(.callout).foregroundStyle(.secondary) }
             }
-
             if let error = controller.documentSummary.errorMessage {
-                Section {
-                    Text(error)
-                        .font(.callout)
-                        .foregroundStyle(.red)
-                }
+                Section { Text(error).font(.callout).foregroundStyle(.red) }
             }
-
             if !controller.documentSummary.warnings.isEmpty {
                 Section {
                     ForEach(Array(controller.documentSummary.warnings.enumerated()), id: \.offset) { _, warning in
-                        Text(warning)
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
+                        Text(warning).font(.callout).foregroundStyle(.secondary)
                     }
                 } header: {
-                    Text("解析提示")
+                    Text(L10n.t("source.section.warnings"))
                 }
             }
         }
         .formStyle(.grouped)
     }
 
-    /// Uses the standard open panel; the app is not sandboxed, so the plain
-    /// path is enough and no extra entitlement is needed.
+    /// Two-way settings sync with the Markdown file.
+    private var syncSection: some View {
+        Section {
+            Toggle(L10n.t("sync.writeBack"), isOn: $preferences.settingsWriteBack)
+            LabeledContent(L10n.t("sync.lastWrite")) {
+                value(controller.lastSettingsWrite.map(TimestampFormatter.string(from:)) ?? L10n.t("sync.never"))
+            }
+            HStack(spacing: 8) {
+                Button(L10n.t("sync.writeNow")) { controller.writeSettingsToMarkdown() }
+                Button(L10n.t("sync.readNow")) { controller.applySettingsFromMarkdown() }
+            }
+        } header: {
+            Text(L10n.t("sync.section"))
+        } footer: {
+            Text(L10n.t("sync.footer"))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func value(_ text: String) -> some View {
+        Text(text).foregroundStyle(.secondary)
+    }
+
+    /// Standard open panel; the app is not sandboxed, so a plain path suffices.
     private func chooseFile() {
         let panel = NSOpenPanel()
-        panel.title = "选择 HudEX.md"
-        panel.prompt = "选择"
+        panel.title = L10n.t("source.panel.title")
+        panel.prompt = L10n.t("source.panel.prompt")
         panel.allowedContentTypes = [.init(filenameExtension: "md") ?? .plainText, .plainText]
         panel.allowsOtherFileTypes = true
         panel.canChooseDirectories = false

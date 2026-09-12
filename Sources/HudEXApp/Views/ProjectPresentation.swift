@@ -55,9 +55,9 @@ struct PreviewModel: Equatable {
         let updatedLine: String?
         if preferences.showUpdatedTime {
             if let text = project.updatedAtText, !text.isEmpty {
-                updatedLine = "更新：\(text)"
+                updatedLine = L10n.t("time.updatedPrefix", text)
             } else if let date = project.updatedAt {
-                updatedLine = "更新：\(TimestampFormatter.string(from: date))"
+                updatedLine = L10n.t("time.updatedPrefix", TimestampFormatter.string(from: date))
             } else {
                 updatedLine = nil
             }
@@ -73,7 +73,7 @@ struct PreviewModel: Equatable {
             updatedLine: updatedLine,
             relativeAge: reference.map { RelativeAgeFormatter.string(from: $0, now: now) },
             sections: sections,
-            emptyHint: sections.isEmpty ? "这个项目还没有 当前 / 下一步 / 最新对话 小节。" : nil
+            emptyHint: sections.isEmpty ? L10n.t("preview.emptyHint") : nil
         )
     }
 }
@@ -97,9 +97,9 @@ struct DetailModel: Equatable {
         let reference = document.ageReferenceDate(for: project)
         let updatedLine: String?
         if let text = project.updatedAtText, !text.isEmpty {
-            updatedLine = "更新：\(text)"
+            updatedLine = L10n.t("time.updatedPrefix", text)
         } else if let date = project.updatedAt {
-            updatedLine = "更新：\(TimestampFormatter.string(from: date))"
+            updatedLine = L10n.t("time.updatedPrefix", TimestampFormatter.string(from: date))
         } else {
             updatedLine = nil
         }

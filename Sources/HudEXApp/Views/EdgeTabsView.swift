@@ -1,4 +1,3 @@
-import AppKit
 import HudEXCore
 import SwiftUI
 
@@ -10,11 +9,20 @@ struct EdgeTagModel: Identifiable, Equatable {
     let shortTitle: String
     let title: String
     let role: TagColorRole
+    /// `颜色：` from the Markdown file, when the project overrides the palette.
+    let colorOverride: String?
     let size: CGSize
     /// Frame on screen (AppKit coordinates) — used for hover hit testing.
     let screenFrame: CGRect
     /// Frame inside the panel, in SwiftUI coordinates (top-left origin).
     let localFrame: CGRect
+    /// Slant of the stacked look, in degrees.
+    let rotationDegrees: Double
+    /// Perpendicular layer offset, in points.
+    let stagger: Double
+    let zIndex: Double
+    /// True while the pointer is on this tag; drives the small hover lift.
+    let isHovered: Bool
 }
 
 struct EdgePanelModel: Equatable {
@@ -34,28 +42,45 @@ struct EdgePanelModel: Equatable {
 /// The tabs of one edge slot.
 struct EdgeTabsView: View {
     let model: EdgePanelModel
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             Color.clear
             ForEach(model.tags) { tag in
-                EdgeTabView(tag: tag, fontSize: model.fontSize)
+                EdgeTabView(tag: tag, fontSize: model.fontSize, edge: model.edge)
                     .frame(width: tag.size.width, height: tag.size.height)
+                    .rotationEffect(.degrees(tag.rotationDegrees))
+                    .offset(
+                        x: model.edge == .bottom ? 0 : (tag.isHovered ? -tag.stagger : tag.stagger),
+                        y: model.edge == .bottom ? (tag.isHovered ? tag.stagger : -tag.stagger) : 0
+                    )
                     .position(x: tag.localFrame.midX, y: tag.localFrame.midY)
+                    .zIndex(tag.zIndex)
+                    .animation(reduceMotion ? nil : .spring(response: 0.26, dampingFraction: 0.82), value: tag.isHovered)
             }
         }
         .frame(width: max(1, model.size.width), height: max(1, model.size.height))
     }
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 }
 
-/// A single solid-colour bookmark. Hover never changes its size: the preview
-/// window is what reacts.
+/// A single solid-colour bookmark.
+///
+/// Hovering lifts the tag slightly out of the stack — the size never changes,
+/// and the animation only runs while the pointer moves between tags.
 struct EdgeTabView: View {
     let tag: EdgeTagModel
     let fontSize: CGFloat
+    let edge: DockEdge
+
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        let background = EdgeTagStyle.backgroundColor(for: tag.role)
-        let foreground = EdgeTagStyle.textColor(on: background)
+        let isDark = colorScheme == .dark
+        let background = EdgeTagStyle.background(role: tag.role, colorOverride: tag.colorOverride, isDark: isDark)
+        let foreground = EdgeTagStyle.text(role: tag.role, colorOverride: tag.colorOverride, isDark: isDark)
+
         Text(tag.shortTitle)
             .font(.system(size: fontSize, weight: .semibold))
             .foregroundStyle(Color(nsColor: foreground))
@@ -64,9 +89,10 @@ struct EdgeTabView: View {
             .padding(.horizontal, 3)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                RoundedRectangle(cornerRadius: 3.5, style: .continuous)
                     .fill(Color(nsColor: background))
             )
+            .scaleEffect(tag.isHovered ? 1.02 : 1.0)
             .accessibilityLabel(Text(tag.title))
             .contextMenu {
                 HudEXContextMenu(projectID: tag.id)
@@ -83,28 +109,28 @@ struct HudEXContextMenu: View {
 
     var body: some View {
         if let projectID {
-            Button("打开项目完整内容") { controller.openDetail(projectID: projectID) }
+            Button(L10n.t("context.openDetail")) { controller.openDetail(projectID: projectID) }
         }
-        Button("打开 Markdown 文件（编辑）") { controller.openMarkdownFile() }
-        Button("重新载入") { controller.reloadDocument() }
+        Button(L10n.t("context.openMarkdown")) { controller.openMarkdownFile() }
+        Button(L10n.t("menu.reload")) { controller.reloadDocument() }
 
         Divider()
 
-        Toggle("显示 HudEX 标签", isOn: Binding(
+        Toggle(L10n.t("menu.showTags"), isOn: Binding(
             get: { preferences.showTags },
             set: { preferences.showTags = $0 }
         ))
-        Toggle("显示 Menu Bar 图标", isOn: Binding(
+        Toggle(L10n.t("menu.showMenuBarIcon"), isOn: Binding(
             get: { preferences.showMenuBarIcon },
             set: { preferences.showMenuBarIcon = $0 }
         ))
 
-        Button("设置…") { controller.openSettings() }
+        Button(L10n.t("menu.settings")) { controller.openSettings() }
             .keyboardShortcut(",", modifiers: .command)
 
         Divider()
 
-        Button("退出 HudEX") { controller.quit() }
+        Button(L10n.t("menu.quit")) { controller.quit() }
             .keyboardShortcut("q", modifiers: .command)
     }
 }

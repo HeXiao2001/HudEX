@@ -59,10 +59,21 @@ final class TagColorPolicyTests: XCTestCase {
     }
 
     func testRelativeAgeStrings() {
-        XCTAssertEqual(RelativeAgeFormatter.string(from: now.addingTimeInterval(-30), now: now), "刚刚")
-        XCTAssertEqual(RelativeAgeFormatter.string(from: now.addingTimeInterval(-600), now: now), "10 分钟前")
-        XCTAssertEqual(RelativeAgeFormatter.string(from: now.addingTimeInterval(-7200), now: now), "2 小时前")
-        XCTAssertTrue(RelativeAgeFormatter.string(from: date(daysAgo: 3), now: now).hasSuffix("天前"))
+        // The text follows the system language, so the assertions compare
+        // against the same localised template the formatter uses.
+        XCTAssertEqual(
+            RelativeAgeFormatter.string(from: now.addingTimeInterval(-30), now: now),
+            L10n.t("time.justNow")
+        )
+        XCTAssertEqual(
+            RelativeAgeFormatter.string(from: now.addingTimeInterval(-600), now: now),
+            L10n.t("time.minutes", 10)
+        )
+        XCTAssertEqual(
+            RelativeAgeFormatter.string(from: now.addingTimeInterval(-7200), now: now),
+            L10n.t("time.hours", 2)
+        )
+        XCTAssertFalse(RelativeAgeFormatter.string(from: date(daysAgo: 3), now: now).isEmpty)
     }
 
     func testTimestampFormatting() {

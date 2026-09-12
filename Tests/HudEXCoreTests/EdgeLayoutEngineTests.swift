@@ -257,6 +257,139 @@ final class EdgeLayoutEngineTests: XCTestCase {
         XCTAssertEqual(plan.placements.count, 3)
         XCTAssertEqual(plan.overflowCount, 0)
     }
+
+    // MARK: - Layout modes
+
+    func testFixedEdgeIgnoresTheDockSide() {
+        // Dock on the left, but the user asked for tags centred on the right edge.
+        let dock = DockBounds(edge: .left, thickness: 54, occupiedStart: 162, occupiedEnd: 794)
+        let mode = LayoutMode(kind: .fixedEdge, edge: .right, anchor: .center, offset: 0)
+        let plan = EdgeLayoutEngine.plan(
+            projectCount: 3,
+            metrics: metrics(),
+            screen: screen,
+            dock: dock,
+            mode: mode
+        )
+
+        XCTAssertEqual(plan.edge, .right)
+        XCTAssertEqual(plan.placements.count, 3)
+        for placement in plan.placements {
+            XCTAssertEqual(placement.frame.maxX, screen.frame.maxX, "tags hug the right edge")
+            XCTAssertGreaterThanOrEqual(
+                placement.frame.minX,
+                dock.thickness,
+                "the left Dock band is untouched"
+            )
+        }
+        // Centred: the run straddles the middle of the free edge.
+        let middle = plan.placements.map(\.frame.midY).reduce(0, +) / CGFloat(plan.placements.count)
+        XCTAssertEqual(middle, screen.visibleFrame.midY, accuracy: 60)
+    }
+
+    func testFixedEdgeOnAnotherEdgeUsesTheWholeRange() {
+        let dock = DockBounds(edge: .left, thickness: 54, occupiedStart: 162, occupiedEnd: 794)
+        let mode = LayoutMode(kind: .fixedEdge, edge: .bottom, anchor: .start, offset: 0)
+        let plan = EdgeLayoutEngine.plan(
+            projectCount: 2,
+            metrics: metrics(),
+            screen: screen,
+            dock: dock,
+            mode: mode
+        )
+        XCTAssertEqual(plan.placements.first?.frame.minX ?? -1, 8, accuracy: 0.01)
+        XCTAssertTrue(plan.placements.allSatisfy { $0.slot == .primary })
+    }
+
+    func testFixedEdgeStillAvoidsTheDockOnTheSameEdge() {
+        let dock = DockBounds(edge: .bottom, thickness: 54, occupiedStart: 450, occupiedEnd: 1020)
+        let mode = LayoutMode(kind: .fixedEdge, edge: .bottom, anchor: .start, offset: 0)
+        let plan = EdgeLayoutEngine.plan(
+            projectCount: 4,
+            metrics: metrics(),
+            screen: screen,
+            dock: dock,
+            mode: mode
+        )
+        for placement in plan.placements {
+            XCTAssertLessThanOrEqual(placement.frame.maxX, dock.occupiedStart)
+        }
+    }
+
+    func testDockSplitUsesBothSides() {
+        let dock = DockBounds(edge: .left, thickness: 54, occupiedStart: 430, occupiedEnd: 530)
+        let plan = EdgeLayoutEngine.plan(
+            projectCount: 6,
+            metrics: metrics(),
+            screen: screen,
+            dock: dock,
+            mode: LayoutMode(kind: .dockSplit)
+        )
+        let primary = plan.placements.filter { $0.slot == .primary }
+        let secondary = plan.placements.filter { $0.slot == .secondary }
+        XCTAssertEqual(primary.count, 3)
+        XCTAssertEqual(secondary.count, 3)
+        XCTAssertTrue(primary.allSatisfy { $0.frame.maxY <= dock.occupiedStart })
+        XCTAssertTrue(secondary.allSatisfy { $0.frame.minY >= dock.occupiedEnd })
+    }
+
+    func testDockAdaptiveFillsPrimaryFirst() {
+        let dock = DockBounds(edge: .left, thickness: 54, occupiedStart: 430, occupiedEnd: 530)
+        let plan = EdgeLayoutEngine.plan(
+            projectCount: 3,
+            metrics: metrics(),
+            screen: screen,
+            dock: dock,
+            mode: LayoutMode(kind: .dockAdaptive)
+        )
+        XCTAssertTrue(plan.placements.allSatisfy { $0.slot == .primary })
+    }
+
+    // MARK: - Stacking
+
+    func testStackedTabsOverlapAndKeepDrawingOrder() {
+        let stacked = TabMetrics.make(dockThickness: 54, stack: StackStyle(isEnabled: true, overlapFraction: 0.5, rotationDegrees: -6, stagger: 3))
+        let dock = DockBounds(edge: .left, thickness: 54, occupiedStart: 500, occupiedEnd: 800)
+        let plan = EdgeLayoutEngine.plan(projectCount: 4, metrics: stacked, screen: screen, dock: dock)
+
+        XCTAssertEqual(plan.placements.count, 4)
+        // Overlapping: the step is half the tab length, so frames do intersect.
+        let first = plan.placements[0].frame
+        let second = plan.placements[1].frame
+        XCTAssertTrue(first.intersects(second))
+        XCTAssertEqual(second.minY - first.minY, stacked.length * 0.5, accuracy: 0.01)
+
+        // Later tabs are drawn on top.
+        XCTAssertEqual(plan.placements.map(\.zIndex), [0, 1, 2, 3])
+        XCTAssertEqual(plan.placements[0].rotationDegrees, 0, accuracy: 0.001)
+        XCTAssertEqual(plan.placements[3].rotationDegrees, -6, accuracy: 0.001)
+
+        // The panel box grows to hold the rotated stack.
+        XCTAssertLessThan(plan.boundingBox.minX, first.minX)
+    }
+
+    func testStackedHitTestingPrefersTheTopmostTag() {
+        let stacked = TabMetrics.make(dockThickness: 54, stack: StackStyle(isEnabled: true, overlapFraction: 0.5, rotationDegrees: 0, stagger: 0))
+        let dock = DockBounds(edge: .left, thickness: 54, occupiedStart: 500, occupiedEnd: 800)
+        let plan = EdgeLayoutEngine.plan(projectCount: 3, metrics: stacked, screen: screen, dock: dock)
+        let overlapPoint = CGPoint(x: 10, y: plan.placements[1].frame.minY + 1)
+        XCTAssertEqual(plan.placement(at: overlapPoint)?.index, 1)
+    }
+
+    func testPlainStackKeepsTabsApart() {
+        let plan = EdgeLayoutEngine.plan(
+            projectCount: 3,
+            metrics: metrics(),
+            screen: screen,
+            dock: DockBounds(edge: .left, thickness: 54, occupiedStart: 500, occupiedEnd: 800)
+        )
+        XCTAssertEqual(plan.placements.map(\.rotationDegrees), [0, 0, 0])
+        for (index, first) in plan.placements.enumerated() {
+            for second in plan.placements.dropFirst(index + 1) {
+                XCTAssertFalse(first.frame.intersects(second.frame))
+            }
+        }
+    }
 }
 
 private extension EdgeLayoutPlan {

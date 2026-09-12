@@ -97,18 +97,35 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.delegate = self
         menu.autoenablesItems = false
 
-        addItem(title: "HudEX", action: nil, key: "", tag: 0)
+        addItem(title: L10n.t("diagnostics.title", HudEXController.version), action: nil, key: "", tag: 0)
         menu.addItem(.separator())
-        addItem(title: "显示 HudEX 标签", action: #selector(toggleShowTags), key: "", tag: Item.showTags)
-        addItem(title: "打开 Markdown 文件", action: #selector(openMarkdown), key: "o", tag: Item.openMarkdown)
-        addItem(title: "在 Finder 中显示", action: #selector(revealMarkdown), key: "", tag: Item.reveal)
-        addItem(title: "重新载入", action: #selector(reload), key: "r", tag: Item.reload)
-        addItem(title: "设置…", action: #selector(openSettings), key: ",", tag: Item.settings)
+        addItem(title: L10n.t("menu.showTags"), action: #selector(toggleShowTags), key: "", tag: Item.showTags)
+        addItem(title: L10n.t("menu.openMarkdown"), action: #selector(openMarkdown), key: "o", tag: Item.openMarkdown)
+        addItem(title: L10n.t("menu.reveal"), action: #selector(revealMarkdown), key: "", tag: Item.reveal)
+        addItem(title: L10n.t("menu.reload"), action: #selector(reload), key: "r", tag: Item.reload)
+        addItem(title: L10n.t("menu.settings"), action: #selector(openSettings), key: ",", tag: Item.settings)
         menu.addItem(.separator())
-        addItem(title: "开机时自动启动", action: #selector(toggleLaunchAtLogin), key: "", tag: Item.launchAtLogin)
-        addItem(title: "显示 Menu Bar 图标", action: #selector(toggleShowIcon), key: "", tag: Item.showIcon)
+        addItem(title: L10n.t("menu.launchAtLogin"), action: #selector(toggleLaunchAtLogin), key: "", tag: Item.launchAtLogin)
+        addItem(title: L10n.t("menu.showMenuBarIcon"), action: #selector(toggleShowIcon), key: "", tag: Item.showIcon)
         menu.addItem(.separator())
-        addItem(title: "退出 HudEX", action: #selector(quit), key: "q", tag: Item.quit)
+        addItem(title: L10n.t("menu.quit"), action: #selector(quit), key: "q", tag: Item.quit)
+    }
+
+    /// Re-applies the localised titles.
+    private func applyTitles() {
+        let titles: [Int: String] = [
+            Item.showTags: L10n.t("menu.showTags"),
+            Item.openMarkdown: L10n.t("menu.openMarkdown"),
+            Item.reveal: L10n.t("menu.reveal"),
+            Item.reload: L10n.t("menu.reload"),
+            Item.settings: L10n.t("menu.settings"),
+            Item.launchAtLogin: L10n.t("menu.launchAtLogin"),
+            Item.showIcon: L10n.t("menu.showMenuBarIcon"),
+            Item.quit: L10n.t("menu.quit")
+        ]
+        for (tag, title) in titles {
+            menu.item(withTag: tag)?.title = title
+        }
     }
 
     private func addItem(title: String, action: Selector?, key: String, tag: Int) {
@@ -125,12 +142,14 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     // MARK: - Menu state
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        // Titles are re-applied on every open so a language change is picked up
+        // without restarting the app.
+        applyTitles()
         menu.item(withTag: Item.showTags)?.state = controller.preferences.showTags ? .on : .off
         menu.item(withTag: Item.showIcon)?.state = controller.preferences.showMenuBarIcon ? .on : .off
         menu.item(withTag: Item.launchAtLogin)?.state = controller.launchAtLogin.isEnabled ? .on : .off
 
-        let version = menu.item(withTag: 0)
-        version?.title = "HudEX \(HudEXController.version)"
+        menu.item(withTag: 0)?.title = L10n.t("diagnostics.title", HudEXController.version)
     }
 
     // MARK: - Actions

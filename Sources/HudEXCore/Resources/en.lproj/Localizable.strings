@@ -1,0 +1,299 @@
+/* HudEX — English */
+
+/* Menu bar */
+"menu.showTags" = "Show HudEX tags";
+"menu.openMarkdown" = "Open Markdown file";
+"menu.reveal" = "Show in Finder";
+"menu.reload" = "Reload";
+"menu.settings" = "Settings…";
+"menu.launchAtLogin" = "Launch at login";
+"menu.showMenuBarIcon" = "Show menu bar icon";
+"menu.quit" = "Quit HudEX";
+"menu.tagsHidden" = "Tags hidden";
+
+/* Tag context menu */
+"context.openDetail" = "Open full project text";
+"context.openMarkdown" = "Open Markdown file (edit)";
+
+/* Settings window */
+"settings.window.title" = "HudEX Settings";
+"settings.tab.general" = "General";
+"settings.tab.source" = "Source";
+"settings.tab.layout" = "Layout";
+"settings.tab.appearance" = "Appearance";
+"settings.tab.advanced" = "Advanced";
+
+/* General */
+"general.section.startup" = "Startup";
+"general.launchAtLogin" = "Launch at login";
+"general.requiresApproval" = "macOS needs your approval for HudEX.";
+"general.openLoginItems" = "Open Login Items";
+"general.section.visibility" = "Visibility";
+"general.showTags" = "Show HudEX tags";
+"general.showMenuBarIcon" = "Show menu bar icon";
+"general.menuBarFooter" = "Even with the menu bar icon off, right-clicking a tag (or opening HudEX again) gets you back into Settings.";
+"general.section.about" = "About";
+"general.version" = "Version";
+"general.source" = "Source";
+"general.projectCount" = "Projects";
+
+/* Source */
+"source.section.file" = "HudEX.md";
+"source.choose" = "Choose File…";
+"source.open" = "Open File";
+"source.reveal" = "Show in Finder";
+"source.reload" = "Reload";
+"source.footer" = "HudEX reads and writes only this one local file. It never talks to OneDrive or any network service; syncing is the sync client's job.";
+"source.section.status" = "Status";
+"source.lastLoaded" = "Last loaded";
+"source.createExample" = "Create Example File";
+"source.section.warnings" = "Parse notes";
+"source.panel.title" = "Choose HudEX.md";
+"source.panel.prompt" = "Choose";
+"source.missingHint" = "There is no HudEX.md yet. Create an example file and edit it for your own projects.";
+
+/* Layout */
+"layout.section.dock" = "Dock geometry";
+"layout.dock.edge" = "Dock position";
+"layout.dock.thickness" = "Dock thickness";
+"layout.dock.occupied" = "Dock occupied range";
+"layout.dock.source" = "Detection source";
+"layout.dock.screen" = "Display";
+"layout.dock.footer" = "HudEX never modifies or hooks the Dock. It only uses edge space the Dock leaves free, and re-checks on system screen changes — no continuous monitoring, no permissions.";
+"layout.section.slots" = "Tag placement";
+"layout.slot.primary" = "Primary";
+"layout.slot.secondary" = "Overflow";
+"layout.slot.capacity" = "%@ · fits %d";
+"layout.overflowWarning" = "%d project(s) are not shown. Shrink the tags, raise the limits, or correct the Dock range below.";
+"layout.slots.footer" = "Overflow only starts once the primary position is full; the two sides are never filled at the same time.";
+"layout.section.mode" = "Layout mode";
+"layout.mode" = "Mode";
+"layout.mode.dockAdaptive" = "Follow the Dock";
+"layout.mode.dockSplit" = "Both sides of the Dock edge";
+"layout.mode.fixedEdge" = "Fixed screen edge";
+"layout.edge" = "Screen edge";
+"layout.anchor" = "Alignment";
+"layout.anchor.start" = "Start";
+"layout.anchor.center" = "Center";
+"layout.anchor.end" = "End";
+"layout.offset" = "Extra offset";
+"layout.mode.footer" = "“Follow the Dock” keeps the tags next to the Dock. “Fixed screen edge” ignores the Dock’s side, so a left Dock can show tags on the right edge, centred.";
+"layout.section.size" = "Tag size";
+"layout.size.width" = "Tag width (into the screen)";
+"layout.size.height" = "Tag height (along the edge)";
+"layout.size.font" = "Label size";
+"layout.size.autoWidth" = "Auto (Dock thickness %d pt)";
+"layout.size.autoHeight" = "Auto (from the label)";
+"layout.size.autoFont" = "Auto (8–24 pt)";
+"layout.size.reset" = "Reset sizes";
+"layout.size.footer" = "With a Dock on the left or right, “width” is how far a tag reaches into the screen and “height” is its length along the edge; with a Dock at the bottom they swap.";
+"layout.section.count" = "Count";
+"layout.count.max" = "Maximum tags";
+"layout.count.perSlot" = "Maximum per position";
+"layout.count.unlimited" = "No limit";
+"layout.count.value" = "%d";
+"layout.count.footer" = "Extra projects are simply not drawn — tags never get squeezed.";
+"layout.section.spacing" = "Spacing";
+"layout.spacing.gap" = "Gap from the Dock";
+"layout.spacing.corner" = "Gap from the screen corner";
+"layout.section.calibration" = "Manual calibration";
+"layout.calibration.thickness" = "Dock thickness (0 = auto)";
+"layout.calibration.length" = "Dock occupied length (0 = auto)";
+"layout.calibration.autoValue" = "Auto (currently %d pt)";
+"layout.calibration.reset" = "Reset to auto";
+"layout.calibration.redetect" = "Detect the Dock again";
+"layout.calibration.footer" = "Since macOS 26 the Dock’s own window covers the whole screen, so its length cannot be measured with public APIs. HudEX estimates it conservatively; raise the occupied length if a tag ever overlaps the Dock.";
+
+/* Appearance */
+"appearance.section.preview" = "Hover preview";
+"appearance.showUpdatedTime" = "Show the updated time in the preview";
+"appearance.preview.footer" = "Tags only show the short name — the colour is the status. Hovering opens the preview.";
+"appearance.section.thresholds" = "Colour thresholds";
+"appearance.days" = "%d days";
+"appearance.color.active" = "Recently updated (green)";
+"appearance.color.attention" = "Needs attention (yellow)";
+"appearance.color.aging" = "Getting old (orange)";
+"appearance.thresholds.footer" = "Past the last threshold a tag turns grey (long untouched). Projects marked paused, archived or done always use the blue-grey.";
+"appearance.section.legend" = "Colour examples";
+"appearance.legend.footer" = "The colour is the status — no separate dot is drawn.";
+"appearance.showing" = "Shown";
+"appearance.hidden" = "Hidden";
+"appearance.section.stack" = "Stacked tags";
+"appearance.stack.enabled" = "Overlap the tags like bookmarks";
+"appearance.stack.overlap" = "Overlap";
+"appearance.stack.rotation" = "Slant";
+"appearance.stack.stagger" = "Layer offset";
+"appearance.stack.footer" = "Overlapping and slanting cost nothing while idle: the hover animation only runs while the pointer moves between tags.";
+
+/* Advanced */
+"advanced.section.diagnostics" = "Diagnostics";
+"advanced.reload" = "Reload";
+"advanced.clearGeometry" = "Clear geometry cache";
+"advanced.copyDiagnostics" = "Copy diagnostics";
+"advanced.section.permissions" = "Permissions & network";
+"advanced.accessibility" = "Accessibility";
+"advanced.screenRecording" = "Screen recording";
+"advanced.network" = "Network access";
+"advanced.notUsed" = "Not used";
+"advanced.none" = "None";
+"advanced.permissions.footer" = "HudEX uses only public AppKit APIs: the Dock’s position and thickness come from the system’s reserved screen area and the Dock preferences, and screen changes arrive as system notifications. Tag size and count are yours to set, so no permission is needed.";
+"advanced.section.resources" = "Resource usage";
+"advanced.memory" = "Memory";
+"advanced.cpu" = "CPU time";
+"advanced.cpuValue" = "%.2f s (average %.3f%%)";
+"advanced.threads" = "Threads";
+"advanced.resources.footer" = "HudEX polls nothing, never networks and only writes when a setting changes.";
+"advanced.section.maintenance" = "Maintenance";
+"advanced.structure" = "Structure";
+"advanced.structure.value" = "HudEXCore (parsing / layout / colour) + HudEXApp (windows / settings / menu bar)";
+"advanced.logging" = "Logging";
+"advanced.logging.value" = "os.Logger — app / markdown / watcher / dock / layout / window";
+
+/* Preview & detail */
+"preview.emptyHint" = "This project has no 当前 / 下一步 / 最新对话 section yet.";
+"detail.emptySections" = "This project has no sections yet.";
+"detail.statusPrefix" = "Status: %@";
+"common.edit" = "Edit";
+"common.auto" = "Auto";
+"common.default" = "Default";
+"common.on" = "On";
+"common.off" = "Off";
+"common.preview" = "Preview";
+
+/* Dock geometry sources */
+"dock.source.reservedBand" = "Reserved screen area (exact)";
+"dock.source.preferences" = "Dock preferences (estimate)";
+"dock.source.windowList" = "CGWindowList (exact)";
+"dock.source.cache" = "Last good detection";
+"dock.source.fallback" = "Default";
+
+/* Edges and slots */
+"edge.left" = "Left";
+"edge.right" = "Right";
+"edge.bottom" = "Bottom";
+"slot.primary" = "Primary";
+"slot.secondary" = "Overflow";
+
+/* Relative time */
+"time.justNow" = "just now";
+"time.minutes" = "%d min ago";
+"time.hours" = "%d h ago";
+"time.days" = "%d d ago";
+"time.months" = "%d months ago";
+"time.years" = "%d years ago";
+"time.updatedPrefix" = "Updated: %@";
+
+/* Project status */
+"status.active" = "In progress";
+"status.paused" = "Paused";
+"status.archived" = "Archived";
+"status.done" = "Done";
+"status.unknown" = "—";
+
+/* Colour roles */
+"role.active" = "Recently updated";
+"role.attention" = "Needs attention";
+"role.aging" = "Getting old";
+"role.stale" = "Long untouched";
+"role.paused" = "Paused";
+"role.archived" = "Archived";
+
+/* Load errors */
+"error.fileMissing" = "File not found: %@";
+"error.unreadable" = "Cannot read the file: %@";
+"error.undecodable" = "Not a readable text encoding (please save as UTF-8): %@";
+"error.tooLarge" = "File is too large (%d KB) and was skipped.";
+"error.unchanged" = "The file has not changed.";
+"error.emptyDocument" = "The file is empty right now (or still being written); keeping the previous content.";
+
+/* Diagnostics panel */
+"diagnostics.title" = "HudEX %@";
+"diagnostics.system" = "System: %@";
+"diagnostics.source" = "Source: %@";
+"diagnostics.projects" = "Projects: %d";
+"diagnostics.edge" = "Dock edge: %@";
+"diagnostics.thickness" = "Dock thickness: %d pt";
+"diagnostics.occupied" = "Dock occupied: %d–%d pt";
+"diagnostics.sourceOfTruth" = "Detection source: %@";
+"diagnostics.primary" = "Primary: %@ (fits %d)";
+"diagnostics.secondary" = "Overflow: %@ (fits %d)";
+"diagnostics.screen" = "Display: %@";
+"diagnostics.overflow" = "Projects not shown: %d";
+"diagnostics.loadedAt" = "Last loaded: %@";
+"diagnostics.error" = "Error: %@";
+"diagnostics.unavailable" = "unavailable";
+
+/* Settings block in the Markdown file */
+"settingsblock.heading" = "HudEX Settings";
+"settingsblock.intro.1" = "HudEX keeps its own settings here. Edit a value and save — HudEX applies it. Change a setting in the app and HudEX writes it back here.";
+"settingsblock.intro.2" = "Every option is one guide line followed by one `key：value` line. Keep the labels, change the values.";
+"settingsblock.updatedLabel" = "Updated";
+"settingsblock.updatedGuide" = "When this block was last written. HudEX uses it to decide which side is newer.";
+"settingsblock.guide.layout.mode" = "Layout mode: dock-adaptive (next to the Dock) / dock-split (both sides of the Dock edge) / fixed-edge (your own screen edge)";
+"settingsblock.guide.layout.edge" = "Screen edge used by fixed-edge mode: left / right / bottom";
+"settingsblock.guide.layout.anchor" = "Alignment along the edge: start / center / end";
+"settingsblock.guide.layout.offset" = "Extra offset along the edge, in points (may be negative)";
+"settingsblock.guide.tag.width" = "Tag width into the screen, in points. 0 = follow the Dock thickness";
+"settingsblock.guide.tag.height" = "Tag length along the edge, in points. 0 = automatic";
+"settingsblock.guide.tag.fontSize" = "Label size in points, 8–24. 0 = automatic";
+"settingsblock.guide.tag.maxCount" = "Maximum number of tags shown. 0 = no limit";
+"settingsblock.guide.tag.maxPerSlot" = "Maximum number of tags in one position. 0 = no limit";
+"settingsblock.guide.tag.gap" = "Gap between the tags and the Dock, in points";
+"settingsblock.guide.tag.corner" = "Gap from the screen corners, in points";
+"settingsblock.guide.tag.stack" = "Overlap the tags like a stack of bookmarks: true / false";
+"settingsblock.guide.tag.stack.overlap" = "How much of a tag is hidden behind the next one, 0–0.8";
+"settingsblock.guide.tag.stack.rotation" = "Slant of the stack in degrees (may be negative)";
+"settingsblock.guide.tag.stack.stagger" = "Per-tag layer offset in points";
+"settingsblock.guide.dock.thickness" = "Manual Dock thickness in points. 0 = automatic";
+"settingsblock.guide.dock.length" = "Manual Dock occupied length in points. 0 = automatic";
+"settingsblock.guide.show.tags" = "Show the tags at all: true / false";
+"settingsblock.guide.show.menuBarIcon" = "Show the menu bar icon: true / false";
+"settingsblock.guide.show.updatedTime" = "Show the updated time inside the hover preview: true / false";
+"settingsblock.guide.launchAtLogin" = "Start HudEX when you log in (writes a system login item): true / false";
+"settingsblock.guide.color.activeDays" = "Days a project still counts as recently updated (green)";
+"settingsblock.guide.color.attentionDays" = "Days before a tag turns from yellow to orange";
+"settingsblock.guide.color.agingDays" = "Days before a tag turns grey (long untouched)";
+"settingsblock.guide.project.order" = "Add `顺序：1` inside a project to control its position among the tags (smaller first).";
+"settingsblock.guide.project.color" = "Add `颜色：green` (or `颜色：#4C6FA0`) inside a project to override its tag colour.";
+"settingsblock.project.guide.title" = "Per-project options";
+
+/* Settings sync */
+"sync.section" = "Markdown settings";
+"sync.writeBack" = "Write settings back into HudEX.md";
+"sync.lastWrite" = "Last written";
+"sync.never" = "not yet";
+"sync.writeNow" = "Write now";
+"sync.readNow" = "Read from file";
+"sync.footer" = "HudEX keeps every setting in a documented block at the bottom of HudEX.md, so you — or an AI — can change the layout, colours and thresholds by editing text. Editing the block updates the app; changing a setting in the app updates the block.";
+
+/* Settings block labels */
+"settingsblock.label.layout.mode" = "Layout mode";
+"settingsblock.label.layout.edge" = "Fixed edge";
+"settingsblock.label.layout.anchor" = "Anchor";
+"settingsblock.label.layout.offset" = "Offset";
+"settingsblock.label.tag.width" = "Tag width";
+"settingsblock.label.tag.height" = "Tag height";
+"settingsblock.label.tag.fontSize" = "Label size";
+"settingsblock.label.tag.maxCount" = "Max tags";
+"settingsblock.label.tag.maxPerSlot" = "Max per position";
+"settingsblock.label.tag.gap" = "Gap from Dock";
+"settingsblock.label.tag.corner" = "Corner gap";
+"settingsblock.label.tag.stack" = "Stacked tags";
+"settingsblock.label.tag.stack.overlap" = "Stack overlap";
+"settingsblock.label.tag.stack.rotation" = "Stack slant";
+"settingsblock.label.tag.stack.stagger" = "Stack layer offset";
+"settingsblock.label.dock.thickness" = "Dock thickness";
+"settingsblock.label.dock.length" = "Dock occupied length";
+"settingsblock.label.show.tags" = "Show tags";
+"settingsblock.label.show.menuBarIcon" = "Menu bar icon";
+"settingsblock.label.show.updatedTime" = "Show updated time";
+"settingsblock.label.launchAtLogin" = "Launch at login";
+"settingsblock.label.color.activeDays" = "Green threshold (days)";
+"settingsblock.label.color.attentionDays" = "Yellow threshold (days)";
+"settingsblock.label.color.agingDays" = "Orange threshold (days)";
+
+/* Language */
+"general.section.language" = "Language";
+"general.language" = "Language";
+"general.language.system" = "Follow the system";
+"general.language.footer" = "HudEX ships English and Simplified Chinese. “Follow the system” uses English when your system language is neither.";

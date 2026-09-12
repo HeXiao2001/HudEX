@@ -122,7 +122,7 @@ final class SettingsWindowController {
             backing: .buffered,
             defer: false
         )
-        window.title = "HudEX 设置"
+        window.title = L10n.t("settings.window.title")
         window.isReleasedWhenClosed = false
         window.contentView = hosting
         window.setFrameAutosaveName("HudEXSettingsWindow")

@@ -145,9 +145,9 @@ final class DockGeometryProvider {
         if allowExpensiveProbes, settings.dockLengthOverride <= 0 {
             if let measured = measuredBounds(for: screen, edge: edge), measured.occupiedLength > 0 {
                 bounds = measured
-                lastDiagnostic = "Dock 占用范围来自 \(measured.source.displayName)。"
+                lastDiagnostic = L10n.t(measured.source.displayNameKey)
             } else {
-                lastDiagnostic = "Dock 占用范围按偏好设置估算（宽 \(Int(bounds.occupiedLength)) pt，厚 \(Int(bounds.thickness)) pt）。"
+                lastDiagnostic = L10n.t(bounds.source.displayNameKey)
             }
         }
 

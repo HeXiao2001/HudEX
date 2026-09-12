@@ -8,12 +8,13 @@ Dock 在左侧、tilesize 34（保留带 54 pt）、有菜单栏（33 pt）。
 
 ```
 swift build --product HudEX          # 成功，无 error / warning（HudEXApp + HudEXCore）
-swift test                           # 71 项测试通过
+swift test                           # 97 项测试通过
 ./script/build_and_run.sh            # 组装 dist/HudEX.app + ad-hoc 签名 + 启动
 ```
 
-测试分布：解析 11、Markdown 渲染与文件 10（含原子替换、编码回退、空文件）、
-布局引擎 17、Dock 几何估算 10、颜色与短名 15、模板 1。
+测试分布：解析 12、Markdown 渲染与文件 10（含原子替换、编码回退、空文件）、
+布局引擎 25（含三种模式与叠放）、Dock 几何估算 10、设置段与双向同步 9、
+调色板与项目元数据 7、本地化 4、颜色与短名 15、模板 1。
 
 ## 2. Dock 三个方向（窗口列表实测）
 

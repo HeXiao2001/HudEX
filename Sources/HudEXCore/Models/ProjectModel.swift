@@ -51,14 +51,16 @@ public enum ProjectStatus: String, Sendable, CaseIterable, Hashable {
         return .unknown
     }
 
-    /// Short human-readable label used by the detail window.
-    public var displayName: String {
+    /// Localised label used by the detail window.
+    public var displayName: String { L10n.t(displayNameKey) }
+
+    public var displayNameKey: String {
         switch self {
-        case .active: return "进行中"
-        case .paused: return "暂停"
-        case .archived: return "归档"
-        case .done: return "已完成"
-        case .unknown: return "未标注"
+        case .active: return "status.active"
+        case .paused: return "status.paused"
+        case .archived: return "status.archived"
+        case .done: return "status.done"
+        case .unknown: return "status.unknown"
         }
     }
 }
@@ -154,6 +156,10 @@ public struct HudEXProject: Identifiable, Hashable, Sendable {
     /// Prose found between the project heading and its first section.
     public let preamble: String?
     public let sections: [ProjectSection]
+    /// Optional `顺序：` — a smaller number is shown first.
+    public let sortOrder: Int?
+    /// Optional `颜色：` — a palette name or `#RRGGBB`.
+    public let colorOverride: String?
 
     public init(
         id: String,
@@ -165,7 +171,9 @@ public struct HudEXProject: Identifiable, Hashable, Sendable {
         updatedAt: Date?,
         updatedAtText: String?,
         preamble: String?,
-        sections: [ProjectSection]
+        sections: [ProjectSection],
+        sortOrder: Int? = nil,
+        colorOverride: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -177,6 +185,8 @@ public struct HudEXProject: Identifiable, Hashable, Sendable {
         self.updatedAtText = updatedAtText
         self.preamble = preamble
         self.sections = sections
+        self.sortOrder = sortOrder
+        self.colorOverride = colorOverride
     }
 
     // MARK: - Semantic section helpers
@@ -204,8 +214,50 @@ public struct HudEXProject: Identifiable, Hashable, Sendable {
     /// `状态：` line for the detail window; falls back to the parsed status.
     public var statusDisplayText: String {
         if let statusText, !statusText.isEmpty { return statusText }
-        return status == .unknown ? "—" : status.displayName
+        return status.displayName
     }
+}
+
+/// The `# HudEX 设置` block at the bottom of the file.
+///
+/// HudEX keeps its own settings there in a human- and AI-editable form and
+/// syncs them in both directions: edit a value in the file and HudEX applies
+/// it; change a setting in the app and HudEX writes it back.
+public struct HudEXSettingsBlock: Sendable, Equatable, Hashable {
+    public struct Entry: Sendable, Equatable, Hashable {
+        /// Stable ASCII key, e.g. `layout.mode`.
+        public let key: String
+        /// Value exactly as written.
+        public var value: String
+        /// The guide line above the entry, without the leading `> `.
+        public var guide: String?
+
+        public init(key: String, value: String, guide: String? = nil) {
+            self.key = key
+            self.value = value
+            self.guide = guide
+        }
+    }
+
+    public var entries: [Entry]
+    /// `更新：` timestamp written by whoever changed the block last.
+    public var updatedAt: Date?
+    public var updatedAtText: String?
+    /// The raw block, kept so a rewrite can preserve unknown keys.
+    public var raw: String
+
+    public init(entries: [Entry] = [], updatedAt: Date? = nil, updatedAtText: String? = nil, raw: String = "") {
+        self.entries = entries
+        self.updatedAt = updatedAt
+        self.updatedAtText = updatedAtText
+        self.raw = raw
+    }
+
+    public subscript(key: String) -> String? {
+        entries.last { $0.key == key }?.value
+    }
+
+    public var isEmpty: Bool { entries.isEmpty }
 }
 
 /// One diagnostic produced while reading `HudEX.md`.
@@ -241,19 +293,28 @@ public struct HudEXDocument: Hashable, Sendable {
     /// Modification date of the source file, used as an age fallback when a
     /// project has no parsable `更新：`.
     public var fileModifiedAt: Date?
+    /// The optional settings block at the bottom of the file.
+    public var settings: HudEXSettingsBlock?
+    /// Text of the file with the settings block removed, so writing it back
+    /// never has to touch the project content.
+    public var bodyWithoutSettings: String
 
     public init(
         title: String? = nil,
         projects: [HudEXProject] = [],
         diagnostics: [ParseDiagnostic] = [],
         parsedAt: Date = Date(),
-        fileModifiedAt: Date? = nil
+        fileModifiedAt: Date? = nil,
+        settings: HudEXSettingsBlock? = nil,
+        bodyWithoutSettings: String = ""
     ) {
         self.title = title
         self.projects = projects
         self.diagnostics = diagnostics
         self.parsedAt = parsedAt
         self.fileModifiedAt = fileModifiedAt
+        self.settings = settings
+        self.bodyWithoutSettings = bodyWithoutSettings
     }
 
     public static let empty = HudEXDocument(parsedAt: .distantPast)

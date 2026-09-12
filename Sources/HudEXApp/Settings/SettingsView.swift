@@ -1,22 +1,23 @@
 import HudEXCore
 import SwiftUI
 
-/// Native SwiftUI `Settings` scene: HudEX does not draw its own settings chrome.
+/// The settings window content. HudEX hosts it in its own window (see
+/// `SettingsWindowController`) but the controls are all native SwiftUI.
 struct SettingsView: View {
     var body: some View {
         TabView {
             GeneralSettingsView()
-                .tabItem { Label("通用", systemImage: "gearshape") }
+                .tabItem { Label(L10n.t("settings.tab.general"), systemImage: "gearshape") }
             SourceSettingsView()
-                .tabItem { Label("数据源", systemImage: "doc.text") }
+                .tabItem { Label(L10n.t("settings.tab.source"), systemImage: "doc.text") }
             LayoutSettingsView()
-                .tabItem { Label("布局", systemImage: "rectangle.split.2x1") }
+                .tabItem { Label(L10n.t("settings.tab.layout"), systemImage: "rectangle.split.2x1") }
             AppearanceSettingsView()
-                .tabItem { Label("外观", systemImage: "paintpalette") }
+                .tabItem { Label(L10n.t("settings.tab.appearance"), systemImage: "paintpalette") }
             AdvancedSettingsView()
-                .tabItem { Label("高级", systemImage: "wrench.and.screwdriver") }
+                .tabItem { Label(L10n.t("settings.tab.advanced"), systemImage: "wrench.and.screwdriver") }
         }
-        .frame(width: 540)
+        .frame(width: 560)
     }
 }
 
@@ -28,52 +29,59 @@ struct GeneralSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Toggle("开机时自动启动", isOn: launchAtLoginBinding)
+                Toggle(L10n.t("general.launchAtLogin"), isOn: launchAtLoginBinding)
 
                 if launchAtLogin.requiresApproval {
                     HStack(spacing: 8) {
-                        Text("需要在系统设置中允许 HudEX。")
+                        Text(L10n.t("general.requiresApproval"))
                             .font(.callout)
                             .foregroundStyle(.secondary)
                         Spacer()
-                        Button("打开登录项设置") { launchAtLogin.openLoginItemsSettings() }
+                        Button(L10n.t("general.openLoginItems")) { launchAtLogin.openLoginItemsSettings() }
                     }
                 }
                 if let error = launchAtLogin.lastError, !launchAtLogin.requiresApproval {
-                    Text(error)
-                        .font(.callout)
-                        .foregroundStyle(.red)
+                    Text(error).font(.callout).foregroundStyle(.red)
                 }
             } header: {
-                Text("启动")
+                Text(L10n.t("general.section.startup"))
             }
 
             Section {
-                Toggle("显示 HudEX 标签", isOn: $preferences.showTags)
-                Toggle("显示 Menu Bar 图标", isOn: $preferences.showMenuBarIcon)
+                Toggle(L10n.t("general.showTags"), isOn: $preferences.showTags)
+                Toggle(L10n.t("general.showMenuBarIcon"), isOn: $preferences.showMenuBarIcon)
             } header: {
-                Text("显示")
+                Text(L10n.t("general.section.visibility"))
             } footer: {
-                Text("即使关闭 Menu Bar 图标，也可以在任意标签上右键（或再次打开 HudEX）进入设置。")
+                Text(L10n.t("general.menuBarFooter"))
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
 
             Section {
-                LabeledContent("版本") {
-                    Text(HudEXController.version)
-                        .foregroundStyle(.secondary)
-                }
-                LabeledContent("数据源") {
-                    Text(URL(fileURLWithPath: controller.documentSummary.path).lastPathComponent)
-                        .foregroundStyle(.secondary)
-                }
-                LabeledContent("项目数") {
-                    Text("\(controller.documentSummary.projectCount)")
-                        .foregroundStyle(.secondary)
+                Picker(L10n.t("general.language"), selection: $preferences.language) {
+                    Text(L10n.t("general.language.system")).tag("")
+                    Text("English").tag("en")
+                    Text("简体中文").tag("zh-Hans")
                 }
             } header: {
-                Text("关于")
+                Text(L10n.t("general.section.language"))
+            } footer: {
+                Text(L10n.t("general.language.footer"))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                LabeledContent(L10n.t("general.version")) { value(HudEXController.version) }
+                LabeledContent(L10n.t("general.source")) {
+                    value(URL(fileURLWithPath: controller.documentSummary.path).lastPathComponent)
+                }
+                LabeledContent(L10n.t("general.projectCount")) {
+                    value("\(controller.documentSummary.projectCount)")
+                }
+            } header: {
+                Text(L10n.t("general.section.about"))
             }
         }
         .formStyle(.grouped)
@@ -84,5 +92,9 @@ struct GeneralSettingsView: View {
             get: { launchAtLogin.isEnabled },
             set: { launchAtLogin.setEnabled($0) }
         )
+    }
+
+    private func value(_ text: String) -> some View {
+        Text(text).foregroundStyle(.secondary)
     }
 }

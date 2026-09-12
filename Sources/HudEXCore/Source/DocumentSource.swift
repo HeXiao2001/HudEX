@@ -90,15 +90,15 @@ public enum DocumentLoadError: Error, Equatable {
     public var displayMessage: String {
         switch self {
         case .fileMissing(let url):
-            return "找不到文件：\(url.path)"
+            return L10n.t("error.fileMissing", url.path)
         case .unreadable(_, let reason):
-            return "无法读取文件：\(reason)"
+            return L10n.t("error.unreadable", reason)
         case .undecodable(let url):
-            return "文件不是可识别的文本编码（请另存为 UTF-8）：\(url.lastPathComponent)"
+            return L10n.t("error.undecodable", url.lastPathComponent)
         case .tooLarge(_, let size):
-            return "文件过大（\(size / 1024) KB），已跳过。"
+            return L10n.t("error.tooLarge", size / 1024)
         case .unchanged:
-            return "文件没有变化。"
+            return L10n.t("error.unchanged")
         }
     }
 }

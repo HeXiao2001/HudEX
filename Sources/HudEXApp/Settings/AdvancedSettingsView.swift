@@ -1,8 +1,8 @@
+import AppKit
 import HudEXCore
 import SwiftUI
 
 struct AdvancedSettingsView: View {
-    @ObservedObject private var preferences = Preferences.shared
     @ObservedObject private var controller = HudEXController.shared
 
     var body: some View {
@@ -14,65 +14,65 @@ struct AdvancedSettingsView: View {
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(height: 168)
+                .frame(height: 190)
 
                 HStack(spacing: 8) {
-                    Button("重新载入") { controller.reloadDocument() }
-                    Button("清空几何缓存") { controller.resetDockGeometryCache() }
-                    Button("复制诊断信息") { copyDiagnostics() }
+                    Button(L10n.t("advanced.reload")) { controller.reloadDocument() }
+                    Button(L10n.t("advanced.clearGeometry")) { controller.resetDockGeometryCache() }
+                    Button(L10n.t("advanced.copyDiagnostics")) { copyDiagnostics() }
                 }
             } header: {
-                Text("诊断")
+                Text(L10n.t("advanced.section.diagnostics"))
             }
 
             Section {
-                LabeledContent("内存占用") {
-                    Text(String(format: "%.1f MB", controller.performance.residentMegabytes))
-                        .foregroundStyle(.secondary)
-                }
-                LabeledContent("累计 CPU 时间") {
-                    Text(String(format: "%.2f 秒（平均 %.3f%%）",
-                                controller.performance.cpuTimeSeconds,
-                                controller.performance.averageCPUPercent))
-                        .foregroundStyle(.secondary)
-                }
-                LabeledContent("线程数") {
-                    Text("\(controller.performance.threadCount)").foregroundStyle(.secondary)
-                }
+                LabeledContent(L10n.t("advanced.accessibility")) { value(L10n.t("advanced.notUsed")) }
+                LabeledContent(L10n.t("advanced.screenRecording")) { value(L10n.t("advanced.notUsed")) }
+                LabeledContent(L10n.t("advanced.network")) { value(L10n.t("advanced.none")) }
             } header: {
-                Text("资源占用")
+                Text(L10n.t("advanced.section.permissions"))
             } footer: {
-                Text("HudEX 空闲时不轮询、不联网、不写日志；这个数字来自系统对进程的统计。")
+                Text(L10n.t("advanced.permissions.footer"))
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
 
             Section {
-                LabeledContent("辅助功能权限") { Text("未使用").foregroundStyle(.secondary) }
-                LabeledContent("屏幕录制权限") { Text("未使用").foregroundStyle(.secondary) }
-                LabeledContent("网络访问") { Text("无").foregroundStyle(.secondary) }
+                LabeledContent(L10n.t("advanced.memory")) {
+                    value(String(format: "%.1f MB", controller.performance.residentMegabytes))
+                }
+                LabeledContent(L10n.t("advanced.cpu")) {
+                    value(L10n.t("advanced.cpuValue",
+                                 controller.performance.cpuTimeSeconds,
+                                 controller.performance.averageCPUPercent))
+                }
+                LabeledContent(L10n.t("advanced.threads")) {
+                    value("\(controller.performance.threadCount)")
+                }
             } header: {
-                Text("权限与网络")
+                Text(L10n.t("advanced.section.resources"))
             } footer: {
-                Text("HudEX 只使用公开的 AppKit API：Dock 位置与厚度来自系统保留区和 Dock 偏好设置，屏幕变化通过系统通知获知。标签尺寸与数量都可以在“布局”里手动设定，所以不需要任何 TCC 权限。")
+                Text(L10n.t("advanced.resources.footer"))
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
 
             Section {
-                LabeledContent("工程结构") {
-                    Text("HudEXCore（解析 / 布局 / 颜色）+ HudEXApp（窗口 / 设置 / 菜单栏）")
-                        .foregroundStyle(.secondary)
+                LabeledContent(L10n.t("advanced.structure")) {
+                    value(L10n.t("advanced.structure.value"))
                 }
-                LabeledContent("日志") {
-                    Text("os.Logger，分类：app / markdown / watcher / dock / layout / window")
-                        .foregroundStyle(.secondary)
+                LabeledContent(L10n.t("advanced.logging")) {
+                    value(L10n.t("advanced.logging.value"))
                 }
             } header: {
-                Text("维护")
+                Text(L10n.t("advanced.section.maintenance"))
             }
         }
         .formStyle(.grouped)
+    }
+
+    private func value(_ text: String) -> some View {
+        Text(text).foregroundStyle(.secondary)
     }
 
     private func copyDiagnostics() {

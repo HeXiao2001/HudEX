@@ -29,6 +29,10 @@ public struct MarkdownProjectParser: @unchecked Sendable {
         public var shortTitleKeys: [String]
         public var statusKeys: [String]
         public var updatedKeys: [String]
+        /// Keys that reorder a project's tab (`顺序：1`).
+        public var orderKeys: [String]
+        /// Keys that override a project's colour (`颜色：绿色` / `颜色：#4C6FA0`).
+        public var colorKeys: [String]
         /// Lines that close the current section (project separators).
         public var separatorLines: Set<String>
         public var maxShortTitleLength: Int
@@ -37,12 +41,16 @@ public struct MarkdownProjectParser: @unchecked Sendable {
             shortTitleKeys: [String] = ["短名", "简称", "缩写", "short", "shortname", "short_name", "abbr", "abbreviation"],
             statusKeys: [String] = ["状态", "status"],
             updatedKeys: [String] = ["更新", "更新时间", "最后更新", "updated", "updatedat", "updated_at", "date"],
+            orderKeys: [String] = ["顺序", "排序", "次序", "order", "sort", "sortorder"],
+            colorKeys: [String] = ["颜色", "标签颜色", "color", "colour"],
             separatorLines: Set<String> = ["---", "***", "___", "----"],
             maxShortTitleLength: Int = ShortTitle.maxLength
         ) {
             self.shortTitleKeys = shortTitleKeys
             self.statusKeys = statusKeys
             self.updatedKeys = updatedKeys
+            self.orderKeys = orderKeys
+            self.colorKeys = colorKeys
             self.separatorLines = separatorLines
             self.maxShortTitleLength = maxShortTitleLength
         }
@@ -72,6 +80,8 @@ public struct MarkdownProjectParser: @unchecked Sendable {
             .replacingOccurrences(of: "\r", with: "\n")
         let lines = normalized.components(separatedBy: "\n")
 
+        var settingsStartLine: Int?
+
         for (index, line) in lines.enumerated() {
             let lineNumber = index + 1
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -84,6 +94,12 @@ public struct MarkdownProjectParser: @unchecked Sendable {
             if let heading = MarkdownHeading.parse(line) {
                 switch heading.level {
                 case 1:
+                    if SettingsKeys.isSettingsHeading(heading.text) {
+                        // Everything from here down configures HudEX itself.
+                        settingsStartLine = index
+                        builder.endOfContent = true
+                        break
+                    }
                     if documentTitle == nil, builder.hasNoProject {
                         documentTitle = heading.text
                     } else {
@@ -110,6 +126,11 @@ public struct MarkdownProjectParser: @unchecked Sendable {
             builder.appendContent(line)
         }
 
+        for index in (settingsStartLine.map { $0 + 1 } ?? lines.count)..<lines.count where settingsStartLine != nil {
+            _ = index
+            break
+        }
+
         let projects = builder.finish()
         diagnostics.append(contentsOf: builder.diagnostics)
         if projects.isEmpty {
@@ -121,24 +142,34 @@ public struct MarkdownProjectParser: @unchecked Sendable {
             )
         }
 
+        let settingsText: String? = settingsStartLine.map { start in
+            lines[(start + 1)...].joined(separator: "\n")
+        }
+        let bodyText: String = {
+            guard let settingsStartLine else { return normalized }
+            return lines[0..<settingsStartLine].joined(separator: "\n")
+        }()
+
         return HudEXDocument(
             title: documentTitle,
             projects: projects,
             diagnostics: diagnostics,
             parsedAt: now,
-            fileModifiedAt: fileModifiedAt
+            fileModifiedAt: fileModifiedAt,
+            settings: settingsText.map { SettingsBlockFormat.parse($0, dateParser: dateParser) },
+            bodyWithoutSettings: bodyText.trimmingCharacters(in: .whitespacesAndNewlines)
         )
     }
 }
 
 // MARK: - Headings
 
-struct MarkdownHeading {
-    let level: Int
-    let text: String
+public struct MarkdownHeading {
+    public let level: Int
+    public let text: String
 
     /// Parses ATX headings (`#`, `##`, …). Returns `nil` for ordinary lines.
-    static func parse(_ line: String) -> MarkdownHeading? {
+    public static func parse(_ line: String) -> MarkdownHeading? {
         var index = line.startIndex
         var hashes = 0
         while index < line.endIndex, line[index] == "#", hashes < 7 {
@@ -167,6 +198,8 @@ private final class DocumentBuilder {
         var explicitShortTitle: String?
         var statusText: String?
         var updatedText: String?
+        var sortOrder: Int?
+        var colorOverride: String?
         var preambleLines: [String] = []
         var sections: [SectionDraft] = []
     }
@@ -183,6 +216,8 @@ private final class DocumentBuilder {
 
     private var drafts: [ProjectDraft] = []
     private var sectionOpen = false
+    /// Set once the settings block starts: nothing after it belongs to a project.
+    var endOfContent = false
 
     init(options: MarkdownProjectParser.Options, dateParser: MarkdownDateParser) {
         self.options = options
@@ -209,7 +244,7 @@ private final class DocumentBuilder {
     }
 
     func appendContent(_ line: String) {
-        guard !drafts.isEmpty else { return }
+        guard !endOfContent, !drafts.isEmpty else { return }
         if sectionOpen, !drafts[drafts.count - 1].sections.isEmpty {
             drafts[drafts.count - 1].sections[drafts[drafts.count - 1].sections.count - 1].lines.append(line)
             return
@@ -232,6 +267,14 @@ private final class DocumentBuilder {
             }
             if options.updatedKeys.contains(where: { $0.lowercased() == normalizedKey }) {
                 drafts[drafts.count - 1].updatedText = value
+                return
+            }
+            if options.orderKeys.contains(where: { $0.lowercased() == normalizedKey }) {
+                drafts[drafts.count - 1].sortOrder = Int(value.trimmingCharacters(in: .whitespaces))
+                return
+            }
+            if options.colorKeys.contains(where: { $0.lowercased() == normalizedKey }) {
+                drafts[drafts.count - 1].colorOverride = value.trimmingCharacters(in: .whitespaces)
                 return
             }
         }
@@ -294,12 +337,24 @@ private final class DocumentBuilder {
                     updatedAt: updatedAt,
                     updatedAtText: updatedText,
                     preamble: preamble.isEmpty ? nil : preamble,
-                    sections: sections
+                    sections: sections,
+                    sortOrder: draft.sortOrder,
+                    colorOverride: draft.colorOverride
                 )
             )
         }
 
-        return projects
+        // `顺序：` reorders the tabs without touching where the project lives in
+        // the file; projects without it keep their file order after the sorted
+        // ones.
+        return projects.enumerated()
+            .sorted { lhs, rhs in
+                let left = lhs.element.sortOrder ?? Int.max
+                let right = rhs.element.sortOrder ?? Int.max
+                if left == right { return lhs.offset < rhs.offset }
+                return left < right
+            }
+            .map(\.element)
     }
 
     private static func trimBlankEdges(_ lines: [String]) -> String {
@@ -324,7 +379,9 @@ enum MetadataLine {
         }
         let key = String(line[line.startIndex..<separatorIndex]).trimmingCharacters(in: .whitespaces)
         let value = String(line[line.index(after: separatorIndex)...]).trimmingCharacters(in: .whitespaces)
-        guard !key.isEmpty, key.count <= 8 else { return nil }
+        // Labels can be phrases in English ("Stack layer offset"), so the limit
+        // only has to exclude prose; the settings block is the long-label case.
+        guard !key.isEmpty, key.count <= 40 else { return nil }
         // Guard against URLs and prose that merely contains a colon.
         guard !key.contains("/"), !key.contains("//"), !value.hasPrefix("//") else { return nil }
         return (key, value)

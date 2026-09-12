@@ -16,14 +16,16 @@ public enum TagColorRole: String, Sendable, CaseIterable, Hashable {
     /// Archived or finished in the Markdown file.
     case archived
 
-    public var displayName: String {
+    public var displayName: String { L10n.t(displayNameKey) }
+
+    public var displayNameKey: String {
         switch self {
-        case .active: return "最近更新"
-        case .attention: return "需要关注"
-        case .aging: return "开始变旧"
-        case .stale: return "长时间未更新"
-        case .paused: return "暂停"
-        case .archived: return "归档 / 已完成"
+        case .active: return "role.active"
+        case .attention: return "role.attention"
+        case .aging: return "role.aging"
+        case .stale: return "role.stale"
+        case .paused: return "role.paused"
+        case .archived: return "role.archived"
         }
     }
 }
@@ -86,18 +88,17 @@ public enum TagColorPolicy {
 public enum RelativeAgeFormatter {
     public static func string(from date: Date, now: Date = Date(), calendar: Calendar = .current) -> String {
         let seconds = now.timeIntervalSince(date)
-        if seconds < 0 { return "刚刚" }
-        if seconds < 60 { return "刚刚" }
+        if seconds < 60 { return L10n.t("time.justNow") }
         if seconds < 3600 {
-            return "\(Int(seconds / 60)) 分钟前"
+            return L10n.t("time.minutes", Int(seconds / 60))
         }
         if seconds < 86_400 {
-            return "\(Int(seconds / 3600)) 小时前"
+            return L10n.t("time.hours", Int(seconds / 3600))
         }
         let days = TagColorPolicy.wholeDays(from: date, to: now, calendar: calendar)
-        if days < 30 { return "\(max(1, days)) 天前" }
-        if days < 365 { return "\(days / 30) 个月前" }
-        return "\(days / 365) 年前"
+        if days < 30 { return L10n.t("time.days", max(1, days)) }
+        if days < 365 { return L10n.t("time.months", days / 30) }
+        return L10n.t("time.years", days / 365)
     }
 }
 

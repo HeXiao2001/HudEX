@@ -1,0 +1,299 @@
+/* HudEX — 简体中文 */
+
+/* 菜单栏 */
+"menu.showTags" = "显示 HudEX 标签";
+"menu.openMarkdown" = "打开 Markdown 文件";
+"menu.reveal" = "在 Finder 中显示";
+"menu.reload" = "重新载入";
+"menu.settings" = "设置…";
+"menu.launchAtLogin" = "开机时自动启动";
+"menu.showMenuBarIcon" = "显示 Menu Bar 图标";
+"menu.quit" = "退出 HudEX";
+"menu.tagsHidden" = "标签已隐藏";
+
+/* 标签右键菜单 */
+"context.openDetail" = "打开项目完整内容";
+"context.openMarkdown" = "打开 Markdown 文件（编辑）";
+
+/* 设置窗口 */
+"settings.window.title" = "HudEX 设置";
+"settings.tab.general" = "通用";
+"settings.tab.source" = "数据源";
+"settings.tab.layout" = "布局";
+"settings.tab.appearance" = "外观";
+"settings.tab.advanced" = "高级";
+
+/* 通用 */
+"general.section.startup" = "启动";
+"general.launchAtLogin" = "开机时自动启动";
+"general.requiresApproval" = "需要在系统设置中允许 HudEX。";
+"general.openLoginItems" = "打开登录项设置";
+"general.section.visibility" = "显示";
+"general.showTags" = "显示 HudEX 标签";
+"general.showMenuBarIcon" = "显示 Menu Bar 图标";
+"general.menuBarFooter" = "即使关闭 Menu Bar 图标，也可以在任意标签上右键（或再次打开 HudEX）进入设置。";
+"general.section.about" = "关于";
+"general.version" = "版本";
+"general.source" = "数据源";
+"general.projectCount" = "项目数";
+
+/* 数据源 */
+"source.section.file" = "HudEX.md";
+"source.choose" = "选择文件…";
+"source.open" = "打开文件";
+"source.reveal" = "在 Finder 中显示";
+"source.reload" = "重新载入";
+"source.footer" = "HudEX 只读写这一个本地文件，不连接 OneDrive、也不连接任何网络服务；同步交给同步客户端。";
+"source.section.status" = "状态";
+"source.lastLoaded" = "最近载入";
+"source.createExample" = "创建示例文件";
+"source.section.warnings" = "解析提示";
+"source.panel.title" = "选择 HudEX.md";
+"source.panel.prompt" = "选择";
+"source.missingHint" = "还没有 HudEX.md。可以创建一个示例文件，然后按自己的项目改。";
+
+/* 布局 */
+"layout.section.dock" = "Dock 几何";
+"layout.dock.edge" = "Dock 位置";
+"layout.dock.thickness" = "Dock 厚度";
+"layout.dock.occupied" = "Dock 占用范围";
+"layout.dock.source" = "检测来源";
+"layout.dock.screen" = "显示器";
+"layout.dock.footer" = "HudEX 不修改、不注入 Dock，只使用 Dock 没有占用的边缘空间；位置在启动时和系统报告屏幕变化时重新检测，不做持续监测、不需要任何权限。";
+"layout.section.slots" = "标签位置";
+"layout.slot.primary" = "主位置";
+"layout.slot.secondary" = "溢出位置";
+"layout.slot.capacity" = "%@・可放 %d 个";
+"layout.overflowWarning" = "有 %d 个项目没有显示。可以调小标签、放宽数量上限，或在下面手动修正 Dock 占用范围。";
+"layout.slots.footer" = "主位置放满之后才会用溢出位置，不会两侧同时出现。";
+"layout.section.mode" = "布局模式";
+"layout.mode" = "模式";
+"layout.mode.dockAdaptive" = "跟随 Dock";
+"layout.mode.dockSplit" = "Dock 那条边两侧分布";
+"layout.mode.fixedEdge" = "固定屏幕边";
+"layout.edge" = "屏幕边";
+"layout.anchor" = "对齐方式";
+"layout.anchor.start" = "起点";
+"layout.anchor.center" = "居中";
+"layout.anchor.end" = "终点";
+"layout.offset" = "额外偏移";
+"layout.mode.footer" = "“跟随 Dock”让标签待在 Dock 旁边；“固定屏幕边”忽略 Dock 在哪一边，例如 Dock 在左侧时把标签放到屏幕右边居中。";
+"layout.section.size" = "标签尺寸";
+"layout.size.width" = "标签宽度（伸进屏幕）";
+"layout.size.height" = "标签高度（沿屏幕边缘）";
+"layout.size.font" = "字号";
+"layout.size.autoWidth" = "自动（跟随 Dock 厚度 %d pt）";
+"layout.size.autoHeight" = "自动（按字号）";
+"layout.size.autoFont" = "自动（8–24 pt）";
+"layout.size.reset" = "恢复自动尺寸";
+"layout.size.footer" = "Dock 在左/右时，“宽度”是标签伸进屏幕的厚度，“高度”是沿边缘的长度；Dock 在下方时两者互换。";
+"layout.section.count" = "数量";
+"layout.count.max" = "最多显示标签数";
+"layout.count.perSlot" = "每个位置最多显示";
+"layout.count.unlimited" = "不限";
+"layout.count.value" = "%d 个";
+"layout.count.footer" = "超出的项目只是不显示，不会把标签压小。";
+"layout.section.spacing" = "间距";
+"layout.spacing.gap" = "与 Dock 的间距";
+"layout.spacing.corner" = "与屏幕转角的留白";
+"layout.section.calibration" = "手动校准";
+"layout.calibration.thickness" = "Dock 厚度（0 = 自动）";
+"layout.calibration.length" = "Dock 占用长度（0 = 自动）";
+"layout.calibration.autoValue" = "自动（当前 %d pt）";
+"layout.calibration.reset" = "恢复自动";
+"layout.calibration.redetect" = "重新检测 Dock";
+"layout.calibration.footer" = "macOS 26 起 Dock 自己的窗口覆盖整个屏幕，公开 API 无法量出它的长度，HudEX 按偏好设置保守估算；如果标签和 Dock 有重叠，把占用长度调大即可。";
+
+/* 外观 */
+"appearance.section.preview" = "简介窗口";
+"appearance.showUpdatedTime" = "在简介窗口显示“更新时间”";
+"appearance.preview.footer" = "标签只显示短名，颜色本身就是状态；鼠标悬停才会出现简介窗口。";
+"appearance.section.thresholds" = "颜色阈值";
+"appearance.days" = "%d 天";
+"appearance.color.active" = "最近更新（绿色）";
+"appearance.color.attention" = "需要关注（黄色）";
+"appearance.color.aging" = "开始变旧（橙色）";
+"appearance.thresholds.footer" = "超过最后一个阈值就是灰色（长时间未更新）。状态为“暂停 / 归档 / 已完成”的项目固定使用蓝灰色。";
+"appearance.section.legend" = "颜色示例";
+"appearance.legend.footer" = "颜色本身表示状态，标签上不会再画状态圆点。";
+"appearance.showing" = "显示";
+"appearance.hidden" = "隐藏";
+"appearance.section.stack" = "叠放";
+"appearance.stack.enabled" = "让标签像书签一样叠起来";
+"appearance.stack.overlap" = "重叠比例";
+"appearance.stack.rotation" = "倾斜角度";
+"appearance.stack.stagger" = "错位";
+"appearance.stack.footer" = "叠放和倾斜在静止时不消耗额外资源：只有鼠标在标签之间移动时才播放动画。";
+
+/* 高级 */
+"advanced.section.diagnostics" = "诊断";
+"advanced.reload" = "重新载入";
+"advanced.clearGeometry" = "清空几何缓存";
+"advanced.copyDiagnostics" = "复制诊断信息";
+"advanced.section.permissions" = "权限与网络";
+"advanced.accessibility" = "辅助功能权限";
+"advanced.screenRecording" = "屏幕录制权限";
+"advanced.network" = "网络访问";
+"advanced.notUsed" = "未使用";
+"advanced.none" = "无";
+"advanced.permissions.footer" = "HudEX 只使用公开的 AppKit API：Dock 位置与厚度来自系统保留区和 Dock 偏好设置，屏幕变化通过系统通知获知。标签尺寸与数量都可以手动设定，所以不需要任何 TCC 权限。";
+"advanced.section.resources" = "资源占用";
+"advanced.memory" = "内存占用";
+"advanced.cpu" = "累计 CPU 时间";
+"advanced.cpuValue" = "%.2f 秒（平均 %.3f%%）";
+"advanced.threads" = "线程数";
+"advanced.resources.footer" = "HudEX 不做轮询、不联网，只在设置变化时写回 Markdown。";
+"advanced.section.maintenance" = "维护";
+"advanced.structure" = "工程结构";
+"advanced.structure.value" = "HudEXCore（解析 / 布局 / 颜色）+ HudEXApp（窗口 / 设置 / 菜单栏）";
+"advanced.logging" = "日志";
+"advanced.logging.value" = "os.Logger，分类：app / markdown / watcher / dock / layout / window";
+
+/* 简介与完整窗口 */
+"preview.emptyHint" = "这个项目还没有 当前 / 下一步 / 最新对话 小节。";
+"detail.emptySections" = "这个项目还没有任何三级标题小节。";
+"detail.statusPrefix" = "状态：%@";
+"common.edit" = "编辑";
+"common.auto" = "自动";
+"common.default" = "默认";
+"common.on" = "开";
+"common.off" = "关";
+"common.preview" = "简介";
+
+/* Dock 检测来源 */
+"dock.source.reservedBand" = "屏幕保留区（精确）";
+"dock.source.preferences" = "Dock 偏好设置（估算）";
+"dock.source.windowList" = "CGWindowList（精确）";
+"dock.source.cache" = "上次成功检测";
+"dock.source.fallback" = "默认值";
+
+/* 边缘与位置 */
+"edge.left" = "左侧";
+"edge.right" = "右侧";
+"edge.bottom" = "下方";
+"slot.primary" = "主位置";
+"slot.secondary" = "溢出位置";
+
+/* 相对时间 */
+"time.justNow" = "刚刚";
+"time.minutes" = "%d 分钟前";
+"time.hours" = "%d 小时前";
+"time.days" = "%d 天前";
+"time.months" = "%d 个月前";
+"time.years" = "%d 年前";
+"time.updatedPrefix" = "更新：%@";
+
+/* 项目状态 */
+"status.active" = "进行中";
+"status.paused" = "暂停";
+"status.archived" = "归档";
+"status.done" = "已完成";
+"status.unknown" = "—";
+
+/* 颜色角色 */
+"role.active" = "最近更新";
+"role.attention" = "需要关注";
+"role.aging" = "开始变旧";
+"role.stale" = "长时间未更新";
+"role.paused" = "暂停";
+"role.archived" = "归档 / 已完成";
+
+/* 读取错误 */
+"error.fileMissing" = "找不到文件：%@";
+"error.unreadable" = "无法读取文件：%@";
+"error.undecodable" = "不是可识别的文本编码（请另存为 UTF-8）：%@";
+"error.tooLarge" = "文件过大（%d KB），已跳过。";
+"error.unchanged" = "文件没有变化。";
+"error.emptyDocument" = "文件暂时为空（或正在写入），先保留上一次内容。";
+
+/* 诊断信息 */
+"diagnostics.title" = "HudEX %@";
+"diagnostics.system" = "系统：%@";
+"diagnostics.source" = "数据源：%@";
+"diagnostics.projects" = "项目数：%d";
+"diagnostics.edge" = "Dock 边：%@";
+"diagnostics.thickness" = "Dock 厚度：%d pt";
+"diagnostics.occupied" = "Dock 占用：%d–%d pt";
+"diagnostics.sourceOfTruth" = "检测来源：%@";
+"diagnostics.primary" = "主位置：%@（容量 %d）";
+"diagnostics.secondary" = "溢出位置：%@（容量 %d）";
+"diagnostics.screen" = "屏幕：%@";
+"diagnostics.overflow" = "溢出项目：%d";
+"diagnostics.loadedAt" = "最近载入：%@";
+"diagnostics.error" = "错误：%@";
+"diagnostics.unavailable" = "不可用";
+
+/* Markdown 中的设置段 */
+"settingsblock.heading" = "HudEX 设置";
+"settingsblock.intro.1" = "这一段是 HudEX 自己的设置：改完保存，HudEX 会自动读取；在应用里改了设置，HudEX 也会写回这里。";
+"settingsblock.intro.2" = "每个选项上面一行是说明，下面一行是 `名称：值`。保留名称，只改值即可。";
+"settingsblock.updatedLabel" = "更新";
+"settingsblock.updatedGuide" = "这一段最后写入的时间。HudEX 用它判断哪一边更新。";
+"settingsblock.guide.layout.mode" = "布局模式：dock-adaptive（贴在 Dock 空出来的一侧）/ dock-split（Dock 那条边两侧分布）/ fixed-edge（固定在你选的屏幕边）";
+"settingsblock.guide.layout.edge" = "fixed-edge 模式使用的屏幕边：left / right / bottom";
+"settingsblock.guide.layout.anchor" = "沿边缘的对齐方式：start（从一端开始）/ center（居中）/ end（从另一端开始）";
+"settingsblock.guide.layout.offset" = "沿边缘的额外偏移，单位 pt，可以为负数";
+"settingsblock.guide.tag.width" = "标签伸进屏幕的宽度，单位 pt；0 = 跟随 Dock 厚度";
+"settingsblock.guide.tag.height" = "标签沿屏幕边缘的长度，单位 pt；0 = 自动";
+"settingsblock.guide.tag.fontSize" = "标签字号 8–24 pt；0 = 自动";
+"settingsblock.guide.tag.maxCount" = "最多显示几个标签；0 = 不限";
+"settingsblock.guide.tag.maxPerSlot" = "每个位置最多几个标签；0 = 不限";
+"settingsblock.guide.tag.gap" = "标签与 Dock 之间的间距，单位 pt";
+"settingsblock.guide.tag.corner" = "标签与屏幕转角之间的留白，单位 pt";
+"settingsblock.guide.tag.stack" = "标签是否像书签一样叠放：true / false";
+"settingsblock.guide.tag.stack.overlap" = "后一个标签遮住前一个的比例，0–0.8";
+"settingsblock.guide.tag.stack.rotation" = "叠放的倾斜角度，可以为负数";
+"settingsblock.guide.tag.stack.stagger" = "每个标签的错位距离，单位 pt";
+"settingsblock.guide.dock.thickness" = "手动指定 Dock 厚度，单位 pt；0 = 自动";
+"settingsblock.guide.dock.length" = "手动指定 Dock 占用长度，单位 pt；0 = 自动";
+"settingsblock.guide.show.tags" = "是否显示标签：true / false";
+"settingsblock.guide.show.menuBarIcon" = "是否显示菜单栏图标：true / false";
+"settingsblock.guide.show.updatedTime" = "简介窗口里是否显示“更新时间”：true / false";
+"settingsblock.guide.launchAtLogin" = "登录时自动启动（写入系统登录项）：true / false";
+"settingsblock.guide.color.activeDays" = "多少天内算“最近更新”（绿色）";
+"settingsblock.guide.color.attentionDays" = "超过多少天从黄色变成橙色";
+"settingsblock.guide.color.agingDays" = "超过多少天变成灰色（长时间未更新）";
+"settingsblock.guide.project.order" = "在项目里加一行 `顺序：1` 可以调整它在标签里的位置（数字小的在前）。";
+"settingsblock.guide.project.color" = "在项目里加一行 `颜色：绿色`（或 `颜色：#4C6FA0`）可以单独改这个标签的颜色。";
+"settingsblock.project.guide.title" = "项目内可选设置";
+
+/* 设置同步 */
+"sync.section" = "Markdown 设置";
+"sync.writeBack" = "把设置写回 HudEX.md";
+"sync.lastWrite" = "最近写回";
+"sync.never" = "还没有";
+"sync.writeNow" = "立即写回";
+"sync.readNow" = "从文件读取";
+"sync.footer" = "HudEX 会把所有设置写进 HudEX.md 最下面那一段带说明的文字里：你（或者 AI）只要改文字就能调整布局、颜色、阈值。改文件，应用会跟着变；在应用里改，文件也会跟着变。";
+
+/* 设置段字段名 */
+"settingsblock.label.layout.mode" = "布局模式";
+"settingsblock.label.layout.edge" = "固定屏幕边";
+"settingsblock.label.layout.anchor" = "对齐方式";
+"settingsblock.label.layout.offset" = "偏移";
+"settingsblock.label.tag.width" = "标签宽度";
+"settingsblock.label.tag.height" = "标签高度";
+"settingsblock.label.tag.fontSize" = "字号";
+"settingsblock.label.tag.maxCount" = "最多标签数";
+"settingsblock.label.tag.maxPerSlot" = "每位置最多";
+"settingsblock.label.tag.gap" = "Dock间距";
+"settingsblock.label.tag.corner" = "转角留白";
+"settingsblock.label.tag.stack" = "叠放";
+"settingsblock.label.tag.stack.overlap" = "叠放重叠";
+"settingsblock.label.tag.stack.rotation" = "叠放倾斜";
+"settingsblock.label.tag.stack.stagger" = "叠放错位";
+"settingsblock.label.dock.thickness" = "Dock厚度";
+"settingsblock.label.dock.length" = "Dock占用长度";
+"settingsblock.label.show.tags" = "显示标签";
+"settingsblock.label.show.menuBarIcon" = "菜单栏图标";
+"settingsblock.label.show.updatedTime" = "显示更新时间";
+"settingsblock.label.launchAtLogin" = "开机启动";
+"settingsblock.label.color.activeDays" = "绿色天数";
+"settingsblock.label.color.attentionDays" = "黄色天数";
+"settingsblock.label.color.agingDays" = "橙色天数";
+
+/* 语言 */
+"general.section.language" = "语言";
+"general.language" = "语言";
+"general.language.system" = "跟随系统";
+"general.language.footer" = "HudEX 目前提供英语和简体中文。“跟随系统”在系统语言既不是英语也不是简体中文时使用英语。";
