@@ -125,6 +125,7 @@ struct EdgeTabView: View {
                 .rotationEffect(.degrees(model.edge == .bottom ? -90 : 0))
                 .fixedSize()
             if model.style.usesHoleAndConnector {
+                holeTail
                 hole
             }
         }
@@ -190,26 +191,57 @@ struct EdgeTabView: View {
         }
     }
 
-    /// The punched hole, centred exactly on the tag's card-facing edge and
-    /// clipped by the tag itself. The string outside starts at this same point,
-    /// so hole and line meet with no gap and nothing sticks out.
+    /// The punched hole: a full circle, set in from the card-facing edge so it
+    /// stays whole. The string is joined to it by a hairline inside the tag
+    /// (`holeTail`), which continues into the curve outside.
     private var hole: some View {
         let color = tag.priority?.holeColor(isDark: isDark)
             ?? (isDark ? PaletteColor(hex: "#3C4046")! : PaletteColor(hex: "#FFFFFF")!)
         return Circle()
             .fill(Color(nsColor: EdgeTagStyle.color(color)))
             .overlay(Circle().strokeBorder(Color.black.opacity(0.18), lineWidth: 0.5))
-            .frame(width: 7, height: 7)
+            .frame(width: Self.holeDiameter, height: Self.holeDiameter)
             .offset(holeOffset)
     }
 
-    private var holeOffset: CGSize {
-        // Dead centre of the card-facing edge: right for a left-edge tag, left
-        // for a right-edge tag, above for a bottom tag.
+    /// Hairline from the hole's centre to the tag's edge: together with the hole
+    /// it covers that gap, so the curve outside looks like it leaves the hole.
+    /// It is clipped by the tag, so nothing pokes out.
+    private var holeTail: some View {
+        let color = PaperPalette.rule(
+            for: tag.role,
+            isDark: isDark,
+            custom: tag.colorOverride.flatMap { TagPalette.color(named: $0, isDark: isDark) }
+        )
+        return Rectangle()
+            .fill(Color(nsColor: EdgeTagStyle.color(color)).opacity(0.85))
+            .frame(width: tailLength, height: 1)
+            .offset(tailOffset)
+    }
+
+    /// How far the hole sits inside the tag.
+    static let holeDiameter: CGFloat = 7
+    static let holeInset: CGFloat = 6.5
+
+    private var tailLength: CGFloat { Self.holeInset + 0.5 }
+
+    private var tailOffset: CGSize {
+        let half = tailLength / 2
         switch model.edge {
-        case .left: return CGSize(width: tag.size.width / 2, height: 0)
-        case .right: return CGSize(width: -(tag.size.width / 2), height: 0)
-        case .bottom: return CGSize(width: 0, height: -(tag.size.height / 2))
+        case .left: return CGSize(width: tag.size.width / 2 - half, height: 0)
+        case .right: return CGSize(width: -(tag.size.width / 2 - half), height: 0)
+        case .bottom: return CGSize(width: 0, height: -(tag.size.height / 2 - half))
+        }
+    }
+
+    private var holeOffset: CGSize {
+        // Inset from the card-facing edge: right for a left-edge tag, left for a
+        // right-edge tag, above for a bottom tag.
+        let inset = Self.holeInset
+        switch model.edge {
+        case .left: return CGSize(width: tag.size.width / 2 - inset, height: 0)
+        case .right: return CGSize(width: -(tag.size.width / 2 - inset), height: 0)
+        case .bottom: return CGSize(width: 0, height: -(tag.size.height / 2 - inset))
         }
     }
 }

@@ -132,16 +132,24 @@ final class PreviewAnchorTests: XCTestCase {
         }
     }
 
-    func testHoleIsPunchedInTheCardFacingEdge() {
-        // The tag's hole and the start of the string are the same point, on the
-        // edge that faces the card — that is what removes the gap and the stub.
+    func testHoleSitsInsideTheTagAndTheStringMeetsItsTail() {
+        // The hole stays a full circle inside the tag; the string starts on the
+        // tag's edge and the tag draws the hairline that joins them.
         let tag = CGRect(x: 0, y: 8, width: 54, height: 25)
         let anchor = PreviewAnchor.solve(
             tagFrame: tag, edge: .left, cardSize: card, visible: visible, usesConnector: true
         )
-        XCTAssertEqual(anchor.holeCenter, anchor.connectorStart)
-        XCTAssertEqual(anchor.holeCenter.x, tag.maxX, accuracy: 0.01)
-        XCTAssertEqual(anchor.holeCenter.y, tag.midY, accuracy: 0.01)
+        XCTAssertEqual(anchor.connectorStart.x, tag.maxX, accuracy: 0.01)
+        XCTAssertEqual(anchor.connectorStart.y, anchor.holeCenter.y, accuracy: 0.01)
+        // The gap between the hole's centre and the edge is the tail length.
+        XCTAssertEqual(
+            anchor.connectorStart.x - anchor.holeCenter.x,
+            anchor.holeRadius + 3,
+            accuracy: 0.01
+        )
+        // The hole itself never leaves the tag.
+        XCTAssertTrue(tag.insetBy(dx: -0.01, dy: -0.01).contains(anchor.holeCenter))
+        XCTAssertLessThan(anchor.holeCenter.x + anchor.holeRadius, tag.maxX)
     }
 
     func testConnectorStartsOnThePaintedEdge() {

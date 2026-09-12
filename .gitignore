@@ -5,3 +5,4 @@ release/
 *.xcuserdata/
 script/certs/
 script/HudEX.iconset/
+snapshots/

@@ -195,11 +195,17 @@ public struct PreviewAnchor: Sendable, Equatable {
         card.origin.x = card.origin.x.rounded()
         card.origin.y = card.origin.y.rounded()
 
-        // The hole is punched in the tag's card-facing edge, so the tag's hole
-        // and the start of the string are the same point.
+        // The hole is a full circle inside the tag; the string starts where the
+        // tag's edge is, and the tag draws the hairline that joins the two.
         let holeRadius: CGFloat = 3.5
+        let inset = holeRadius + 3
         let edgePoint = holeEdgePoint ?? Self.defaultEdgePoint(of: tagFrame, edge: edge)
-        let hole = edgePoint
+        var hole = edgePoint
+        switch edge {
+        case .left: hole = CGPoint(x: edgePoint.x - inset, y: edgePoint.y)
+        case .right: hole = CGPoint(x: edgePoint.x + inset, y: edgePoint.y)
+        case .bottom: hole = CGPoint(x: edgePoint.x, y: edgePoint.y - inset)
+        }
 
         // The string arrives at the card's own punch hole, which sits *inside*
         // the paper (like a hole in a page) rather than straddling the edge.
