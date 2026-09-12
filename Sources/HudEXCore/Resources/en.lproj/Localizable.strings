@@ -326,3 +326,5 @@
 "appearance.sample.body" = "This is how the card will look.";
 
 "preview.truncated" = "… more in the full view (right-click the tag)";
+
+"appearance.sample.body2" = "rules line up with the text";

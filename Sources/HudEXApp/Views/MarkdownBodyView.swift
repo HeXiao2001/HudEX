@@ -98,14 +98,45 @@ struct SectionBlockView: View {
     let text: String
     var lineLimit: Int?
     var titleColor: Color = .secondary
-    var bodyColor: Color?
+    /// When set, faint rules are drawn behind the body text, spaced to match
+    /// its line grid — paper you can write on rather than a background pattern.
+    var ruleColor: Color?
+
+    /// Line height of the preview body text (font 12.5, lineSpacing 7).
+    static let ruleSpacing: CGFloat = 22
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(title)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(titleColor)
-            MarkdownBodyView(markdown: text, lineLimit: lineLimit)
+            MarkdownBodyView(markdown: text, lineSpacing: Self.ruleSpacing - 15, lineLimit: lineLimit)
+                .background(alignment: .top) {
+                    if let ruleColor {
+                        RuledLines(spacing: Self.ruleSpacing, color: ruleColor)
+                    }
+                }
+        }
+    }
+}
+
+/// Hairlines spaced to the text's line grid.
+private struct RuledLines: View {
+    let spacing: CGFloat
+    let color: Color
+
+    var body: some View {
+        GeometryReader { geometry in
+            let count = max(1, Int(geometry.size.height / spacing) + 1)
+            Path { path in
+                for index in 1...count {
+                    let y = CGFloat(index) * spacing
+                    guard y <= geometry.size.height + spacing else { break }
+                    path.move(to: CGPoint(x: 0, y: y))
+                    path.addLine(to: CGPoint(x: geometry.size.width, y: y))
+                }
+            }
+            .stroke(color, lineWidth: 0.7)
         }
     }
 }

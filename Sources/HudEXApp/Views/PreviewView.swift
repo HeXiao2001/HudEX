@@ -51,7 +51,14 @@ struct PreviewView: View {
                             Color(nsColor: EdgeTagStyle.color(connectorColor)),
                             style: StrokeStyle(lineWidth: 1.3, lineCap: .round)
                         )
-                        .opacity(0.9)
+                        .opacity(0.85)
+                    // The card is punched too, so the string visibly arrives at
+                    // a hole on this side as well.
+                    Circle()
+                        .fill(Color(nsColor: EdgeTagStyle.color(connectorHoleColor)))
+                        .overlay(Circle().strokeBorder(Color.black.opacity(0.16), lineWidth: 0.5))
+                        .frame(width: connectorHoleDiameter, height: connectorHoleDiameter)
+                        .position(x: connector.end.x, y: connector.end.y)
                 }
                 card
                     .frame(width: cardRect.width, height: cardRect.height, alignment: .topLeading)
@@ -61,6 +68,12 @@ struct PreviewView: View {
             // the card can never be squeezed into a smaller frame.
         }
     }
+
+    private var connectorHoleColor: PaletteColor {
+        PaperPalette.rule(for: model.role, isDark: isDark, custom: customColor)
+    }
+
+    private var connectorHoleDiameter: CGFloat { 7 }
 
     private var connectorColor: PaletteColor {
         PaperPalette.rule(for: model.role, isDark: isDark, custom: customColor)
@@ -105,12 +118,10 @@ struct PreviewView: View {
     private var cardBackground: some View {
         switch style {
         case .skeuomorphic:
-            // Paper in the tag's own colour: a brown tag opens a brown note.
-            ZStack {
-                Color(nsColor: EdgeTagStyle.color(appearance.paper(isDark: isDark)))
-                RuledPaperLines(color: appearance.rule(isDark: isDark), isDark: isDark)
-                PaperGrain(color: appearance.rule(isDark: isDark).withAlpha(isDark ? 0.10 : 0.07))
-            }
+            // Paper in the tag's own colour. The ruled lines are drawn behind
+            // each block of text instead (see `content`), so they line up with
+            // the writing instead of floating behind it.
+            Color(nsColor: EdgeTagStyle.color(appearance.paper(isDark: isDark)))
         case .frosted:
             Rectangle().fill(.regularMaterial)
         case .glass:
@@ -169,7 +180,10 @@ struct PreviewView: View {
                     title: section.title,
                     text: section.body,
                     lineLimit: section.singleLine ? 2 : 5,
-                    titleColor: headingColor
+                    titleColor: headingColor,
+                    ruleColor: style == .skeuomorphic
+                        ? Color(nsColor: EdgeTagStyle.color(appearance.rule(isDark: isDark))).opacity(isDark ? 0.35 : 0.45)
+                        : nil
                 )
                 .padding(.top, 2)
             }

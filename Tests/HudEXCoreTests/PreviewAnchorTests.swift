@@ -164,6 +164,50 @@ final class PreviewAnchorTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(anchor.panelFrame.minX, visual.maxX)
     }
 
+    func testBothEndsOfTheStringArePunched() {
+        let tag = CGRect(x: 0, y: 300, width: 54, height: 30)
+        let anchor = PreviewAnchor.solve(
+            tagFrame: tag,
+            edge: .left,
+            cardSize: card,
+            visible: visible,
+            usesConnector: true
+        )
+        // The tag hole is inside the tag...
+        XCTAssertTrue(tag.insetBy(dx: -0.01, dy: -0.01).contains(anchor.holeCenter))
+        // ...and the card hole sits on the card's near edge, aligned with the line.
+        XCTAssertTrue(anchor.cardFrame.insetBy(dx: -0.01, dy: -0.01).contains(anchor.cardHoleCenter))
+        XCTAssertEqual(anchor.connectorEnd, anchor.cardHoleCenter)
+        XCTAssertEqual(anchor.cardHoleCenter.x, anchor.cardFrame.minX, accuracy: 0.01)
+    }
+
+    func testTheCurveBendsVisibly() {
+        // Tag low on the left edge, card clamped up: the string must bend.
+        let tag = CGRect(x: 0, y: 8, width: 54, height: 30)
+        let anchor = PreviewAnchor.solve(
+            tagFrame: tag,
+            edge: .left,
+            cardSize: CGSize(width: 300, height: 260),
+            visible: visible,
+            usesConnector: true
+        )
+        // Sample the cubic at t = 0.5 and compare with the straight chord.
+        let t: CGFloat = 0.5
+        let mt = 1 - t
+        let x = mt * mt * mt * anchor.connectorStart.x
+            + 3 * mt * mt * t * anchor.connectorControl1.x
+            + 3 * mt * t * t * anchor.connectorControl2.x
+            + t * t * t * anchor.connectorEnd.x
+        let y = mt * mt * mt * anchor.connectorStart.y
+            + 3 * mt * mt * t * anchor.connectorControl1.y
+            + 3 * mt * t * t * anchor.connectorControl2.y
+            + t * t * t * anchor.connectorEnd.y
+        let chordMidY = (anchor.connectorStart.y + anchor.connectorEnd.y) / 2
+        let chordMidX = (anchor.connectorStart.x + anchor.connectorEnd.x) / 2
+        let deviation = hypot(x - chordMidX, y - chordMidY)
+        XCTAssertGreaterThan(deviation, 4, "the line is nearly straight")
+    }
+
     func testWithoutConnectorTheCardKeepsAGap() {
         let tag = CGRect(x: 0, y: 8, width: 54, height: 25)
         let anchor = PreviewAnchor.solve(
