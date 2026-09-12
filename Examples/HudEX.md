@@ -1,62 +1,78 @@
-## GeoRule
+## Website redesign
 
-短名：GR
-状态：进行中
-更新：2026-09-12 16:30
+short: WEB
+status: active
+updated: 2026-09-12 16:30
+priority: high
 
-### 当前
+### Current
 
-2019-01、2019-02、2019-12 三期正式数据已经开始运行，初步结果正常。
+The new homepage is in review; the rest of the site still uses the old layout.
 
-### 下一步
+### Next
 
-检查规则稳定性、K 数量和 h 是否触及搜索边界。
+Finish the mobile breakpoints, then hand the copy over to the team.
 
-### 最新对话
+### Latest conversation
 
-模型发展总结20260907
+Homepage layout review
 
-### 备注
+### Notes
 
-- 需要整理实验脚本最新版本
-- 后续考虑加入 baseline-2
-
----
-
-## OD
-
-短名：OD
-状态：进行中
-更新：2026-09-12 15:00
-
-### 当前
-
-标定阶段完成，正在整理第一轮结果。
-
-### 下一步
-
-补齐缺失时段的数据，确认 OD 矩阵的对称性。
-
-### 最新对话
-
-博士论文模型整理20260912
+- Waiting on the final logo files
+- Design tokens live in [this document](https://example.com/tokens)
 
 ---
 
-## 博士论文
+## Quarterly report
 
-短名：PhD
-状态：进行中
-更新：2026-08-23 21:10
+short: Q3
+order: 1
+status: active
+updated: 2026-09-08 15:00
 
-### 当前
+### Current
 
-第三章提纲已经写完，等待补充文献。
+The numbers are in; the summary slide still needs the regional split.
 
-### 下一步
+### Next
 
-把方法部分的推导补全。
+Ask finance for the three missing figures.
 
-### 最新对话
+### Latest conversation
 
-论文结构讨论20260820
+Draft feedback
+
+### Data sources
+
+Exports from the finance portal, refreshed every Monday.
+
+---
+
+## Reading list
+
+status: paused
+updated: 2026-08-20 10:00
+
+### Current
+
+Paused while the launch work is on.
+
+### Next
+
+Finish the two books already started, then pick the next one.
+
+---
+
+## Home studio
+
+short: HS
+color: #4C6FA0
+status: done
+updated: 2026-07-30 18:00
+
+### Current
+
+Built and in use; keeping the notes here for reference.
+
+---

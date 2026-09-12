@@ -195,10 +195,6 @@ final class DocumentSourceTests: XCTestCase {
         XCTAssertTrue(url.path.hasSuffix("Documents/HudEX.md"))
     }
 
-    func testTemplateIsValid() {
-        let document = MarkdownProjectParser().parse(HudEXTemplate.markdown())
-        XCTAssertEqual(document.projects.count, 3)
-        XCTAssertEqual(document.projects.map(\.shortTitle), ["GR", "OD", "PhD"])
-        XCTAssertTrue(document.projects.allSatisfy { !$0.sections.isEmpty })
-    }
+    // The starter file is covered in detail by `ExamplesTests`.
+
 }

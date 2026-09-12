@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import HudEXCore
 
 /// Development helper: captures HudEX's own panels to PNG files so the visuals
 /// can be inspected without a screen recorder.
@@ -43,7 +44,11 @@ enum SnapshotDebugger {
     /// meet when they live in different windows.
     static func captureScene(_ label: String) {
         guard let directory else { return }
-        let windows = NSApp.windows.filter { $0.isVisible && $0.frame.width > 1 && $0.frame.height > 1 }
+        // Only the real surfaces: tiny windows (the status item, helpers) would
+        // blow the union up to the whole screen.
+        let windows = NSApp.windows.filter {
+            $0.isVisible && $0.frame.width >= 40 && $0.frame.height >= 40
+        }
         guard !windows.isEmpty else { return }
 
         let union = windows.reduce(CGRect.null) { $0.union($1.frame) }
@@ -51,7 +56,20 @@ enum SnapshotDebugger {
 
         let image = NSImage(size: union.size)
         image.lockFocus()
-        NSColor.clear.set()
+        // Documentation captures want a visible backdrop (the real panels are
+        // transparent, which is invisible in a PNG); `HUDEX_SNAPSHOT_BG=#RRGGBB`
+        // fills the canvas for that purpose.
+        if let hex = ProcessInfo.processInfo.environment["HUDEX_SNAPSHOT_BG"],
+           let color = PaletteColor(hex: hex) {
+            NSColor(
+                srgbRed: color.red,
+                green: color.green,
+                blue: color.blue,
+                alpha: 1
+            ).set()
+        } else {
+            NSColor.clear.set()
+        }
         NSRect(origin: .zero, size: union.size).fill()
         for window in windows {
             guard let view = window.contentView else { continue }

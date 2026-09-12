@@ -2,151 +2,160 @@
 
 **Always present, almost invisible.**
 
-HudEX 是常驻在 macOS 屏幕边缘的「近期项目上下文显示器」。
-它只在 Dock 没有占用的边缘空间里放几个纯色小标签，鼠标悬停时才展开简介。
+HudEX puts a handful of solid-colour bookmarks in the free space along the edge
+of your screen — normally right next to the Dock. Each bookmark is one project
+you are juggling. Hover it and a small card shows where that project stands,
+what is next, and the name of the most recent conversation about it.
 
-它不是任务管理器、不是看板、不是知识库、不是 AI：只是让你同时推进几个项目时，
-随时知道「每个项目最近做到哪、下一步做什么、最近一次重要的对话叫什么」。
+Everything comes from **one Markdown file** that you — or an AI — can edit.
 
-## 一分钟上手
+![HudEX tags and hover card](docs/images/style-skeuomorphic.png)
 
-1. 在 Obsidian / 任意编辑器里写好一个 `HudEX.md`（格式见下）。
-2. 打开 HudEX，在「设置 › 数据源」里选中这个文件。
-3. 完成。之后 HudEX 只做两件事：读这个文件、在边缘显示标签。
+## What it is
 
-默认会依次尝试：`~/Documents/HudEX.md`、`~/Library/CloudStorage/OneDrive-*/HudEX.md`、
-`~/Desktop/HudEX.md`。也可以在设置里指定任意路径。
+A tiny, always-on display of *recent project context*, for anyone who keeps
+several projects moving at once: a launch, a report, a side project, a reading
+list, a room you are renovating.
 
-## 数据格式
+It answers four questions without you opening anything:
 
-```markdown
-# HudEX
+1. Which projects am I in the middle of?
+2. Where did each one get to?
+3. What is the next step?
+4. Which one has gone quiet?
 
-## GeoRule
+It is **not** a task manager, a calendar, a Kanban board, a note archive or an
+AI agent — and it deliberately isn't.
 
-短名：GR
-状态：进行中
-更新：2026-09-12 16:30
-
-### 当前
-
-2019-01、2019-02、2019-12 三期正式数据已经开始运行。
-
-### 下一步
-
-检查规则稳定性、K 数量和 h 是否触及搜索边界。
-
-### 最新对话
-
-模型发展总结20260907
-
-### 备注
-
-- 需要整理实验脚本最新版本
-```
-
-* `##` 是一个项目；`#` 是可选的文档标题。
-* 项目下面可以有 `短名：`、`状态：`、`更新：`、`顺序：`、`颜色：`；短名不写就自动生成。
-* 内置小节：`当前` / `下一步` / `最新对话` / `备注`。
-* 其他 `### 标题` 也允许存在，会在「完整窗口」里原样显示。
-* 图片、附件、嵌入一律不加载；普通网页链接可以点击，交给系统浏览器打开。
-
-标签颜色就是状态：绿（最近更新）、黄（需要关注）、橙（开始变旧）、灰（长时间未更新）、
-蓝灰（暂停 / 归档 / 已完成）。阈值可以在设置里调整。
-
-## 交互
-
-| 操作 | 结果 |
-|------|------|
-| 鼠标悬停标签 | 弹出简介窗口（项目名 / 当前 / 下一步 / 最新对话） |
-| 右键标签 | 打开项目完整内容、打开 Markdown 文件（编辑）、重新载入、设置…、退出 |
-| 菜单栏图标 | 同样的入口；可以随时关掉，右键标签仍然能进设置 |
-| 再次打开 HudEX.app | 直接打开设置窗口（菜单栏图标关掉后的第二条恢复路径） |
-
-默认标签像书签一样叠放、略带倾斜；鼠标在标签之间移动时，被指到的那张会轻轻抬起、
-回到原位（静止时不播放动画）。这些都可以在「设置 › 外观」里关掉或调整。
-
-## 三种外观风格（设置 › 外观 › 风格）
-
-设置里是三个并列的卡片，每张卡片自己就是预览图：
-
-| 风格 | 标签 | 悬停卡片 |
-|------|------|----------|
-| 拟物（默认） | 小卡片，边缘一点点立体感，朝向卡片一侧有个洞洞 | **标签同色系的粉彩纸**（黄标签→暖黄纸），横线与文字对齐，文字始终是深色；洞洞之间用一条曲线连起来 |
-| 磨砂玻璃 | 纯色 + 一圈亮边 | 磨砂半透明，任何背景下文字都清楚 |
-| 极简 | 只有线框、文字用状态色 | 只有线框，完全透明 |
-
-拟物风格里，每个项目的**连接线都不一样**：弯的方向、幅度、甚至是不是 S 形，都由项目 id 稳定决定
-（同一个标签每次悬停都一样，不会抖动）；线的两端都打在洞上——标签上的洞、卡片纸里面的洞。
-洞的颜色来自项目里的 `优先级：高 / 中 / 低`（也可以写 `priority: high`）。
-
-卡片的弹出方向永远背离标签所在的屏幕边：标签在左边就往右弹、在右边往左弹、在下边往上弹，
-并且一律被约束在 Dock 与菜单栏之外的可用区域里。
-
-## 布局模式
-
-「设置 › 布局」里有三种模式：
-
-| 模式 | 行为 |
-|------|------|
-| 跟随 Dock | 贴在 Dock 空出来的一侧；放满后从这条边的另一端继续 |
-| Dock 那条边两侧分布 | 一半在一侧、一半在另一侧 |
-| 固定屏幕边 | 自己选左/右/下 + 起点/居中/终点 + 偏移，跟 Dock 在哪一边无关（同一条边时仍然会避开 Dock） |
-
-标签宽、高、字号、间距、最多显示数量、每个位置最多数量都可以手动固定，
-Dock 厚度和占用长度也能手动校准——固定一次之后不需要任何持续监测。
-
-## 设置页
-
-四个标签：**通用**（开机启动 / 显示 / 语言 / 关于）、**数据源**（文件、设置同步、状态、诊断）、
-**布局**（模式、尺寸与数量、间距与校准）、**外观**（风格卡片、简介窗口、叠放、颜色阈值）。
-
-## 设置写在 Markdown 里（双向同步）
-
-`HudEX.md` 最下面会有一段`# HudEX 设置`：**每个选项上面一行说明、下面一行 `名称：值`**。
-你（或你的 AI）改文字保存，HudEX 立刻生效；在应用里改了设置，HudEX 也会把这一段写回去。
-
-这意味着：可以让 AI 定时维护这个文件，顺手调整标签顺序（`顺序：`）、
-单个标签的颜色（`颜色：绿色` / `颜色：#4C6FA0`）、优先级（`优先级：高`）、
-颜色阈值、布局模式、外观风格等。
-
-## 语言
-
-界面提供英语和简体中文：默认跟随系统语言（系统语言既不是英语也不是简体中文时用英语），
-也可以在「设置 › 通用 › 语言」里手动固定。
-
-## 明确不做的事
-
-不联网、不调用任何 AI、不内置编辑器、不用 WebView / Electron / Node、不存历史、
-不做自动滚动和轮播、不显示进度条、不加载图片附件、不修改 Dock。
-
-编辑就是「用系统默认程序打开 `HudEX.md`」——你在 Obsidian 里改，HudEX 自己刷新。
-
-## 权限
-
-**不需要任何 TCC 权限**：不使用辅助功能、不使用屏幕录制、不联网。
-Dock 的位置和厚度来自系统保留区和 Dock 的偏好设置，屏幕变化通过系统通知获知，
-标签尺寸和数量都可以在设置里手动固定，因此也不需要持续监测 Dock。
-
-## 构建
+## Quick start
 
 ```bash
-./script/build_and_run.sh              # 构建 dist/HudEX.app 并启动
-./script/build_and_run.sh --no-launch  # 只构建
-./script/build_and_run.sh --release    # Release 构建
-swift test --disable-sandbox           # 单元测试（71 项）
+git clone <this repo> && cd HudEX
+./script/build_and_run.sh          # builds dist/HudEX.app and launches it
 ```
 
-要求 macOS 26 / Xcode 26。工程是纯 SwiftPM（`HudEXCore` + `HudEXApp`），
-app bundle 由脚本组装（`LSUIElement`，无 Dock 图标），本地化资源随包一起拷贝。
+Then open **Settings → Source** and pick your `HudEX.md` (or press
+*Create Example File*). That's it — HudEX only ever reads and writes that one
+file, plus its own settings block at the bottom of it.
 
-## 结构
+Requires macOS 26 and Xcode 26 (SwiftPM only, no Xcode project).
+
+## The file
+
+```markdown
+## Website redesign          ← one project per `##` heading
+
+short: WEB                   ← optional: the label on the bookmark
+status: active               ← active / paused / archived / done
+updated: 2026-09-12 16:30    ← drives the colour
+priority: high               ← optional: colours the punched hole
+
+### Current                  ← sections; 当前 / 下一步 / 最新对话 / 备注 are
+The new homepage is in review; the rest of the site still uses the old layout.
+
+### Next
+Finish the mobile breakpoints, then hand the copy over to the team.
+
+### Latest conversation
+Homepage layout review
+```
+
+* `###` headings are free-form: the four above are recognised and shown in the
+  hover card, any other heading (`### Data sources`, …) renders in the full view.
+* Extra per-project keys: `order: 1` (position among the bookmarks),
+  `color: #4C6FA0` or `color: teal` (override the bookmark colour).
+* Chinese keys work too (`短名：`, `状态：`, `更新：`, `顺序：`, `颜色：`, `优先级：`) —
+  the two spellings can even be mixed in one file.
+* Only text and ordinary `http(s)` links. Images, attachments and embeds are
+  never loaded, downloaded or rendered.
+* A project with no `short:` gets an abbreviation derived from its title
+  (`GeoRule` → `GR`, `Reading list` → `RL`).
+
+Examples: [`Examples/HudEX.md`](Examples/HudEX.md) (English) ·
+[`Examples/HudEX.zh.md`](Examples/HudEX.zh.md) (中文)
+
+## Styles
+
+Pick one in **Settings → Appearance**; each option previews itself.
+
+| Skeuomorphic (default) | Frosted glass | Minimal |
+|---|---|---|
+| ![skeuomorphic](docs/images/style-skeuomorphic.png) | ![frosted](docs/images/style-frosted.png) | ![minimal](docs/images/style-minimal.png) |
+| Coloured paper card with ruled lines; a punched hole joins it to the bookmark with its own little string. | Translucent pane, readable over any background. | Outlines only. |
+
+Every string hangs differently — direction, curve and even the occasional
+S-bend come from a stable hash of the project, so the same bookmark always
+hangs the same way, and nothing animates while the pointer is still.
+
+## Settings live in the file
+
+The bottom of `HudEX.md` holds a documented settings block — one guide line,
+then one `key：value` line per option:
+
+```markdown
+# HudEX Settings
+
+> Appearance style: skeuomorphic / frosted / minimal
+Appearance style：skeuomorphic
+
+> Tag width into the screen, in points. 0 = follow the Dock thickness
+Tag width：0
+```
+
+Change a value there and HudEX applies it. Change a setting in the app and
+HudEX writes it back (debounced, atomically; your project content above is left
+untouched). That makes the file fully driveable by a person or an AI — layout,
+colours, thresholds, counts, even the style.
+
+## Where the bookmarks go
+
+| Dock | Primary position | Overflow |
+|---|---|---|
+| Left | bottom-left, growing up | top-left, growing down |
+| Right | bottom-right, growing up | top-right, growing down |
+| Bottom | bottom-left, growing right | bottom-right, growing left |
+
+Three modes: **follow the Dock** (default), **split both sides of the Dock's
+edge**, or **pin to a screen edge of your choice** (left/right/bottom, anchored
+start/centre/end, with an offset) — so a left Dock can show bookmarks on the
+right edge if you prefer.
+
+Bookmarks are never wider than the Dock, never overlap it, never cover the menu
+bar, and overflow only starts once the primary position is full.
+
+## Permissions, network, resources
+
+* **No permissions at all.** No Accessibility, no Screen Recording, no network.
+  Dock position and thickness come from the system's reserved screen area and
+  the Dock's own preferences; screen changes arrive as ordinary notifications.
+* **No polling.** No timers except a single one at midnight (colour rollover)
+  and a once-a-minute refresh while a card is on screen.
+* Measured idle cost: **~0 % CPU, ~16 MB, ~0.1 wakeups/s, 0 network**.
+
+## What it deliberately does not do
+
+No AI calls, no sync service, no built-in editor, no WebView/Electron/Node, no
+history, no auto-scroll, no progress bars, no image attachments, no mobile app.
+Editing means "open `HudEX.md` in whatever your default Markdown editor is".
+Syncing is your sync client's job (the file just has to be local and up to date).
+
+## Repository layout
 
 ```
-Sources/HudEXCore    解析 / 布局 / 颜色 / 文件签名 —— 纯逻辑，可单元测试
-Sources/HudEXApp     AppKit 窗口与状态栏 + SwiftUI 内容视图
-Tests/HudEXCoreTests 97 项测试：解析、布局模式、叠放、调色板对比度、设置双向同步、本地化完整性
-Examples/HudEX.md    示例数据文件
+Sources/HudEXCore     parsing / layout / colour / file signatures — pure logic, unit tested
+Sources/HudEXApp      AppKit shell (panels, status item, settings window) + SwiftUI views
+Tests/HudEXCoreTests  123 tests: parser, layout modes, stacking, palette, sync, i18n
+Examples/             example documents (English + Chinese)
+docs/                 design and verification notes
+script/               build / install / asset scripts
 ```
 
-设计说明与迁移记录见 `docs/HudEX-v1.md`。
+```bash
+swift test                # 123 tests
+./script/build_and_run.sh # build + bundle + sign + run
+./script/install.sh       # copy to /Applications
+```
+
+## Licence
+
+Not chosen yet — add one before publishing.

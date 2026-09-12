@@ -6,3 +6,6 @@ release/
 script/certs/
 script/HudEX.iconset/
 snapshots/
+.claude/
+.codebuddy/
+.zcode/

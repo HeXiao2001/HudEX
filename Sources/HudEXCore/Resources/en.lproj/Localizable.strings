@@ -322,3 +322,8 @@
 "style.minimal" = "Minimal";
 "style.minimal.guide" = "No fills at all: outlined tags and an outlined card, the quietest of the three.";
 "appearance.sample.title" = "OD";
+
+/* Starter file sample projects (shown to the user on first run) */
+"sample.project1" = "## Website redesign\n\nshort: WEB\nstatus: active\nupdated: {DATE}\npriority: high\n\n### Current\n\nThe new homepage is in review; the rest of the site still uses the old layout.\n\n### Next\n\nFinish the mobile breakpoints, then hand the copy over to the team.\n\n### Latest conversation\n\nHomepage layout review\n\n### Notes\n\n- Waiting on the final logo files";
+"sample.project2" = "## Quarterly report\n\nshort: Q3\norder: 1\nstatus: active\nupdated: {DATE}\n\n### Current\n\nThe numbers are in; the summary slide still needs the regional split.\n\n### Next\n\nAsk finance for the three missing figures.\n\n### Latest conversation\n\nDraft feedback\n\n### Data sources\n\nExports from the finance portal, refreshed every Monday.";
+"sample.project3" = "## Reading list\n\nstatus: paused\nupdated: {DATE}\n\n### Current\n\nPaused while the launch work is on.\n\n### Next\n\nFinish the two books already started, then pick the next one.";
