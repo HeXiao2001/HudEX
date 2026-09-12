@@ -440,6 +440,63 @@ final class VisualEnvelopeTests: XCTestCase {
         }
     }
 
+    /// The panel must contain everything the tag view paints — checked against
+    /// the *drawn* corners (same transform the view applies), for every edge and
+    /// angle, resting and hovered. This is the bug class that clipped the top
+    /// card twice.
+    func testPanelContainsTheDrawnCorners() {
+        for edge in [DockEdge.left, .right, .bottom] {
+            let dock = DockBounds(
+                edge: edge,
+                thickness: 54,
+                occupiedStart: edge == .bottom ? 400 : 200,
+                occupiedEnd: edge == .bottom ? 1000 : 760
+            )
+            for rotation in [CGFloat(-8), -5, -2, 0, 2, 5, 8] {
+                let metrics = TabMetrics.make(
+                    dockThickness: 54,
+                    stack: StackStyle(
+                        isEnabled: true,
+                        overlapFraction: 0.34,
+                        rotationDegrees: rotation,
+                        stagger: 2.5
+                    )
+                )
+                let plan = EdgeLayoutEngine.plan(
+                    projectCount: 5,
+                    metrics: metrics,
+                    screen: screen,
+                    dock: dock
+                )
+
+                for placement in plan.placements {
+                    for hovered in [true, false] {
+                        for corner in [
+                            CGPoint(x: placement.frame.minX, y: placement.frame.minY),
+                            CGPoint(x: placement.frame.maxX, y: placement.frame.minY),
+                            CGPoint(x: placement.frame.maxX, y: placement.frame.maxY),
+                            CGPoint(x: placement.frame.minX, y: placement.frame.maxY)
+                        ] {
+                            let drawn = EdgeLayoutEngine.drawnPoint(
+                                localPoint: corner,
+                                in: placement.frame,
+                                rotationDegrees: placement.rotationDegrees,
+                                edge: edge,
+                                hoverOffset: placement.hoverOffset,
+                                hovered: hovered
+                            )
+                            XCTAssertTrue(
+                                plan.boundingBox.insetBy(dx: -0.01, dy: -0.01).contains(drawn),
+                                "corner \(drawn) escapes the panel \(plan.boundingBox) "
+                                    + "(edge \(edge), rotation \(rotation)°, hovered \(hovered))"
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     func testEnvelopeIncludesTheHoverPush() {
         let dock = DockBounds(edge: .left, thickness: 54, occupiedStart: 200, occupiedEnd: 760)
         let plan = EdgeLayoutEngine.plan(

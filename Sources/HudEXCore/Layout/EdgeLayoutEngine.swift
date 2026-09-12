@@ -306,9 +306,13 @@ public enum EdgeLayoutEngine {
     /// rotated or lifted tag is never cut off — which is what made the tag's
     /// rounded corners disappear before.
     static func visualBounds(of placement: TagPlacement, metrics: TabMetrics, edge: DockEdge) -> CGRect {
+        // `screenRotation` mirrors the angle: the tag view rotates in SwiftUI's
+        // flipped space, so the on-screen AABB is the one for the negated angle.
+        // Using the raw angle left the box up to ~4 pt too small at the far end
+        // of the stack, which is what clipped the top card.
         var box = rotatedBounds(
             of: placement.frame,
-            degrees: placement.rotationDegrees,
+            degrees: screenRotation(of: placement),
             anchor: rotationAnchor(for: edge)
         )
 
@@ -397,6 +401,12 @@ public enum EdgeLayoutEngine {
         )
     }
 
+    /// The angle that produces the same on-screen result as the tag view's
+    /// rotation (which happens in SwiftUI's y-down coordinate space).
+    public static func screenRotation(of placement: TagPlacement) -> CGFloat {
+        -placement.rotationDegrees
+    }
+
     /// Nudges a rotated tag so its outer edge stays exactly on the screen edge.
     ///
     /// Rotating around the edge midpoint swings the corners about 1.5 pt in or
@@ -408,7 +418,8 @@ public enum EdgeLayoutEngine {
         edge: DockEdge
     ) -> CGRect {
         guard rotationDegrees != 0 else { return frame }
-        let rotated = rotatedBounds(of: frame, degrees: rotationDegrees, anchor: rotationAnchor(for: edge))
+        // Same mirroring as `visualBounds`: bounds must describe what is drawn.
+        let rotated = rotatedBounds(of: frame, degrees: -rotationDegrees, anchor: rotationAnchor(for: edge))
         switch edge {
         case .left:
             return frame.offsetBy(dx: frame.minX - rotated.minX, dy: 0)
