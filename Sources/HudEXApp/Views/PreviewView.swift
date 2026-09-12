@@ -1,21 +1,113 @@
 import HudEXCore
 import SwiftUI
 
-/// The hover preview: project name, 当前 / 下一步 / 最新对话.
+/// The hover card: project name, 当前 / 下一步 / 最新对话.
 ///
-/// Purely informational — no buttons. Editing lives in the menu bar
-/// ("打开 Markdown 文件"), and the full project text is one right-click away on
-/// the tag itself. Keeping the panel free of controls means it never takes
-/// key-window status and stays cheap while the pointer moves.
+/// Purely informational — no buttons. The style decides the surface: ruled
+/// paper with a connector line (skeuomorphic), frosted material, liquid glass,
+/// or a bare outline. Geometry always comes from `PreviewAnchor`.
 struct PreviewView: View {
     let model: PreviewModel
+    let style: AppearanceStyle
+    /// Card frame inside the panel, top-left origin.
+    let cardRect: CGRect
+    /// Connector geometry inside the panel, top-left origin.
+    let connector: PreviewConnector?
 
     static let width: CGFloat = 300
 
+    struct PreviewConnector: Equatable {
+        var start: CGPoint
+        var control1: CGPoint
+        var control2: CGPoint
+        var end: CGPoint
+    }
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var isDark: Bool { colorScheme == .dark }
+
     var body: some View {
+        ZStack(alignment: .topLeading) {
+            if let connector {
+                ConnectorShape(connector: connector)
+                    .stroke(
+                        Color(nsColor: EdgeTagStyle.color(PaletteColor(hex: "#9AA0A8")!)),
+                        style: StrokeStyle(lineWidth: 1.2, lineCap: .round)
+                    )
+                    .opacity(0.85)
+            }
+            card
+                .frame(width: cardRect.width, height: cardRect.height, alignment: .topLeading)
+                .position(x: cardRect.midX, y: cardRect.midY)
+        }
+    }
+
+    private var card: some View {
+        content
+            .padding(style == .glass ? 11 : 13)
+            .background(cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(borderColor, lineWidth: 1)
+            )
+            .shadow(color: shadowColor, radius: style == .minimal ? 0 : 6, y: 2)
+    }
+
+    private var cornerRadius: CGFloat {
+        switch style {
+        case .glass: return 14
+        case .skeuomorphic: return 6
+        case .frosted: return 10
+        case .minimal: return 4
+        }
+    }
+
+    @ViewBuilder
+    private var cardBackground: some View {
+        switch style {
+        case .skeuomorphic:
+            ZStack {
+                Color(nsColor: EdgeTagStyle.color(isDark
+                    ? PaletteColor(hex: "#26262A")!
+                    : PaletteColor(hex: "#FBF7EC")!))
+                RuledPaperLines(isDark: isDark)
+            }
+        case .frosted:
+            Rectangle().fill(.regularMaterial)
+        case .glass:
+            Rectangle().fill(.ultraThinMaterial)
+        case .minimal:
+            Color.clear
+        }
+    }
+
+    private var borderColor: Color {
+        switch style {
+        case .skeuomorphic:
+            return Color(nsColor: EdgeTagStyle.color(PaletteColor(hex: isDark ? "#3C3C42" : "#E2D9C4")!))
+        case .frosted:
+            return Color.white.opacity(isDark ? 0.12 : 0.35)
+        case .glass:
+            return Color.white.opacity(isDark ? 0.16 : 0.45)
+        case .minimal:
+            return Color.secondary.opacity(0.6)
+        }
+    }
+
+    private var shadowColor: Color {
+        switch style {
+        case .skeuomorphic: return Color.black.opacity(isDark ? 0.45 : 0.18)
+        case .frosted: return Color.black.opacity(0.18)
+        case .glass: return Color.black.opacity(0.12)
+        case .minimal: return .clear
+        }
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
-
             ForEach(model.sections) { section in
                 SectionBlockView(
                     title: section.title,
@@ -24,7 +116,6 @@ struct PreviewView: View {
                 )
                 .padding(.top, 2)
             }
-
             if let hint = model.emptyHint {
                 Text(hint)
                     .font(.system(size: 11.5))
@@ -32,8 +123,7 @@ struct PreviewView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(12)
-        .frame(width: Self.width, alignment: .leading)
+        .frame(width: PreviewView.width, alignment: .leading)
         .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -56,20 +146,56 @@ struct PreviewView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                 if let updated = model.updatedLine {
-                    Text("·")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.tertiary)
-                    Text(updated)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+                    Text("·").font(.system(size: 11)).foregroundStyle(.tertiary)
+                    Text(updated).font(.system(size: 11)).foregroundStyle(.secondary)
                 }
             }
         }
     }
 }
 
-/// The full project text. Reached by right-clicking a tag → “打开项目完整内容”,
-/// never by a button inside the hover preview.
+/// Faint ruled lines, the cheapest possible "paper" cue.
+private struct RuledPaperLines: View {
+    let isDark: Bool
+
+    var body: some View {
+        GeometryReader { geometry in
+            let spacing: CGFloat = 22
+            let count = max(1, Int(geometry.size.height / spacing))
+            Path { path in
+                for index in 1...count {
+                    let y = CGFloat(index) * spacing
+                    path.move(to: CGPoint(x: 0, y: y))
+                    path.addLine(to: CGPoint(x: geometry.size.width, y: y))
+                }
+            }
+            .stroke(
+                Color(nsColor: EdgeTagStyle.color(PaletteColor(hex: isDark ? "#33333A" : "#E7DFCC")!)),
+                lineWidth: 0.8
+            )
+        }
+    }
+}
+
+/// The curved "string" from the tag's hole to the card.
+private struct ConnectorShape: Shape {
+    let connector: PreviewView.PreviewConnector
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: connector.start)
+        path.addCurve(
+            to: connector.end,
+            control1: connector.control1,
+            control2: connector.control2
+        )
+        return path
+    }
+
+    var animatableData: EmptyAnimatableData { EmptyAnimatableData() }
+}
+
+/// The full project text. Reached by right-clicking a tag → “打开项目完整内容”.
 struct DetailView: View {
     let model: DetailModel
     let onEdit: () -> Void
@@ -79,15 +205,12 @@ struct DetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     header
-
                     if let preamble = model.preamble, !preamble.isEmpty {
                         MarkdownBodyView(markdown: preamble)
                     }
-
                     ForEach(model.sections) { section in
                         SectionBlockView(title: section.title, text: section.body)
                     }
-
                     if model.sections.isEmpty {
                         Text(L10n.t("detail.emptySections"))
                             .font(.system(size: 12))
@@ -132,8 +255,7 @@ struct DetailView: View {
             .font(.system(size: 11.5))
             .foregroundStyle(.secondary)
 
-            Divider()
-                .padding(.top, 2)
+            Divider().padding(.top, 2)
         }
     }
 }

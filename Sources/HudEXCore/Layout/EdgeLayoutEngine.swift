@@ -63,7 +63,8 @@ public enum EdgeLayoutEngine {
                         slot: slot,
                         frame: frame,
                         rotationDegrees: rotation(forOffset: offset, count: visibleCount, stack: metrics.stack),
-                        zIndex: index
+                        zIndex: index,
+                        perpendicularOffset: perpendicularOffset(forOffset: offset, stack: metrics.stack)
                     )
                 )
                 index += 1
@@ -71,9 +72,7 @@ public enum EdgeLayoutEngine {
         }
 
         let overflow = max(0, projectCount - index)
-        let box = placements.reduce(CGRect.null) { partial, placement in
-            partial.union(visualBounds(of: placement.frame, metrics: metrics))
-        }
+        let box = panelBounds(for: placements, metrics: metrics, edge: edge)
 
         var ranges: [EdgeSlot: ClosedRange<CGFloat>] = [:]
         for (slot, spec) in specs { ranges[slot] = spec.range }
@@ -245,16 +244,66 @@ public enum EdgeLayoutEngine {
         }
     }
 
+    /// Layered cards move progressively into the screen.
+    private static func perpendicularOffset(forOffset offset: Int, stack: StackStyle) -> CGFloat {
+        guard stack.isEnabled else { return 0 }
+        return stack.stagger * CGFloat(offset)
+    }
+
     private static func rotation(forOffset offset: Int, count: Int, stack: StackStyle) -> CGFloat {
         guard stack.isEnabled, stack.rotationDegrees != 0, count > 1 else { return 0 }
         let progress = CGFloat(min(offset, count - 1)) / CGFloat(count - 1)
         return stack.rotationDegrees * progress
     }
 
-    /// Frame plus the room its rotation and stagger need, used to size panels.
-    static func visualBounds(of frame: CGRect, metrics: TabMetrics) -> CGRect {
-        let padding = metrics.stackPadding
-        guard padding > 0 else { return frame }
-        return frame.insetBy(dx: -padding, dy: -padding)
+    /// Bounding box of a set of tags including everything they can paint:
+    /// rotation, layering and the hover lift. The window layer sizes each panel
+    /// with this, so nothing is ever clipped.
+    public static func panelBounds(
+        for placements: [TagPlacement],
+        metrics: TabMetrics,
+        edge: DockEdge
+    ) -> CGRect {
+        let box = placements.reduce(CGRect.null) { partial, placement in
+            partial.union(visualBounds(of: placement, metrics: metrics, edge: edge))
+        }
+        return box.isNull ? .zero : box
     }
+
+    /// Everything a tag can paint: its frame, rotated, layered inward, plus one
+    /// extra `stagger` for the hover lift. Panels are sized from this, so a
+    /// rotated or lifted tag is never cut off — which is what made the tag's
+    /// rounded corners disappear before.
+    static func visualBounds(of placement: TagPlacement, metrics: TabMetrics, edge: DockEdge) -> CGRect {
+        var box = rotatedBounds(of: placement.frame, degrees: placement.rotationDegrees)
+
+        let layer = abs(placement.perpendicularOffset) + (metrics.stack.isEnabled ? abs(metrics.stack.stagger) : 0)
+        if layer > 0 {
+            switch edge {
+            case .left: box.size.width += layer
+            case .right: box.origin.x -= layer; box.size.width += layer
+            case .bottom: box.size.height += layer
+            }
+        }
+
+        // A hair of margin so anti-aliased edges are never clipped.
+        return box.insetBy(dx: -Self.panelMargin, dy: -Self.panelMargin)
+    }
+
+    /// Axis-aligned bounds of a rectangle rotated about its centre.
+    static func rotatedBounds(of frame: CGRect, degrees: CGFloat) -> CGRect {
+        guard degrees != 0 else { return frame }
+        let radians = degrees * .pi / 180
+        let width = abs(frame.width * cos(radians)) + abs(frame.height * sin(radians))
+        let height = abs(frame.width * sin(radians)) + abs(frame.height * cos(radians))
+        return CGRect(
+            x: frame.midX - width / 2,
+            y: frame.midY - height / 2,
+            width: width,
+            height: height
+        )
+    }
+
+    /// Breathing room kept around the tags inside their panel.
+    public static let panelMargin: CGFloat = 2
 }

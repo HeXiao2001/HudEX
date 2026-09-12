@@ -32,6 +32,7 @@ final class Preferences: ObservableObject {
         static let stackStagger = "stack.stagger"
         static let settingsWriteBack = "settings.writeBack"
         static let language = "ui.language"
+        static let appearanceStyle = "appearance.style"
         static let thresholdActive = "appearance.threshold.active"
         static let thresholdAttention = "appearance.threshold.attention"
         static let thresholdAging = "appearance.threshold.aging"
@@ -124,6 +125,11 @@ final class Preferences: ObservableObject {
 
     @Published var stackStagger: Double {
         didSet { defaults.set(stackStagger, forKey: Key.stackStagger) }
+    }
+
+    /// Tag/card style: skeuomorphic, frosted, glass or minimal.
+    @Published var appearanceStyle: AppearanceStyle {
+        didSet { defaults.set(appearanceStyle.rawValue, forKey: Key.appearanceStyle) }
     }
 
     /// UI language: "" follows the system, otherwise `en` / `zh-Hans`.
@@ -225,6 +231,8 @@ final class Preferences: ObservableObject {
         stackRotation = defaults.object(forKey: Key.stackRotation) as? Double ?? -5
         stackStagger = defaults.object(forKey: Key.stackStagger) as? Double ?? 2.5
         settingsWriteBack = defaults.object(forKey: Key.settingsWriteBack) as? Bool ?? true
+        appearanceStyle = AppearanceStyle(rawValue: defaults.string(forKey: Key.appearanceStyle) ?? "")
+            ?? .default
         let storedLanguage = defaults.string(forKey: Key.language) ?? ""
         language = storedLanguage
         // `didSet` does not run during init, so the override is applied here.

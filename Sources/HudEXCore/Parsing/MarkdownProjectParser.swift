@@ -33,6 +33,8 @@ public struct MarkdownProjectParser: @unchecked Sendable {
         public var orderKeys: [String]
         /// Keys that override a project's colour (`颜色：绿色` / `颜色：#4C6FA0`).
         public var colorKeys: [String]
+        /// Keys that set the priority shown in the tag's hole (`优先级：高`).
+        public var priorityKeys: [String]
         /// Lines that close the current section (project separators).
         public var separatorLines: Set<String>
         public var maxShortTitleLength: Int
@@ -43,6 +45,7 @@ public struct MarkdownProjectParser: @unchecked Sendable {
             updatedKeys: [String] = ["更新", "更新时间", "最后更新", "updated", "updatedat", "updated_at", "date"],
             orderKeys: [String] = ["顺序", "排序", "次序", "order", "sort", "sortorder"],
             colorKeys: [String] = ["颜色", "标签颜色", "color", "colour"],
+            priorityKeys: [String] = ["优先级", "重要度", "重要性", "priority", "importance"],
             separatorLines: Set<String> = ["---", "***", "___", "----"],
             maxShortTitleLength: Int = ShortTitle.maxLength
         ) {
@@ -51,6 +54,7 @@ public struct MarkdownProjectParser: @unchecked Sendable {
             self.updatedKeys = updatedKeys
             self.orderKeys = orderKeys
             self.colorKeys = colorKeys
+            self.priorityKeys = priorityKeys
             self.separatorLines = separatorLines
             self.maxShortTitleLength = maxShortTitleLength
         }
@@ -200,6 +204,7 @@ private final class DocumentBuilder {
         var updatedText: String?
         var sortOrder: Int?
         var colorOverride: String?
+        var priority: ProjectPriority?
         var preambleLines: [String] = []
         var sections: [SectionDraft] = []
     }
@@ -277,6 +282,10 @@ private final class DocumentBuilder {
                 drafts[drafts.count - 1].colorOverride = value.trimmingCharacters(in: .whitespaces)
                 return
             }
+            if options.priorityKeys.contains(where: { $0.lowercased() == normalizedKey }) {
+                drafts[drafts.count - 1].priority = ProjectPriority.parse(value)
+                return
+            }
         }
         drafts[drafts.count - 1].preambleLines.append(line)
     }
@@ -339,7 +348,8 @@ private final class DocumentBuilder {
                     preamble: preamble.isEmpty ? nil : preamble,
                     sections: sections,
                     sortOrder: draft.sortOrder,
-                    colorOverride: draft.colorOverride
+                    colorOverride: draft.colorOverride,
+                    priority: draft.priority
                 )
             )
         }

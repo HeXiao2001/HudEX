@@ -7,6 +7,8 @@ struct AppearanceSettingsView: View {
 
     var body: some View {
         Form {
+            styleSection
+
             Section {
                 Toggle(L10n.t("appearance.showUpdatedTime"), isOn: $preferences.showUpdatedTime)
             } header: {
@@ -92,6 +94,35 @@ struct AppearanceSettingsView: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    /// The look of the tags and of the hover card.
+    private var styleSection: some View {
+        Section {
+            Picker(L10n.t("appearance.style"), selection: $preferences.appearanceStyle) {
+                ForEach(AppearanceStyle.allCases, id: \.self) { style in
+                    Text(L10n.t(style.displayNameKey)).tag(style)
+                }
+            }
+            .pickerStyle(.radioGroup)
+
+            Text(L10n.t(preferences.appearanceStyle.guideKey))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if preferences.appearanceStyle.usesHoleAndConnector {
+                LabeledContent(L10n.t("appearance.hole")) {
+                    Text(L10n.t("appearance.hole.value")).foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            Text(L10n.t("appearance.section.style"))
+        } footer: {
+            Text(L10n.t("appearance.style.footer"))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
     }
 
     private func sampleLabel(for role: TagColorRole) -> String {

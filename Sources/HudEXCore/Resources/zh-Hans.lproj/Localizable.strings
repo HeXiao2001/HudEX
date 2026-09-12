@@ -297,3 +297,27 @@
 "general.language" = "语言";
 "general.language.system" = "跟随系统";
 "general.language.footer" = "HudEX 目前提供英语和简体中文。“跟随系统”在系统语言既不是英语也不是简体中文时使用英语。";
+
+/* 外观风格 */
+"appearance.section.style" = "风格";
+"style.skeuomorphic" = "拟物（叠放书签）";
+"style.frosted" = "磨砂（半透明卡片）";
+"style.glass" = "液态玻璃（对齐卡片）";
+"style.minimal" = "极简（只有线框）";
+"style.skeuomorphic.guide" = "标签像一叠小卡片、带一点立体感；弹出的卡片是不透明的横线纸，通过一个洞洞和一条曲线跟标签连起来。";
+"style.frosted.guide" = "标签保持纯色；弹出的卡片是磨砂半透明，任何背景下文字都看得清。";
+"style.glass.guide" = "标签保持纯色；弹出的卡片是薄薄的液态玻璃，圆角连续、和标签对齐。";
+"style.minimal.guide" = "完全不加填充：标签是线框，卡片也是线框，最安静的一种。";
+"appearance.style.footer" = "洞洞和连接线只在拟物风格里出现。洞洞颜色来自项目里的 `优先级：高 / 中 / 低`。";
+"priority.high" = "高";
+"priority.normal" = "中";
+"priority.low" = "低";
+"settingsblock.guide.appearance.style" = "外观风格：skeuomorphic（拟物）/ frosted（磨砂）/ glass（液态玻璃）/ minimal（极简）";
+
+"settingsblock.label.appearance.style" = "外观风格";
+
+"appearance.style" = "外观风格";
+"appearance.hole" = "洞洞";
+"appearance.hole.value" = "颜色 = 项目优先级";
+
+"settingsblock.guide.project.priority" = "在项目里加一行 `优先级：高`（或 中 / 低）可以给标签上的洞洞上色：高 / 中 / 低。";

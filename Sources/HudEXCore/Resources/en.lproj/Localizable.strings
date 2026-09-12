@@ -297,3 +297,27 @@
 "general.language" = "Language";
 "general.language.system" = "Follow the system";
 "general.language.footer" = "HudEX ships English and Simplified Chinese. “Follow the system” uses English when your system language is neither.";
+
+/* Appearance styles */
+"appearance.section.style" = "Style";
+"style.skeuomorphic" = "Skeuomorphic (stacked bookmarks)";
+"style.frosted" = "Frosted (translucent card)";
+"style.glass" = "Liquid glass (aligned cards)";
+"style.minimal" = "Minimal (outline only)";
+"style.skeuomorphic.guide" = "Stacked cards with a hint of depth; the hover card is opaque ruled paper, joined to the tag by a punched hole and a curved line.";
+"style.frosted.guide" = "Tags stay solid; the hover card is a frosted, translucent surface so the text stays readable on any background.";
+"style.glass.guide" = "Tags stay solid; the hover card is a thin liquid-glass surface with tight, continuous corners, aligned to the tags.";
+"style.minimal.guide" = "No fills at all: outlined tags and an outlined card, quietest of the four.";
+"appearance.style.footer" = "The hole and its connector only exist in the skeuomorphic style. Priority comes from `优先级：高 / 中 / 低` inside a project.";
+"priority.high" = "High";
+"priority.normal" = "Normal";
+"priority.low" = "Low";
+"settingsblock.guide.appearance.style" = "Appearance style: skeuomorphic / frosted / glass / minimal";
+
+"settingsblock.label.appearance.style" = "Appearance style";
+
+"appearance.style" = "Style";
+"appearance.hole" = "Punched hole";
+"appearance.hole.value" = "Colour = project priority";
+
+"settingsblock.guide.project.priority" = "Add `优先级：高` (or 中/低) to colour the tag's punched hole: high / normal / low.";

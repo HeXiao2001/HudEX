@@ -24,6 +24,7 @@ final class PreviewPanelController {
     private var model: PreviewModel?
     private var placedTagFrame: CGRect = .zero
     private var placedEdge: DockEdge = .bottom
+    private var placedStyle: AppearanceStyle = .default
 
     var isVisible: Bool { panel?.isVisible ?? false }
 
@@ -32,25 +33,37 @@ final class PreviewPanelController {
         model: PreviewModel,
         tagFrame: CGRect,
         edge: DockEdge,
+        style: AppearanceStyle,
         screenVisibleFrame: CGRect
     ) {
         let unchanged = isVisible
             && self.model == model
             && placedTagFrame == tagFrame
             && placedEdge == edge
+            && placedStyle == style
         if unchanged { return }
 
         self.model = model
         self.placedTagFrame = tagFrame
         self.placedEdge = edge
+        self.placedStyle = style
 
         let panel = ensurePanel()
         let host = ensureHost()
-        host.update(rootView: PreviewView(model: model))
 
-        let size = measuredSize(for: host, screenVisibleFrame: screenVisibleFrame)
-        let origin = Self.origin(for: size, tagFrame: tagFrame, edge: edge, visible: screenVisibleFrame)
-        let frame = CGRect(origin: origin, size: size)
+        // One solver decides where the card goes and how the connector runs;
+        // the panel is sized to hold both.
+        let cardSize = measuredCardSize(for: host, screenVisibleFrame: screenVisibleFrame)
+        let anchor = PreviewAnchor.solve(
+            tagFrame: tagFrame,
+            edge: edge,
+            cardSize: cardSize,
+            visible: screenVisibleFrame,
+            usesConnector: style.usesHoleAndConnector
+        )
+
+        host.update(rootView: makeRootView(anchor: anchor))
+        let frame = anchor.panelFrame
 
         if panel.frame != frame {
             panel.setFrame(frame, display: panel.isVisible)
@@ -65,7 +78,44 @@ final class PreviewPanelController {
     func refresh(model: PreviewModel) {
         guard isVisible, self.model != model else { return }
         self.model = model
-        ensureHost().update(rootView: PreviewView(model: model))
+        if let anchor = lastAnchor {
+            ensureHost().update(rootView: makeRootView(anchor: anchor))
+        }
+    }
+
+    /// The anchor used for the visible preview, so refreshes keep the layout.
+    private var lastAnchor: PreviewAnchor?
+
+    private func makeRootView(anchor: PreviewAnchor) -> PreviewView {
+        lastAnchor = anchor
+        let panel = anchor.panelFrame
+        return PreviewView(
+            model: model ?? Self.placeholderModel,
+            style: placedStyle,
+            cardRect: Self.localRect(anchor.cardFrame, in: panel),
+            connector: placedStyle.usesHoleAndConnector
+                ? PreviewView.PreviewConnector(
+                    start: Self.localPoint(anchor.connectorStart, in: panel),
+                    control1: Self.localPoint(anchor.connectorControl1, in: panel),
+                    control2: Self.localPoint(anchor.connectorControl2, in: panel),
+                    end: Self.localPoint(anchor.connectorEnd, in: panel)
+                )
+                : nil
+        )
+    }
+
+    /// Screen rect → panel-local rect in SwiftUI's top-left coordinates.
+    static func localRect(_ rect: CGRect, in panel: CGRect) -> CGRect {
+        CGRect(
+            x: rect.minX - panel.minX,
+            y: panel.maxY - rect.maxY,
+            width: rect.width,
+            height: rect.height
+        )
+    }
+
+    static func localPoint(_ point: CGPoint, in panel: CGRect) -> CGPoint {
+        CGPoint(x: point.x - panel.minX, y: panel.maxY - point.y)
     }
 
     func hide() {
@@ -89,7 +139,14 @@ final class PreviewPanelController {
 
     private func ensureHost() -> HoverTrackingView<PreviewView> {
         if let host { return host }
-        let host = HoverTrackingView(rootView: PreviewView(model: model ?? Self.placeholderModel))
+        let host = HoverTrackingView(
+            rootView: PreviewView(
+                model: model ?? Self.placeholderModel,
+                style: placedStyle,
+                cardRect: CGRect(origin: .zero, size: CGSize(width: PreviewView.width, height: 120)),
+                connector: nil
+            )
+        )
         host.onHover = { [weak self] point in
             guard let self else { return }
             if point == nil {
@@ -102,7 +159,8 @@ final class PreviewPanelController {
         return host
     }
 
-    private func measuredSize(
+    /// The card's own size: the panel around it is computed later.
+    private func measuredCardSize(
         for host: HoverTrackingView<PreviewView>,
         screenVisibleFrame: CGRect
     ) -> CGSize {
@@ -111,38 +169,6 @@ final class PreviewPanelController {
         let maximumHeight = max(160, screenVisibleFrame.height - 32)
         let height = min(max(fitting.height, 100), maximumHeight)
         return CGSize(width: width, height: height)
-    }
-
-    /// Place the preview inward from the edge, always inside `visible`, so it
-    /// can never sit on top of the Dock or the menu bar.
-    static func origin(
-        for size: CGSize,
-        tagFrame: CGRect,
-        edge: DockEdge,
-        visible: CGRect,
-        gap: CGFloat = 8
-    ) -> CGPoint {
-        var x: CGFloat
-        var y: CGFloat
-        switch edge {
-        case .left:
-            x = tagFrame.maxX + gap
-            y = tagFrame.midY - size.height / 2
-        case .right:
-            x = tagFrame.minX - gap - size.width
-            y = tagFrame.midY - size.height / 2
-        case .bottom:
-            x = tagFrame.midX - size.width / 2
-            y = tagFrame.maxY + gap
-        }
-
-        let minX = visible.minX + 8
-        let maxX = visible.maxX - size.width - 8
-        let minY = visible.minY + 8
-        let maxY = visible.maxY - size.height - 8
-        x = min(max(x, minX), max(minX, maxX))
-        y = min(max(y, minY), max(minY, maxY))
-        return CGPoint(x: x.rounded(), y: y.rounded())
     }
 
     // MARK: - Timer

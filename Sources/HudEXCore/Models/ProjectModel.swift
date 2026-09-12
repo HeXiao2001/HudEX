@@ -160,6 +160,8 @@ public struct HudEXProject: Identifiable, Hashable, Sendable {
     public let sortOrder: Int?
     /// Optional `颜色：` — a palette name or `#RRGGBB`.
     public let colorOverride: String?
+    /// Optional `优先级：` — drawn as the colour of the tag's punched hole.
+    public let priority: ProjectPriority?
 
     public init(
         id: String,
@@ -173,7 +175,8 @@ public struct HudEXProject: Identifiable, Hashable, Sendable {
         preamble: String?,
         sections: [ProjectSection],
         sortOrder: Int? = nil,
-        colorOverride: String? = nil
+        colorOverride: String? = nil,
+        priority: ProjectPriority? = nil
     ) {
         self.id = id
         self.title = title
@@ -187,6 +190,7 @@ public struct HudEXProject: Identifiable, Hashable, Sendable {
         self.sections = sections
         self.sortOrder = sortOrder
         self.colorOverride = colorOverride
+        self.priority = priority
     }
 
     // MARK: - Semantic section helpers

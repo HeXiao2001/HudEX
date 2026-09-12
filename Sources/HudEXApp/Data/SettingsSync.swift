@@ -65,6 +65,7 @@ final class SettingsSync {
             }
         }
 
+        set(SettingsKeys.appearanceStyle, { AppearanceStyle(rawValue: $0.lowercased()) }, into: \.appearanceStyle)
         set(SettingsKeys.layoutMode, { LayoutMode.Kind(rawValue: $0.lowercased()) }, into: \.layoutKind)
         set(SettingsKeys.layoutEdge, { DockEdge(rawValue: $0.lowercased()) }, into: \.layoutEdge)
         set(SettingsKeys.layoutAnchor, { LayoutMode.Anchor(rawValue: $0.lowercased()) }, into: \.layoutAnchor)
@@ -213,6 +214,7 @@ final class SettingsSync {
             )
         }
 
+        field(SettingsKeys.appearanceStyle, preferences.appearanceStyle.rawValue)
         field(SettingsKeys.layoutMode, preferences.layoutKind.rawValue)
         field(SettingsKeys.layoutEdge, preferences.layoutEdge.rawValue)
         field(SettingsKeys.layoutAnchor, preferences.layoutAnchor.rawValue)
@@ -254,6 +256,7 @@ final class SettingsSync {
 
         > \(L10n.t("settingsblock.guide.project.order"))
         > \(L10n.t("settingsblock.guide.project.color"))
+        > \(L10n.t("settingsblock.guide.project.priority"))
 
         """
         return rendered

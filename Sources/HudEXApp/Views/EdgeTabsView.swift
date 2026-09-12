@@ -11,6 +11,8 @@ struct EdgeTagModel: Identifiable, Equatable {
     let role: TagColorRole
     /// `颜色：` from the Markdown file, when the project overrides the palette.
     let colorOverride: String?
+    /// `优先级：` from the Markdown file, drawn in the punched hole.
+    let priority: ProjectPriority?
     let size: CGSize
     /// Frame on screen (AppKit coordinates) — used for hover hit testing.
     let screenFrame: CGRect
@@ -18,8 +20,8 @@ struct EdgeTagModel: Identifiable, Equatable {
     let localFrame: CGRect
     /// Slant of the stacked look, in degrees.
     let rotationDegrees: Double
-    /// Perpendicular layer offset, in points.
-    let stagger: Double
+    /// Layering into the screen, in points.
+    let perpendicularOffset: Double
     let zIndex: Double
     /// True while the pointer is on this tag; drives the small hover lift.
     let isHovered: Bool
@@ -27,6 +29,7 @@ struct EdgeTagModel: Identifiable, Equatable {
 
 struct EdgePanelModel: Equatable {
     let edge: DockEdge
+    let style: AppearanceStyle
     let fontSize: CGFloat
     /// Frame of the whole panel on screen (AppKit coordinates).
     let screenFrame: CGRect
@@ -35,7 +38,7 @@ struct EdgePanelModel: Equatable {
     let tags: [EdgeTagModel]
 
     static func empty(edge: DockEdge) -> EdgePanelModel {
-        EdgePanelModel(edge: edge, fontSize: 11, screenFrame: .zero, size: .zero, tags: [])
+        EdgePanelModel(edge: edge, style: .default, fontSize: 11, screenFrame: .zero, size: .zero, tags: [])
     }
 }
 
@@ -43,17 +46,16 @@ struct EdgePanelModel: Equatable {
 struct EdgeTabsView: View {
     let model: EdgePanelModel
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             Color.clear
             ForEach(model.tags) { tag in
-                EdgeTabView(tag: tag, fontSize: model.fontSize, edge: model.edge)
+                EdgeTabView(tag: tag, model: model)
                     .frame(width: tag.size.width, height: tag.size.height)
                     .rotationEffect(.degrees(tag.rotationDegrees))
-                    .offset(
-                        x: model.edge == .bottom ? 0 : (tag.isHovered ? -tag.stagger : tag.stagger),
-                        y: model.edge == .bottom ? (tag.isHovered ? tag.stagger : -tag.stagger) : 0
-                    )
+                    .offset(offset(for: tag))
                     .position(x: tag.localFrame.midX, y: tag.localFrame.midY)
                     .zIndex(tag.zIndex)
                     .animation(reduceMotion ? nil : .spring(response: 0.26, dampingFraction: 0.82), value: tag.isHovered)
@@ -62,41 +64,120 @@ struct EdgeTabsView: View {
         .frame(width: max(1, model.size.width), height: max(1, model.size.height))
     }
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Layered cards sit deeper in the screen; the hovered one swings back out.
+    private func offset(for tag: EdgeTagModel) -> CGSize {
+        let amount = tag.isHovered ? 0 : tag.perpendicularOffset
+        switch model.edge {
+        case .left: return CGSize(width: amount, height: 0)
+        case .right: return CGSize(width: -amount, height: 0)
+        case .bottom: return CGSize(width: 0, height: amount)
+        }
+    }
 }
 
-/// A single solid-colour bookmark.
-///
-/// Hovering lifts the tag slightly out of the stack — the size never changes,
-/// and the animation only runs while the pointer moves between tags.
+/// A single tag. The style decides how much of a "card" it looks like — the
+/// geometry is identical in every style.
 struct EdgeTabView: View {
     let tag: EdgeTagModel
-    let fontSize: CGFloat
-    let edge: DockEdge
+    let model: EdgePanelModel
 
     @Environment(\.colorScheme) private var colorScheme
 
+    private var isDark: Bool { colorScheme == .dark }
+
     var body: some View {
-        let isDark = colorScheme == .dark
         let background = EdgeTagStyle.background(role: tag.role, colorOverride: tag.colorOverride, isDark: isDark)
         let foreground = EdgeTagStyle.text(role: tag.role, colorOverride: tag.colorOverride, isDark: isDark)
 
-        Text(tag.shortTitle)
-            .font(.system(size: fontSize, weight: .semibold))
-            .foregroundStyle(Color(nsColor: foreground))
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
-            .padding(.horizontal, 3)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 3.5, style: .continuous)
-                    .fill(Color(nsColor: background))
-            )
-            .scaleEffect(tag.isHovered ? 1.02 : 1.0)
-            .accessibilityLabel(Text(tag.title))
-            .contextMenu {
-                HudEXContextMenu(projectID: tag.id)
+        ZStack(alignment: .center) {
+            shape.fill(fillColor(background))
+            if model.style == .skeuomorphic {
+                bevel(background)
             }
+            if model.style == .minimal {
+                shape.strokeBorder(Color(nsColor: background), lineWidth: 1)
+            }
+            Text(tag.shortTitle)
+                .font(.system(size: model.fontSize, weight: .semibold))
+                .foregroundStyle(model.style == .minimal ? Color(nsColor: background) : Color(nsColor: foreground))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .padding(.horizontal, 3)
+            if model.style.usesHoleAndConnector {
+                hole
+            }
+        }
+        .scaleEffect(tag.isHovered ? 1.02 : 1.0)
+        .accessibilityLabel(Text(tag.title))
+        .contextMenu {
+            HudEXContextMenu(projectID: tag.id)
+        }
+    }
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: model.style == .minimal ? 3 : 4, style: .continuous)
+    }
+
+    private func fillColor(_ background: NSColor) -> Color {
+        switch model.style {
+        case .minimal:
+            return .clear
+        case .frosted, .glass:
+            return Color(nsColor: background).opacity(0.92)
+        case .skeuomorphic:
+            return Color(nsColor: background)
+        }
+    }
+
+    /// A hair of depth: one lighter edge inside, one darker edge outside.
+    private func bevel(_ background: NSColor) -> some View {
+        shape
+            .strokeBorder(
+                LinearGradient(
+                    colors: [Color.white.opacity(0.22), Color.black.opacity(0.14)],
+                    startPoint: bevelStart,
+                    endPoint: bevelEnd
+                ),
+                lineWidth: 1
+            )
+    }
+
+    private var bevelStart: UnitPoint {
+        switch model.edge {
+        case .left: return .topLeading
+        case .right: return .topTrailing
+        case .bottom: return .top
+        }
+    }
+
+    private var bevelEnd: UnitPoint {
+        switch model.edge {
+        case .left: return .bottomTrailing
+        case .right: return .bottomLeading
+        case .bottom: return .bottom
+        }
+    }
+
+    /// The punched hole: a small ring whose colour carries the priority.
+    private var hole: some View {
+        let color = tag.priority?.holeColor(isDark: isDark)
+            ?? (isDark ? PaletteColor(hex: "#3C4046")! : PaletteColor(hex: "#FFFFFF")!)
+        return Circle()
+            .fill(Color(nsColor: EdgeTagStyle.color(color)))
+            .frame(width: 7, height: 7)
+            .overlay(
+                Circle().strokeBorder(Color.black.opacity(0.18), lineWidth: 0.5)
+            )
+            .offset(holeOffset)
+    }
+
+    private var holeOffset: CGSize {
+        let inset: CGFloat = 6.5
+        switch model.edge {
+        case .left: return CGSize(width: tag.size.width / 2 - inset, height: 0)
+        case .right: return CGSize(width: -(tag.size.width / 2 - inset), height: 0)
+        case .bottom: return CGSize(width: 0, height: tag.size.height / 2 - inset)
+        }
     }
 }
 

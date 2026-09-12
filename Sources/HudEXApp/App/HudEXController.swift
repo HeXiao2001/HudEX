@@ -74,6 +74,9 @@ final class HudEXController: ObservableObject {
     private var previewHideWorkItem: DispatchWorkItem?
     private var currentScreen: NSScreen?
     private var currentEdge: DockEdge = .bottom
+    /// Edge the tabs are actually drawn on (differs from `currentEdge` in the
+    /// fixed-edge layout mode). The hover card opens away from this edge.
+    private var planEdge: DockEdge = .bottom
     private var tagFrames: [String: CGRect] = [:]
     private var performanceLogTimer: Timer?
     private var lastRenderedDay = Calendar.current.startOfDay(for: Date())
@@ -241,6 +244,7 @@ final class HudEXController: ObservableObject {
             mode: preferences.layoutMode
         )
 
+        planEdge = plan.edge
         let models = buildPanelModels(plan: plan, projects: projects)
         edgePanels.update(models)
         tagFrames = models.values
@@ -273,7 +277,13 @@ final class HudEXController: ObservableObject {
         for slot in EdgeSlot.allCases {
             let placements = plan.placements.filter { $0.slot == slot }
             guard !placements.isEmpty else { continue }
-            let box = placements.reduce(CGRect.null) { $0.union($1.frame) }
+            // Includes rotation, layering and the hover lift: a tag whose
+            // rounded corners used to be clipped now always fits.
+            let box = EdgeLayoutEngine.panelBounds(
+                for: placements,
+                metrics: plan.metrics,
+                edge: plan.edge
+            )
 
             let tags: [EdgeTagModel] = placements.map { placement in
                 let project = projects[placement.index]
@@ -297,11 +307,12 @@ final class HudEXController: ObservableObject {
                     title: project.title,
                     role: role,
                     colorOverride: project.colorOverride,
+                    priority: project.priority,
                     size: placement.frame.size,
                     screenFrame: placement.frame,
                     localFrame: localFrame,
                     rotationDegrees: placement.rotationDegrees,
-                    stagger: plan.metrics.stack.isEnabled ? plan.metrics.stack.stagger : 0,
+                    perpendicularOffset: placement.perpendicularOffset,
                     zIndex: Double(placement.zIndex),
                     isHovered: hoveredProjectID == project.id
                 )
@@ -309,6 +320,7 @@ final class HudEXController: ObservableObject {
 
             models[slot] = EdgePanelModel(
                 edge: plan.edge,
+                style: preferences.appearanceStyle,
                 fontSize: plan.metrics.fontSize,
                 screenFrame: box,
                 size: box.size,
@@ -408,7 +420,8 @@ final class HudEXController: ObservableObject {
         previewPanel.show(
             model: model,
             tagFrame: tagFrame,
-            edge: currentEdge,
+            edge: planEdge,
+            style: preferences.appearanceStyle,
             screenVisibleFrame: screen.visibleFrame
         )
     }
