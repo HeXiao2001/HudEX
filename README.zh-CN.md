@@ -133,7 +133,7 @@ Sources/HudEXApp      AppKit 外壳（面板、状态栏菜单、设置窗口）
 Tests/HudEXCoreTests  123 项测试：解析、布局模式、叠放、调色板、双向同步、本地化
 Examples/             示例文件（英文 + 中文）
 docs/                 设计说明与验证记录
-script/               构建 / 安装 / 资源脚本
+script/               构建 / 安装 / 资源脚本（script/demo.swift 可以自动扫过标签，方便录演示）
 ```
 
 ```bash

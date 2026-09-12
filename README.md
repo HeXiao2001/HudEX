@@ -147,11 +147,12 @@ Sources/HudEXApp      AppKit shell (panels, status item, settings window) + Swif
 Tests/HudEXCoreTests  123 tests: parser, layout modes, stacking, palette, sync, i18n
 Examples/             example documents (English + Chinese)
 docs/                 design and verification notes
-script/               build / install / asset scripts
+script/               build / install / asset scripts (script/demo.swift sweeps the bookmarks for demo recordings)
 ```
 
 ```bash
-swift test                # 123 tests
+swift script/demo.swift 3   # sweeps the bookmarks (for screen recordings)
+swift test                  # 123 tests
 ./script/build_and_run.sh # build + bundle + sign + run
 ./script/install.sh       # copy to /Applications
 ```
