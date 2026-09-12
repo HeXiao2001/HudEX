@@ -124,6 +124,9 @@ final class SettingsWindowController {
         )
         window.title = L10n.t("settings.window.title")
         window.isReleasedWhenClosed = false
+        // Never narrower than the tab bar needs, even if a small frame was
+        // saved before: below this macOS collapses the tabs into a menu.
+        window.contentMinSize = NSSize(width: 660, height: 520)
         window.contentView = hosting
         window.setFrameAutosaveName("HudEXSettingsWindow")
         self.window = window
