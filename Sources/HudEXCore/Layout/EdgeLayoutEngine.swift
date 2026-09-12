@@ -49,12 +49,16 @@ public enum EdgeLayoutEngine {
             let capacity = limits.slotCapacity(for: capacity(in: spec.range, metrics: metrics))
             let target = slot == .primary ? min(primaryTarget, visibleCount) : visibleCount
             for offset in 0..<capacity where index < target {
-                let frame = frame(
-                    forOffset: offset,
-                    in: spec.range,
-                    growth: spec.growth,
-                    metrics: metrics,
-                    screen: screen,
+                let frame = alignToEdge(
+                    frame(
+                        forOffset: offset,
+                        in: spec.range,
+                        growth: spec.growth,
+                        metrics: metrics,
+                        screen: screen,
+                        edge: edge
+                    ),
+                    rotationDegrees: rotation(forOffset: offset, count: visibleCount, stack: metrics.stack),
                     edge: edge
                 )
                 placements.append(
@@ -64,7 +68,7 @@ public enum EdgeLayoutEngine {
                         frame: frame,
                         rotationDegrees: rotation(forOffset: offset, count: visibleCount, stack: metrics.stack),
                         zIndex: index,
-                        perpendicularOffset: perpendicularOffset(forOffset: offset, stack: metrics.stack)
+                        hoverOffset: hoverOffset(forOffset: offset, stack: metrics.stack)
                     )
                 )
                 index += 1
@@ -244,10 +248,12 @@ public enum EdgeLayoutEngine {
         }
     }
 
-    /// Layered cards move progressively into the screen.
-    private static func perpendicularOffset(forOffset offset: Int, stack: StackStyle) -> CGFloat {
+    /// Tags rest on the screen edge; hovering pushes one card towards the
+    /// popup by one stagger step. The rest of the stack stays put, so the run
+    /// keeps a straight line instead of drifting deeper with every card.
+    private static func hoverOffset(forOffset offset: Int, stack: StackStyle) -> CGFloat {
         guard stack.isEnabled else { return 0 }
-        return stack.stagger * CGFloat(offset)
+        return stack.stagger
     }
 
     private static func rotation(forOffset offset: Int, count: Int, stack: StackStyle) -> CGFloat {
@@ -275,14 +281,20 @@ public enum EdgeLayoutEngine {
     /// rotated or lifted tag is never cut off — which is what made the tag's
     /// rounded corners disappear before.
     static func visualBounds(of placement: TagPlacement, metrics: TabMetrics, edge: DockEdge) -> CGRect {
-        var box = rotatedBounds(of: placement.frame, degrees: placement.rotationDegrees)
+        var box = rotatedBounds(
+            of: placement.frame,
+            degrees: placement.rotationDegrees,
+            anchor: rotationAnchor(for: edge)
+        )
 
-        let layer = abs(placement.perpendicularOffset) + (metrics.stack.isEnabled ? abs(metrics.stack.stagger) : 0)
-        if layer > 0 {
+        // Room for the hover push (towards the popup) and for the offset a
+        // tag travels while it animates there.
+        let push = abs(placement.hoverOffset)
+        if push > 0 {
             switch edge {
-            case .left: box.size.width += layer
-            case .right: box.origin.x -= layer; box.size.width += layer
-            case .bottom: box.size.height += layer
+            case .left: box.size.width += push
+            case .right: box.origin.x -= push; box.size.width += push
+            case .bottom: box.size.height += push
             }
         }
 
@@ -290,18 +302,84 @@ public enum EdgeLayoutEngine {
         return box.insetBy(dx: -Self.panelMargin, dy: -Self.panelMargin)
     }
 
-    /// Axis-aligned bounds of a rectangle rotated about its centre.
-    static func rotatedBounds(of frame: CGRect, degrees: CGFloat) -> CGRect {
+    /// Nudges a rotated tag so its outer edge stays exactly on the screen edge.
+    ///
+    /// Rotating around the edge midpoint swings the corners about 1.5 pt in or
+    /// out; compensating here keeps the whole stack on one line — the tags stay
+    /// flush instead of waving along the edge.
+    public static func alignToEdge(
+        _ frame: CGRect,
+        rotationDegrees: CGFloat,
+        edge: DockEdge
+    ) -> CGRect {
+        guard rotationDegrees != 0 else { return frame }
+        let rotated = rotatedBounds(of: frame, degrees: rotationDegrees, anchor: rotationAnchor(for: edge))
+        switch edge {
+        case .left:
+            return frame.offsetBy(dx: frame.minX - rotated.minX, dy: 0)
+        case .right:
+            return frame.offsetBy(dx: frame.maxX - rotated.maxX, dy: 0)
+        case .bottom:
+            return frame.offsetBy(dx: 0, dy: frame.minY - rotated.minY)
+        }
+    }
+
+    /// Tags are pinned to the screen edge, so they rotate around that edge:
+    /// the stack keeps one straight line instead of fanning out of alignment.
+    public static func rotationAnchor(for edge: DockEdge) -> RotationAnchor {
+        switch edge {
+        case .left: return .minX
+        case .right: return .maxX
+        case .bottom: return .minY
+        }
+    }
+
+    /// Which point of the rectangle stays put while it rotates.
+    public enum RotationAnchor: Sendable, Equatable {
+        case minX
+        case maxX
+        case minY
+    }
+
+    /// Axis-aligned bounds of a rectangle rotated about one of its edges.
+    static func rotatedBounds(
+        of frame: CGRect,
+        degrees: CGFloat,
+        anchor: RotationAnchor = .minX
+    ) -> CGRect {
         guard degrees != 0 else { return frame }
         let radians = degrees * .pi / 180
-        let width = abs(frame.width * cos(radians)) + abs(frame.height * sin(radians))
-        let height = abs(frame.width * sin(radians)) + abs(frame.height * cos(radians))
-        return CGRect(
-            x: frame.midX - width / 2,
-            y: frame.midY - height / 2,
-            width: width,
-            height: height
-        )
+        let cosine = cos(radians)
+        let sine = sin(radians)
+
+        // Corners relative to the anchor point, rotated, then re-anchored.
+        let origin: CGPoint
+        switch anchor {
+        case .minX: origin = CGPoint(x: frame.minX, y: frame.midY)
+        case .maxX: origin = CGPoint(x: frame.maxX, y: frame.midY)
+        case .minY: origin = CGPoint(x: frame.midX, y: frame.minY)
+        }
+
+        let corners = [
+            CGPoint(x: frame.minX, y: frame.minY),
+            CGPoint(x: frame.maxX, y: frame.minY),
+            CGPoint(x: frame.maxX, y: frame.maxY),
+            CGPoint(x: frame.minX, y: frame.maxY)
+        ].map { corner -> CGPoint in
+            let dx = corner.x - origin.x
+            let dy = corner.y - origin.y
+            return CGPoint(
+                x: origin.x + dx * cosine - dy * sine,
+                y: origin.y + dx * sine + dy * cosine
+            )
+        }
+
+        let xs = corners.map(\.x)
+        let ys = corners.map(\.y)
+        guard let minX = xs.min(), let maxX = xs.max(), let minY = ys.min(), let maxY = ys.max() else {
+            return frame
+        }
+        return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
     }
 
     /// Breathing room kept around the tags inside their panel.

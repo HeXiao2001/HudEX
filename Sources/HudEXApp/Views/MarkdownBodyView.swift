@@ -98,6 +98,7 @@ struct SectionBlockView: View {
     let text: String
     var lineLimit: Int?
     var titleColor: Color = .secondary
+    var bodyColor: Color?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {

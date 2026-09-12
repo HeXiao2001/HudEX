@@ -79,6 +79,8 @@ final class HudEXController: ObservableObject {
     private var planEdge: DockEdge = .bottom
     private var tagFrames: [String: CGRect] = [:]
     private var performanceLogTimer: Timer?
+    private var pendingPreferenceRefresh: DispatchWorkItem?
+    private var lastAppliedStyle: AppearanceStyle?
     private var lastRenderedDay = Calendar.current.startOfDay(for: Date())
     /// The project the preview panel currently belongs to. It outlives the
     /// pointer leaving a tag, because the pointer crosses a small gap into the
@@ -178,7 +180,28 @@ final class HudEXController: ObservableObject {
             store.configureSource(preferences.resolvedSourceURL)
         }
         preferencesBinding?.updateVisibility()
-        refresh(reason: "preferences", allowExpensiveProbes: false)
+
+        // A style change is visible immediately, including on a card that is
+        // already open — otherwise clicking a style looks like nothing happened.
+        if preferences.appearanceStyle != lastAppliedStyle {
+            lastAppliedStyle = preferences.appearanceStyle
+            if let screen = currentScreen {
+                previewPanel.restyle(
+                    preferences.appearanceStyle,
+                    screenVisibleFrame: screen.visibleFrame
+                )
+            }
+        }
+
+        // Dragging a slider fires many changes; coalesce them into one relayout
+        // so the interaction stays smooth.
+        pendingPreferenceRefresh?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            self?.refresh(reason: "preferences", allowExpensiveProbes: false)
+        }
+        pendingPreferenceRefresh = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: work)
+
         // Reflect the change back into the Markdown block, debounced.
         if let url = store.sourceURL {
             settingsSync.scheduleWrite(to: url)
@@ -312,7 +335,7 @@ final class HudEXController: ObservableObject {
                     screenFrame: placement.frame,
                     localFrame: localFrame,
                     rotationDegrees: placement.rotationDegrees,
-                    perpendicularOffset: placement.perpendicularOffset,
+                    hoverOffset: placement.hoverOffset,
                     zIndex: Double(placement.zIndex),
                     isHovered: hoveredProjectID == project.id
                 )

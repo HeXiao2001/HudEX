@@ -20,8 +20,8 @@ struct EdgeTagModel: Identifiable, Equatable {
     let localFrame: CGRect
     /// Slant of the stacked look, in degrees.
     let rotationDegrees: Double
-    /// Layering into the screen, in points.
-    let perpendicularOffset: Double
+    /// How far the card slides towards the popup while hovered, in points.
+    let hoverOffset: Double
     let zIndex: Double
     /// True while the pointer is on this tag; drives the small hover lift.
     let isHovered: Bool
@@ -54,7 +54,9 @@ struct EdgeTabsView: View {
             ForEach(model.tags) { tag in
                 EdgeTabView(tag: tag, model: model)
                     .frame(width: tag.size.width, height: tag.size.height)
-                    .rotationEffect(.degrees(tag.rotationDegrees))
+                    // Rotate around the screen edge so the stack keeps one
+                    // straight line instead of fanning out of alignment.
+                    .rotationEffect(.degrees(tag.rotationDegrees), anchor: rotationAnchor)
                     .offset(offset(for: tag))
                     .position(x: tag.localFrame.midX, y: tag.localFrame.midY)
                     .zIndex(tag.zIndex)
@@ -64,13 +66,22 @@ struct EdgeTabsView: View {
         .frame(width: max(1, model.size.width), height: max(1, model.size.height))
     }
 
-    /// Layered cards sit deeper in the screen; the hovered one swings back out.
+    /// Tags rest on the screen edge; the hovered one slides towards the popup
+    /// — the same direction the card opens in.
     private func offset(for tag: EdgeTagModel) -> CGSize {
-        let amount = tag.isHovered ? 0 : tag.perpendicularOffset
+        let amount = tag.isHovered ? tag.hoverOffset : 0
         switch model.edge {
         case .left: return CGSize(width: amount, height: 0)
         case .right: return CGSize(width: -amount, height: 0)
         case .bottom: return CGSize(width: 0, height: amount)
+        }
+    }
+
+    private var rotationAnchor: UnitPoint {
+        switch model.edge {
+        case .left: return .leading
+        case .right: return .trailing
+        case .bottom: return .bottom
         }
     }
 }
@@ -91,10 +102,19 @@ struct EdgeTabView: View {
 
         ZStack(alignment: .center) {
             shape.fill(fillColor(background))
-            if model.style == .skeuomorphic {
+            switch model.style {
+            case .skeuomorphic:
                 bevel(background)
-            }
-            if model.style == .minimal {
+            case .frosted:
+                // A lit top edge sells "frosted glass" without a blur pass.
+                shape.strokeBorder(Color.white.opacity(0.4), lineWidth: 0.8)
+            case .glass:
+                shape
+                    .strokeBorder(Color.white.opacity(0.55), lineWidth: 0.8)
+                    .overlay(
+                        shape.strokeBorder(Color.black.opacity(0.10), lineWidth: 0.8).offset(y: 0.6)
+                    )
+            case .minimal:
                 shape.strokeBorder(Color(nsColor: background), lineWidth: 1)
             }
             Text(tag.shortTitle)
@@ -115,15 +135,24 @@ struct EdgeTabView: View {
     }
 
     private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: model.style == .minimal ? 3 : 4, style: .continuous)
+        let radius: CGFloat
+        switch model.style {
+        case .minimal: radius = 3
+        case .glass: radius = 7
+        case .frosted: radius = 5
+        case .skeuomorphic: radius = 4
+        }
+        return RoundedRectangle(cornerRadius: radius, style: .continuous)
     }
 
     private func fillColor(_ background: NSColor) -> Color {
         switch model.style {
         case .minimal:
             return .clear
-        case .frosted, .glass:
-            return Color(nsColor: background).opacity(0.92)
+        case .frosted:
+            return Color(nsColor: background).opacity(0.84)
+        case .glass:
+            return Color(nsColor: background).opacity(0.95)
         case .skeuomorphic:
             return Color(nsColor: background)
         }

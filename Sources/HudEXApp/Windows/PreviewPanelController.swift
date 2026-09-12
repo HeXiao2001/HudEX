@@ -45,15 +45,25 @@ final class PreviewPanelController {
 
         self.model = model
         self.placedTagFrame = tagFrame
+        lastTagFrame = tagFrame
         self.placedEdge = edge
         self.placedStyle = style
 
         let panel = ensurePanel()
         let host = ensureHost()
 
-        // One solver decides where the card goes and how the connector runs;
-        // the panel is sized to hold both.
+        // Pass 1: render the card alone so the panel can ask how tall it wants
+        // to be. (Measuring the *placed* layout would size the panel from the
+        // previous model, which is what cut the card off before.)
+        host.update(rootView: PreviewView(
+            model: model,
+            style: style,
+            layout: .measuring
+        ))
         let cardSize = measuredCardSize(for: host, screenVisibleFrame: screenVisibleFrame)
+
+        // Pass 2: one solver decides where the card goes and how the connector
+        // runs; the panel is sized to hold both.
         let anchor = PreviewAnchor.solve(
             tagFrame: tagFrame,
             edge: edge,
@@ -61,9 +71,10 @@ final class PreviewPanelController {
             visible: screenVisibleFrame,
             usesConnector: style.usesHoleAndConnector
         )
-
+        lastAnchor = anchor
         host.update(rootView: makeRootView(anchor: anchor))
-        let frame = anchor.panelFrame
+        // The anchor's panel frame already contains the card *and* the curve.
+        let frame = anchor.panelFrame.union(anchor.cardFrame)
 
         if panel.frame != frame {
             panel.setFrame(frame, display: panel.isVisible)
@@ -83,24 +94,42 @@ final class PreviewPanelController {
         }
     }
 
+    /// Re-solves and re-renders with a new style while the card is on screen,
+    /// so switching style in Settings is visible immediately.
+    func restyle(_ style: AppearanceStyle, screenVisibleFrame: CGRect) {
+        guard isVisible, placedStyle != style, let model, let tagFrame = lastTagFrame else { return }
+        placedStyle = style
+        show(
+            model: model,
+            tagFrame: tagFrame,
+            edge: placedEdge,
+            style: style,
+            screenVisibleFrame: screenVisibleFrame
+        )
+    }
+
+    /// The tag the visible card belongs to.
+    private var lastTagFrame: CGRect?
+
     /// The anchor used for the visible preview, so refreshes keep the layout.
     private var lastAnchor: PreviewAnchor?
 
     private func makeRootView(anchor: PreviewAnchor) -> PreviewView {
-        lastAnchor = anchor
         let panel = anchor.panelFrame
         return PreviewView(
             model: model ?? Self.placeholderModel,
             style: placedStyle,
-            cardRect: Self.localRect(anchor.cardFrame, in: panel),
-            connector: placedStyle.usesHoleAndConnector
-                ? PreviewView.PreviewConnector(
-                    start: Self.localPoint(anchor.connectorStart, in: panel),
-                    control1: Self.localPoint(anchor.connectorControl1, in: panel),
-                    control2: Self.localPoint(anchor.connectorControl2, in: panel),
-                    end: Self.localPoint(anchor.connectorEnd, in: panel)
-                )
-                : nil
+            layout: .placed(
+                cardRect: Self.localRect(anchor.cardFrame, in: panel),
+                connector: placedStyle.usesHoleAndConnector
+                    ? PreviewView.PreviewConnector(
+                        start: Self.localPoint(anchor.connectorStart, in: panel),
+                        control1: Self.localPoint(anchor.connectorControl1, in: panel),
+                        control2: Self.localPoint(anchor.connectorControl2, in: panel),
+                        end: Self.localPoint(anchor.connectorEnd, in: panel)
+                    )
+                    : nil
+            )
         )
     }
 
@@ -122,6 +151,7 @@ final class PreviewPanelController {
         panel?.orderOut(nil)
         model = nil
         placedTagFrame = .zero
+        lastTagFrame = nil
         stopRefreshTimer()
     }
 
@@ -143,8 +173,7 @@ final class PreviewPanelController {
             rootView: PreviewView(
                 model: model ?? Self.placeholderModel,
                 style: placedStyle,
-                cardRect: CGRect(origin: .zero, size: CGSize(width: PreviewView.width, height: 120)),
-                connector: nil
+                layout: .measuring
             )
         )
         host.onHover = { [weak self] point in
@@ -191,6 +220,8 @@ final class PreviewPanelController {
 
     private static let placeholderModel = PreviewModel(
         projectID: "",
+        role: .active,
+        colorOverride: nil,
         title: "",
         shortTitle: "",
         statusText: "",

@@ -178,12 +178,16 @@ final class VisualEnvelopeTests: XCTestCase {
             XCTAssertEqual(plan.edge, edge)
 
             for placement in plan.placements {
-                var visual = EdgeLayoutEngine.rotatedBounds(of: placement.frame, degrees: placement.rotationDegrees)
-                // Apply the same layering the view applies.
+                var visual = EdgeLayoutEngine.rotatedBounds(
+                    of: placement.frame,
+                    degrees: placement.rotationDegrees,
+                    anchor: EdgeLayoutEngine.rotationAnchor(for: edge)
+                )
+                // Apply the same hover push the view applies.
                 switch edge {
-                case .left: visual.size.width += placement.perpendicularOffset
-                case .right: visual.origin.x -= placement.perpendicularOffset; visual.size.width += placement.perpendicularOffset
-                case .bottom: visual.size.height += placement.perpendicularOffset
+                case .left: visual.size.width += placement.hoverOffset
+                case .right: visual.origin.x -= placement.hoverOffset; visual.size.width += placement.hoverOffset
+                case .bottom: visual.size.height += placement.hoverOffset
                 }
                 XCTAssertTrue(
                     plan.boundingBox.insetBy(dx: -0.5, dy: -0.5).contains(visual),
@@ -193,7 +197,7 @@ final class VisualEnvelopeTests: XCTestCase {
         }
     }
 
-    func testEnvelopeIncludesTheHoverLift() {
+    func testEnvelopeIncludesTheHoverPush() {
         let dock = DockBounds(edge: .left, thickness: 54, occupiedStart: 200, occupiedEnd: 760)
         let plan = EdgeLayoutEngine.plan(
             projectCount: 4,
@@ -202,13 +206,19 @@ final class VisualEnvelopeTests: XCTestCase {
             dock: dock
         )
         let last = plan.placements.last!
-        let lifted = EdgeLayoutEngine.rotatedBounds(of: last.frame, degrees: last.rotationDegrees)
-        // The hovered tag swings back outwards by one stagger.
-        XCTAssertTrue(plan.boundingBox.insetBy(dx: -0.5, dy: -0.5).contains(lifted))
-        XCTAssertGreaterThan(plan.boundingBox.maxX, plan.placements[0].frame.maxX)
+        // The hovered tag slides towards the popup by one stagger; the panel has
+        // to be wide enough for that.
+        var pushed = EdgeLayoutEngine.rotatedBounds(
+            of: last.frame,
+            degrees: last.rotationDegrees,
+            anchor: EdgeLayoutEngine.rotationAnchor(for: .left)
+        )
+        pushed.size.width += last.hoverOffset
+        XCTAssertTrue(plan.boundingBox.insetBy(dx: -0.5, dy: -0.5).contains(pushed))
+        XCTAssertGreaterThan(plan.boundingBox.maxX, last.frame.maxX)
     }
 
-    func testLayeringGrowsWithTheStack() {
+    func testTagsRestOnTheEdgeAndAllShareOneHoverPush() {
         let dock = DockBounds(edge: .left, thickness: 54, occupiedStart: 200, occupiedEnd: 900)
         let plan = EdgeLayoutEngine.plan(
             projectCount: 4,
@@ -216,7 +226,60 @@ final class VisualEnvelopeTests: XCTestCase {
             screen: screen,
             dock: dock
         )
-        XCTAssertEqual(plan.placements.map(\.perpendicularOffset), [0, 3, 6, 9])
+        // Resting tags sit on exactly the same line — rotation is compensated
+        // so their visible outer edge stays on the screen edge...
+        for placement in plan.placements {
+            let bounds = EdgeLayoutEngine.rotatedBounds(
+                of: placement.frame,
+                degrees: placement.rotationDegrees,
+                anchor: EdgeLayoutEngine.rotationAnchor(for: .left)
+            )
+            XCTAssertEqual(bounds.minX, 0, accuracy: 0.01)
+        }
+        // ...and hovering moves one of them towards the popup by one step.
+        XCTAssertEqual(plan.placements.map(\.hoverOffset), [3, 3, 3, 3])
+    }
+
+    func testRotatedTagsStayFlushWithTheScreenEdge() {
+        for edge in [DockEdge.left, .right, .bottom] {
+            let frame: CGRect
+            switch edge {
+            case .left: frame = CGRect(x: 0, y: 100, width: 54, height: 30)
+            case .right: frame = CGRect(x: 1416, y: 100, width: 54, height: 30)
+            case .bottom: frame = CGRect(x: 200, y: 0, width: 30, height: 54)
+            }
+            let aligned = EdgeLayoutEngine.alignToEdge(frame, rotationDegrees: -6, edge: edge)
+            let bounds = EdgeLayoutEngine.rotatedBounds(
+                of: aligned,
+                degrees: -6,
+                anchor: EdgeLayoutEngine.rotationAnchor(for: edge)
+            )
+            switch edge {
+            case .left: XCTAssertEqual(bounds.minX, frame.minX, accuracy: 0.01)
+            case .right: XCTAssertEqual(bounds.maxX, frame.maxX, accuracy: 0.01)
+            case .bottom: XCTAssertEqual(bounds.minY, frame.minY, accuracy: 0.01)
+            }
+        }
+    }
+
+    func testEveryTagSharesOneLineOnTheEdge() {
+        let dock = DockBounds(edge: .left, thickness: 54, occupiedStart: 200, occupiedEnd: 900)
+        let plan = EdgeLayoutEngine.plan(
+            projectCount: 5,
+            metrics: stackedMetrics(),
+            screen: screen,
+            dock: dock
+        )
+        let leftEdges = plan.placements.map { placement in
+            EdgeLayoutEngine.rotatedBounds(
+                of: placement.frame,
+                degrees: placement.rotationDegrees,
+                anchor: EdgeLayoutEngine.rotationAnchor(for: .left)
+            ).minX
+        }
+        for value in leftEdges {
+            XCTAssertEqual(value, 0, accuracy: 0.01, "a tag drifted off the edge line")
+        }
     }
 
     func testPlainStackHasNoLayeringAndNoRotation() {
@@ -227,7 +290,7 @@ final class VisualEnvelopeTests: XCTestCase {
             screen: screen,
             dock: dock
         )
-        XCTAssertEqual(plan.placements.map(\.perpendicularOffset), [0, 0, 0])
+        XCTAssertEqual(plan.placements.map(\.hoverOffset), [0, 0, 0])
         XCTAssertEqual(plan.placements.map(\.rotationDegrees), [0, 0, 0])
     }
 }

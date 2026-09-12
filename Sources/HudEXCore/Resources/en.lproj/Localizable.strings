@@ -321,3 +321,6 @@
 "appearance.hole.value" = "Colour = project priority";
 
 "settingsblock.guide.project.priority" = "Add `优先级：高` (or 中/低) to colour the tag's punched hole: high / normal / low.";
+
+"appearance.sample.title" = "OD";
+"appearance.sample.body" = "This is how the card will look.";

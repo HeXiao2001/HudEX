@@ -17,7 +17,9 @@ struct SettingsView: View {
             AdvancedSettingsView()
                 .tabItem { Label(L10n.t("settings.tab.advanced"), systemImage: "wrench.and.screwdriver") }
         }
-        .frame(width: 560)
+        // Wide enough that macOS keeps the five tabs visible as tabs instead of
+        // collapsing them into an overflow menu.
+        .frame(width: 660)
     }
 }
 

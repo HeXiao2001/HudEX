@@ -33,6 +33,11 @@ public struct PaletteColor: Sendable, Equatable, Hashable {
         )
     }
 
+    /// Same colour at a different opacity (the paper grain and rules use it).
+    public func withAlpha(_ alpha: Double) -> PaletteColor {
+        self
+    }
+
     /// WCAG relative luminance.
     public var luminance: Double {
         func linear(_ component: Double) -> Double {
@@ -129,6 +134,43 @@ public enum TagPalette {
     }
 }
 
+/// Paper for the skeuomorphic card: the tag's own colour, mixed into a warm
+/// paper base so the card reads as "the same note" rather than a grey box.
+public enum PaperPalette {
+    public static func paper(for role: TagColorRole, isDark: Bool) -> PaletteColor {
+        blend(TagPalette.color(for: role, isDark: isDark), into: base(isDark: isDark), amount: isDark ? 0.16 : 0.14)
+    }
+
+    public static func paper(for color: PaletteColor?, role: TagColorRole, isDark: Bool) -> PaletteColor {
+        guard let color else { return paper(for: role, isDark: isDark) }
+        return blend(color, into: base(isDark: isDark), amount: isDark ? 0.16 : 0.14)
+    }
+
+    /// Ruled lines: a touch darker than the paper.
+    public static func rule(for role: TagColorRole, isDark: Bool, custom: PaletteColor? = nil) -> PaletteColor {
+        let paper = custom.map { self.paper(for: $0, role: role, isDark: isDark) } ?? paper(for: role, isDark: isDark)
+        return blend(isDark ? PaletteColor(hex: "#000000")! : PaletteColor(hex: "#8A7B58")!, into: paper, amount: isDark ? 0.22 : 0.16)
+    }
+
+    public static func ink(for role: TagColorRole, isDark: Bool, custom: PaletteColor? = nil) -> PaletteColor {
+        let paper = custom.map { self.paper(for: $0, role: role, isDark: isDark) } ?? paper(for: role, isDark: isDark)
+        return paper.contrastingTextColor
+    }
+
+    private static func base(isDark: Bool) -> PaletteColor {
+        isDark ? PaletteColor(hex: "#1E1E22")! : PaletteColor(hex: "#FDFAF2")!
+    }
+
+    /// Mixes `color` into `base`, keeping `amount` of the original colour.
+    private static func blend(_ color: PaletteColor, into base: PaletteColor, amount: Double) -> PaletteColor {
+        PaletteColor(
+            red: base.red + (color.red - base.red) * amount,
+            green: base.green + (color.green - base.green) * amount,
+            blue: base.blue + (color.blue - base.blue) * amount
+        )
+    }
+}
+
 /// The resolved look of one tag.
 public struct TagAppearance: Sendable, Equatable {
     public var role: TagColorRole
@@ -136,12 +178,34 @@ public struct TagAppearance: Sendable, Equatable {
     public var text: PaletteColor
     /// True when the project carries its own colour in the Markdown file.
     public var isCustom: Bool
+    /// The project's own colour, when it has one.
+    public var customColor: PaletteColor?
 
-    public init(role: TagColorRole, background: PaletteColor, text: PaletteColor, isCustom: Bool) {
+    public init(
+        role: TagColorRole,
+        background: PaletteColor,
+        text: PaletteColor,
+        isCustom: Bool,
+        customColor: PaletteColor? = nil
+    ) {
         self.role = role
         self.background = background
         self.text = text
         self.isCustom = isCustom
+        self.customColor = customColor
+    }
+
+    /// Paper for the skeuomorphic card, tinted by this tag's own colour.
+    public func paper(isDark: Bool) -> PaletteColor {
+        PaperPalette.paper(for: customColor, role: role, isDark: isDark)
+    }
+
+    public func rule(isDark: Bool) -> PaletteColor {
+        PaperPalette.rule(for: role, isDark: isDark, custom: customColor)
+    }
+
+    public func ink(isDark: Bool) -> PaletteColor {
+        PaperPalette.ink(for: role, isDark: isDark, custom: customColor)
     }
 }
 
@@ -160,7 +224,8 @@ public enum TagAppearanceResolver {
                 role: role,
                 background: custom,
                 text: custom.contrastingTextColor,
-                isCustom: true
+                isCustom: true,
+                customColor: custom
             )
         }
         let background = TagPalette.color(for: role, isDark: isDark)

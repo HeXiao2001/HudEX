@@ -321,3 +321,6 @@
 "appearance.hole.value" = "颜色 = 项目优先级";
 
 "settingsblock.guide.project.priority" = "在项目里加一行 `优先级：高`（或 中 / 低）可以给标签上的洞洞上色：高 / 中 / 低。";
+
+"appearance.sample.title" = "OD";
+"appearance.sample.body" = "卡片大概就是这个样子。";

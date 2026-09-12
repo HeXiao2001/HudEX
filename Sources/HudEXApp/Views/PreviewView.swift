@@ -3,18 +3,17 @@ import SwiftUI
 
 /// The hover card: project name, 当前 / 下一步 / 最新对话.
 ///
-/// Purely informational — no buttons. The style decides the surface: ruled
-/// paper with a connector line (skeuomorphic), frosted material, liquid glass,
-/// or a bare outline. Geometry always comes from `PreviewAnchor`.
+/// Purely informational — no buttons. Two layouts share the same content:
+/// `.measuring` lets the panel ask how tall the card wants to be (before it
+/// knows where the card goes), and `.placed` draws the card at the position the
+/// anchor solver computed, with the connector line when the style uses one.
 struct PreviewView: View {
-    let model: PreviewModel
-    let style: AppearanceStyle
-    /// Card frame inside the panel, top-left origin.
-    let cardRect: CGRect
-    /// Connector geometry inside the panel, top-left origin.
-    let connector: PreviewConnector?
-
-    static let width: CGFloat = 300
+    enum Layout: Equatable {
+        /// Card only, natural size — used once to measure the content.
+        case measuring
+        /// Card at `cardRect`, plus the connector, both in panel coordinates.
+        case placed(cardRect: CGRect, connector: PreviewConnector?)
+    }
 
     struct PreviewConnector: Equatable {
         var start: CGPoint
@@ -23,25 +22,57 @@ struct PreviewView: View {
         var end: CGPoint
     }
 
+    let model: PreviewModel
+    let style: AppearanceStyle
+    let layout: Layout
+
+    static let width: CGFloat = 300
+
     @Environment(\.colorScheme) private var colorScheme
 
     private var isDark: Bool { colorScheme == .dark }
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            if let connector {
-                ConnectorShape(connector: connector)
-                    .stroke(
-                        Color(nsColor: EdgeTagStyle.color(PaletteColor(hex: "#9AA0A8")!)),
-                        style: StrokeStyle(lineWidth: 1.2, lineCap: .round)
-                    )
-                    .opacity(0.85)
-            }
+        switch layout {
+        case .measuring:
             card
-                .frame(width: cardRect.width, height: cardRect.height, alignment: .topLeading)
-                .position(x: cardRect.midX, y: cardRect.midY)
+                .fixedSize(horizontal: false, vertical: true)
+        case .placed(let cardRect, let connector):
+            ZStack(alignment: .topLeading) {
+                if let connector {
+                    ConnectorShape(connector: connector)
+                        .stroke(
+                            Color(nsColor: EdgeTagStyle.color(connectorColor)),
+                            style: StrokeStyle(lineWidth: 1.3, lineCap: .round)
+                        )
+                        .opacity(0.9)
+                }
+                card
+                    .frame(width: cardRect.width, height: cardRect.height, alignment: .topLeading)
+                    .position(x: cardRect.midX, y: cardRect.midY)
+            }
+            // No explicit size: the hosting view proposes the panel's bounds, so
+            // the card can never be squeezed into a smaller frame.
         }
     }
+
+    private var connectorColor: PaletteColor {
+        PaperPalette.rule(for: model.role, isDark: isDark, custom: customColor)
+    }
+
+    private var customColor: PaletteColor? {
+        model.colorOverride.flatMap { TagPalette.color(named: $0, isDark: isDark) }
+    }
+
+    private var appearance: TagAppearance {
+        TagAppearanceResolver.appearance(
+            role: model.role,
+            colorOverride: model.colorOverride,
+            isDark: isDark
+        )
+    }
+
+    // MARK: - Card
 
     private var card: some View {
         content
@@ -68,11 +99,11 @@ struct PreviewView: View {
     private var cardBackground: some View {
         switch style {
         case .skeuomorphic:
+            // Paper in the tag's own colour: a brown tag opens a brown note.
             ZStack {
-                Color(nsColor: EdgeTagStyle.color(isDark
-                    ? PaletteColor(hex: "#26262A")!
-                    : PaletteColor(hex: "#FBF7EC")!))
-                RuledPaperLines(isDark: isDark)
+                Color(nsColor: EdgeTagStyle.color(appearance.paper(isDark: isDark)))
+                RuledPaperLines(color: appearance.rule(isDark: isDark), isDark: isDark)
+                PaperGrain(color: appearance.rule(isDark: isDark).withAlpha(isDark ? 0.10 : 0.07))
             }
         case .frosted:
             Rectangle().fill(.regularMaterial)
@@ -86,19 +117,19 @@ struct PreviewView: View {
     private var borderColor: Color {
         switch style {
         case .skeuomorphic:
-            return Color(nsColor: EdgeTagStyle.color(PaletteColor(hex: isDark ? "#3C3C42" : "#E2D9C4")!))
+            return Color(nsColor: EdgeTagStyle.color(appearance.rule(isDark: isDark).withAlpha(0.9)))
         case .frosted:
             return Color.white.opacity(isDark ? 0.12 : 0.35)
         case .glass:
             return Color.white.opacity(isDark ? 0.16 : 0.45)
         case .minimal:
-            return Color.secondary.opacity(0.6)
+            return Color(nsColor: EdgeTagStyle.color(appearance.background)).opacity(0.75)
         }
     }
 
     private var shadowColor: Color {
         switch style {
-        case .skeuomorphic: return Color.black.opacity(isDark ? 0.45 : 0.18)
+        case .skeuomorphic: return Color.black.opacity(isDark ? 0.45 : 0.20)
         case .frosted: return Color.black.opacity(0.18)
         case .glass: return Color.black.opacity(0.12)
         case .minimal: return .clear
@@ -112,7 +143,12 @@ struct PreviewView: View {
                 SectionBlockView(
                     title: section.title,
                     text: section.body,
-                    lineLimit: section.singleLine ? 1 : 4
+                    lineLimit: section.singleLine ? 1 : 4,
+                    titleColor: style == .skeuomorphic
+                        ? Color(nsColor: EdgeTagStyle.color(
+                            appearance.rule(isDark: isDark).withAlpha(isDark ? 0.95 : 0.85)
+                        ))
+                        : .secondary
                 )
                 .padding(.top, 2)
             }
@@ -123,8 +159,10 @@ struct PreviewView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .foregroundStyle(style == .skeuomorphic
+            ? Color(nsColor: EdgeTagStyle.color(appearance.ink(isDark: isDark)))
+            : Color.primary)
         .frame(width: PreviewView.width, alignment: .leading)
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     private var header: some View {
@@ -138,16 +176,16 @@ struct PreviewView: View {
                 if let age = model.relativeAge {
                     Text(age)
                         .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+                        .opacity(0.75)
                 }
             }
             HStack(spacing: 6) {
                 Text(model.statusText)
                     .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .opacity(0.75)
                 if let updated = model.updatedLine {
-                    Text("·").font(.system(size: 11)).foregroundStyle(.tertiary)
-                    Text(updated).font(.system(size: 11)).foregroundStyle(.secondary)
+                    Text("·").font(.system(size: 11)).opacity(0.5)
+                    Text(updated).font(.system(size: 11)).opacity(0.75)
                 }
             }
         }
@@ -156,6 +194,7 @@ struct PreviewView: View {
 
 /// Faint ruled lines, the cheapest possible "paper" cue.
 private struct RuledPaperLines: View {
+    let color: PaletteColor
     let isDark: Bool
 
     var body: some View {
@@ -169,10 +208,27 @@ private struct RuledPaperLines: View {
                     path.addLine(to: CGPoint(x: geometry.size.width, y: y))
                 }
             }
-            .stroke(
-                Color(nsColor: EdgeTagStyle.color(PaletteColor(hex: isDark ? "#33333A" : "#E7DFCC")!)),
-                lineWidth: 0.8
-            )
+            .stroke(Color(nsColor: EdgeTagStyle.color(color.withAlpha(isDark ? 0.55 : 0.65))), lineWidth: 0.8)
+        }
+    }
+}
+
+/// The tiniest hint of grain: a few diagonal hairlines, no blur, no image.
+private struct PaperGrain: View {
+    let color: PaletteColor
+
+    var body: some View {
+        GeometryReader { geometry in
+            Path { path in
+                let step: CGFloat = 9
+                var x: CGFloat = -geometry.size.height
+                while x < geometry.size.width {
+                    path.move(to: CGPoint(x: x, y: geometry.size.height))
+                    path.addLine(to: CGPoint(x: x + geometry.size.height, y: 0))
+                    x += step
+                }
+            }
+            .stroke(Color(nsColor: EdgeTagStyle.color(color)), lineWidth: 0.5)
         }
     }
 }
@@ -184,15 +240,9 @@ private struct ConnectorShape: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         path.move(to: connector.start)
-        path.addCurve(
-            to: connector.end,
-            control1: connector.control1,
-            control2: connector.control2
-        )
+        path.addCurve(to: connector.end, control1: connector.control1, control2: connector.control2)
         return path
     }
-
-    var animatableData: EmptyAnimatableData { EmptyAnimatableData() }
 }
 
 /// The full project text. Reached by right-clicking a tag → “打开项目完整内容”.

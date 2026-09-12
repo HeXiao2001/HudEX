@@ -13,6 +13,9 @@ struct PreviewSectionModel: Identifiable, Equatable {
 
 struct PreviewModel: Equatable {
     let projectID: String
+    /// The tag's own colours, so the card can look like the same note.
+    let role: TagColorRole
+    let colorOverride: String?
     let title: String
     let shortTitle: String
     let statusText: String
@@ -67,6 +70,13 @@ struct PreviewModel: Equatable {
 
         return PreviewModel(
             projectID: project.id,
+            role: TagColorPolicy.role(
+                status: project.status,
+                updatedAt: document.ageReferenceDate(for: project),
+                now: now,
+                thresholds: preferences.colorThresholds
+            ),
+            colorOverride: project.colorOverride,
             title: project.title,
             shortTitle: project.shortTitle,
             statusText: project.statusDisplayText,

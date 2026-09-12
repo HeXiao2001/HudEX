@@ -140,10 +140,9 @@ public struct TagPlacement: Sendable, Equatable {
     public var rotationDegrees: CGFloat
     /// Stacking order: higher is drawn on top (and hit first).
     public var zIndex: Int
-    /// How far the tag is layered into the screen (positive = inward). The
-    /// view applies this as a visual offset; the panel is sized to include it
-    /// so a layered tag is never clipped.
-    public var perpendicularOffset: CGFloat
+    /// How far the tag moves into the screen *while hovered* (positive =
+    /// toward the popup). Tags sit still otherwise, aligned on the screen edge.
+    public var hoverOffset: CGFloat
 
     public init(
         index: Int,
@@ -151,14 +150,14 @@ public struct TagPlacement: Sendable, Equatable {
         frame: CGRect,
         rotationDegrees: CGFloat = 0,
         zIndex: Int = 0,
-        perpendicularOffset: CGFloat = 0
+        hoverOffset: CGFloat = 0
     ) {
         self.index = index
         self.slot = slot
         self.frame = frame
         self.rotationDegrees = rotationDegrees
         self.zIndex = zIndex
-        self.perpendicularOffset = perpendicularOffset
+        self.hoverOffset = hoverOffset
     }
 }
 
