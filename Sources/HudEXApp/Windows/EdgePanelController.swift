@@ -14,9 +14,11 @@ final class EdgePanelController {
     private var panels: [EdgeSlot: HudEXPanel] = [:]
     private var hosts: [EdgeSlot: HoverTrackingView<EdgeTabsView>] = [:]
     private var tagFrames: [EdgeSlot: [(id: String, frame: CGRect)]] = [:]
+    private var models: [EdgeSlot: EdgePanelModel] = [:]
     private var hoveredProjectID: String?
 
     func update(_ models: [EdgeSlot: EdgePanelModel]) {
+        self.models = models
         for slot in EdgeSlot.allCases {
             guard let model = models[slot], !model.tags.isEmpty, model.size.width > 0, model.size.height > 0 else {
                 hide(slot)
@@ -53,6 +55,14 @@ final class EdgePanelController {
 
     /// Number of live panels — used by the performance test.
     var panelCount: Int { panels.count }
+
+    /// The model of one tag, used to place the hover card precisely.
+    func tagModel(forProject id: String) -> EdgeTagModel? {
+        for model in models.values {
+            if let match = model.tags.first(where: { $0.id == id }) { return match }
+        }
+        return nil
+    }
 
     /// Current frames, for diagnostics.
     func panelFrames() -> [EdgeSlot: CGRect] {

@@ -31,28 +31,19 @@ struct PreviewModel: Equatable {
         preferences: Preferences,
         now: Date = Date()
     ) -> PreviewModel {
-        var sections: [PreviewSectionModel] = []
-
-        if let current = project.currentSection, !current.isEmpty {
-            sections.append(
-                PreviewSectionModel(id: current.id, title: current.title, body: current.body, singleLine: false)
-            )
-        }
-        if let next = project.nextSection, !next.isEmpty {
-            sections.append(
-                PreviewSectionModel(id: next.id, title: next.title, body: next.body, singleLine: false)
-            )
-        }
-        if let conversation = project.latestConversationSection, !conversation.isEmpty {
-            sections.append(
+        // Whatever the file has, in file order: the card is a renderer, not a
+        // schema. A project with two sections gets two blocks, one with six
+        // gets six (the controller drops the tail if the screen is too small).
+        let sections: [PreviewSectionModel] = project.sections
+            .filter { !$0.isEmpty }
+            .map { section in
                 PreviewSectionModel(
-                    id: conversation.id,
-                    title: conversation.title,
-                    body: conversation.body,
-                    singleLine: true
+                    id: section.id,
+                    title: section.title,
+                    body: section.body,
+                    singleLine: SectionKind.match(section.title) == .latestConversation
                 )
-            )
-        }
+            }
 
         let reference = document.ageReferenceDate(for: project)
         let updatedLine: String?

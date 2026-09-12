@@ -124,6 +124,7 @@ struct EdgeTabView: View {
                 .minimumScaleFactor(0.7)
                 .padding(.horizontal, 3)
             if model.style.usesHoleAndConnector {
+                holeStub
                 hole
             }
         }
@@ -198,6 +199,31 @@ struct EdgeTabView: View {
                 Circle().strokeBorder(Color.black.opacity(0.18), lineWidth: 0.5)
             )
             .offset(holeOffset)
+    }
+
+    /// A hairline from the hole to the tag's edge, so the curve that continues
+    /// in the card's panel looks like it comes out of the hole.
+    private var holeStub: some View {
+        let color = Color(nsColor: EdgeTagStyle.color(
+            PaperPalette.rule(
+                for: tag.role,
+                isDark: isDark,
+                custom: tag.colorOverride.flatMap { TagPalette.color(named: $0, isDark: isDark) }
+            )
+        ))
+        return Rectangle()
+            .fill(color.opacity(0.9))
+            .frame(width: model.edge == .bottom ? 1 : 7, height: model.edge == .bottom ? 7 : 1)
+            .offset(stubOffset)
+    }
+
+    private var stubOffset: CGSize {
+        let inset: CGFloat = 4
+        switch model.edge {
+        case .left: return CGSize(width: tag.size.width / 2 - inset, height: 0)
+        case .right: return CGSize(width: -(tag.size.width / 2 - inset), height: 0)
+        case .bottom: return CGSize(width: 0, height: tag.size.height / 2 - inset)
+        }
     }
 
     private var holeOffset: CGSize {

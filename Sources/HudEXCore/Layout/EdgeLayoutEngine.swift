@@ -342,7 +342,7 @@ public enum EdgeLayoutEngine {
     }
 
     /// Axis-aligned bounds of a rectangle rotated about one of its edges.
-    static func rotatedBounds(
+    public static func rotatedBounds(
         of frame: CGRect,
         degrees: CGFloat,
         anchor: RotationAnchor = .minX

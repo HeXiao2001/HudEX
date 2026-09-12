@@ -32,6 +32,7 @@ final class PreviewPanelController {
     func show(
         model: PreviewModel,
         tagFrame: CGRect,
+        tagVisualBounds: CGRect? = nil,
         edge: DockEdge,
         style: AppearanceStyle,
         screenVisibleFrame: CGRect
@@ -54,18 +55,31 @@ final class PreviewPanelController {
 
         // Pass 1: render the card alone so the panel can ask how tall it wants
         // to be. (Measuring the *placed* layout would size the panel from the
-        // previous model, which is what cut the card off before.)
-        host.update(rootView: PreviewView(
-            model: model,
-            style: style,
-            layout: .measuring
-        ))
-        let cardSize = measuredCardSize(for: host, screenVisibleFrame: screenVisibleFrame)
+        // previous model, which is what cut the card off before.) The card is
+        // as tall as the file makes it, so sections are dropped only when the
+        // screen itself is too short.
+        var limit: Int? = model.sections.count
+        var cardSize = CGSize.zero
+        for _ in 0...model.sections.count {
+            host.update(rootView: PreviewView(
+                model: model,
+                style: style,
+                layout: .measuring,
+                sectionLimit: limit
+            ))
+            cardSize = measuredCardSize(for: host, screenVisibleFrame: screenVisibleFrame)
+            let fits = cardSize.height <= screenVisibleFrame.height - 24
+            if fits { break }
+            guard let current = limit, current > 1 else { break }
+            limit = current - 1
+        }
+        self.sectionLimit = limit
 
         // Pass 2: one solver decides where the card goes and how the connector
         // runs; the panel is sized to hold both.
         let anchor = PreviewAnchor.solve(
             tagFrame: tagFrame,
+            tagVisualBounds: tagVisualBounds,
             edge: edge,
             cardSize: cardSize,
             visible: screenVisibleFrame,
@@ -75,6 +89,7 @@ final class PreviewPanelController {
         host.update(rootView: makeRootView(anchor: anchor))
         // The anchor's panel frame already contains the card *and* the curve.
         let frame = anchor.panelFrame.union(anchor.cardFrame)
+        lastCardSize = cardSize
 
         if panel.frame != frame {
             panel.setFrame(frame, display: panel.isVisible)
@@ -110,6 +125,9 @@ final class PreviewPanelController {
 
     /// The tag the visible card belongs to.
     private var lastTagFrame: CGRect?
+    /// How many sections the visible card is drawing.
+    private var sectionLimit: Int?
+    private var lastCardSize: CGSize = .zero
 
     /// The anchor used for the visible preview, so refreshes keep the layout.
     private var lastAnchor: PreviewAnchor?
@@ -129,7 +147,8 @@ final class PreviewPanelController {
                         end: Self.localPoint(anchor.connectorEnd, in: panel)
                     )
                     : nil
-            )
+            ),
+            sectionLimit: sectionLimit
         )
     }
 
@@ -194,10 +213,10 @@ final class PreviewPanelController {
         screenVisibleFrame: CGRect
     ) -> CGSize {
         let fitting = host.fittingSize
-        let width = max(PreviewView.width, fitting.width)
-        let maximumHeight = max(160, screenVisibleFrame.height - 32)
-        let height = min(max(fitting.height, 100), maximumHeight)
-        return CGSize(width: width, height: height)
+        let width = min(max(fitting.width, PreviewView.minimumWidth), PreviewView.maximumWidth)
+        let maximumHeight = max(160, screenVisibleFrame.height - 24)
+        let height = min(max(fitting.height, 90), maximumHeight)
+        return CGSize(width: width.rounded(), height: height.rounded())
     }
 
     // MARK: - Timer

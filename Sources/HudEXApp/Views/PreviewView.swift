@@ -25,8 +25,14 @@ struct PreviewView: View {
     let model: PreviewModel
     let style: AppearanceStyle
     let layout: Layout
+    /// How many sections to draw; the controller lowers this when the card
+    /// would not fit on screen. `nil` draws everything the file has.
+    var sectionLimit: Int? = nil
 
-    static let width: CGFloat = 300
+    /// Card width. The card is measured to its content, so a project with one
+    /// short section gets a narrow note and a long one gets a wider note.
+    static let minimumWidth: CGFloat = 240
+    static let maximumWidth: CGFloat = 420
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -136,33 +142,51 @@ struct PreviewView: View {
         }
     }
 
+    /// The sections actually drawn: whatever the Markdown file contains, in
+    /// file order — the card does not assume any particular set.
+    var visibleSections: [PreviewSectionModel] {
+        guard let sectionLimit else { return model.sections }
+        return Array(model.sections.prefix(max(0, sectionLimit)))
+    }
+
+    private var headingColor: Color {
+        style == .skeuomorphic
+            ? Color(nsColor: EdgeTagStyle.color(appearance.softInk(isDark: isDark)))
+            : .secondary
+    }
+
+    private var bodyColor: Color {
+        style == .skeuomorphic
+            ? Color(nsColor: EdgeTagStyle.color(appearance.ink(isDark: isDark)))
+            : .primary
+    }
+
     private var content: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
-            ForEach(model.sections) { section in
+            ForEach(visibleSections) { section in
                 SectionBlockView(
                     title: section.title,
                     text: section.body,
-                    lineLimit: section.singleLine ? 1 : 4,
-                    titleColor: style == .skeuomorphic
-                        ? Color(nsColor: EdgeTagStyle.color(
-                            appearance.rule(isDark: isDark).withAlpha(isDark ? 0.95 : 0.85)
-                        ))
-                        : .secondary
+                    lineLimit: section.singleLine ? 2 : 5,
+                    titleColor: headingColor
                 )
                 .padding(.top, 2)
+            }
+            if visibleSections.count < model.sections.count {
+                Text(L10n.t("preview.truncated"))
+                    .font(.system(size: 11))
+                    .foregroundStyle(headingColor)
             }
             if let hint = model.emptyHint {
                 Text(hint)
                     .font(.system(size: 11.5))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(headingColor)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .foregroundStyle(style == .skeuomorphic
-            ? Color(nsColor: EdgeTagStyle.color(appearance.ink(isDark: isDark)))
-            : Color.primary)
-        .frame(width: PreviewView.width, alignment: .leading)
+        .foregroundStyle(bodyColor)
+        .frame(minWidth: PreviewView.minimumWidth, maxWidth: PreviewView.maximumWidth, alignment: .leading)
     }
 
     private var header: some View {
@@ -176,16 +200,16 @@ struct PreviewView: View {
                 if let age = model.relativeAge {
                     Text(age)
                         .font(.system(size: 11))
-                        .opacity(0.75)
+                        .foregroundStyle(headingColor)
                 }
             }
             HStack(spacing: 6) {
                 Text(model.statusText)
                     .font(.system(size: 11))
-                    .opacity(0.75)
+                    .foregroundStyle(headingColor)
                 if let updated = model.updatedLine {
-                    Text("·").font(.system(size: 11)).opacity(0.5)
-                    Text(updated).font(.system(size: 11)).opacity(0.75)
+                    Text("·").font(.system(size: 11)).foregroundStyle(headingColor.opacity(0.6))
+                    Text(updated).font(.system(size: 11)).foregroundStyle(headingColor)
                 }
             }
         }

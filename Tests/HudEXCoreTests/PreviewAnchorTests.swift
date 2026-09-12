@@ -70,9 +70,11 @@ final class PreviewAnchorTests: XCTestCase {
                 anchor.connectorStart.x - anchor.holeCenter.x,
                 anchor.connectorStart.y - anchor.holeCenter.y
             )
+            // The line starts just outside the tag's painted edge, so it is the
+            // hole's inset (6.5) plus the clearance (4) away from the centre.
             XCTAssertLessThanOrEqual(
                 distance,
-                anchor.holeRadius + 4,
+                anchor.holeRadius + 10,
                 "the line must start at the hole, not somewhere else"
             )
 
@@ -106,7 +108,7 @@ final class PreviewAnchorTests: XCTestCase {
                            anchor.holeCenter.y - anchor.panelFrame.maxY, 0)
             XCTAssertLessThanOrEqual(
                 max(gapX, gapY),
-                anchor.holeRadius + 6,
+                anchor.holeRadius + PreviewAnchor.connectorClearance + 5,
                 "the hole must sit right next to the panel"
             )
         }
@@ -135,6 +137,31 @@ final class PreviewAnchorTests: XCTestCase {
         XCTAssertLessThan(anchor.holeCenter.x + anchor.holeRadius, tag.maxX)
         XCTAssertGreaterThan(anchor.holeCenter.y - anchor.holeRadius, tag.minY)
         XCTAssertLessThan(anchor.holeCenter.y + anchor.holeRadius, tag.maxY)
+    }
+
+    func testConnectorStartsOutsideThePaintedTag() {
+        // A rotated, hovered tag is wider than its frame; the curve must clear
+        // all of it, otherwise it is drawn across the tag's own colour.
+        let frame = CGRect(x: 0, y: 100, width: 54, height: 30)
+        let visual = EdgeLayoutEngine.rotatedBounds(
+            of: frame,
+            degrees: -5,
+            anchor: EdgeLayoutEngine.rotationAnchor(for: .left)
+        )
+        let anchor = PreviewAnchor.solve(
+            tagFrame: frame,
+            tagVisualBounds: visual,
+            edge: .left,
+            cardSize: card,
+            visible: visible,
+            usesConnector: true
+        )
+        XCTAssertGreaterThanOrEqual(
+            anchor.connectorStart.x,
+            visual.maxX,
+            "the line would be painted over the tag"
+        )
+        XCTAssertGreaterThanOrEqual(anchor.panelFrame.minX, visual.maxX)
     }
 
     func testWithoutConnectorTheCardKeepsAGap() {

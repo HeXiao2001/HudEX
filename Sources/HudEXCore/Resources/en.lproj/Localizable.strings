@@ -324,3 +324,5 @@
 
 "appearance.sample.title" = "OD";
 "appearance.sample.body" = "This is how the card will look.";
+
+"preview.truncated" = "… more in the full view (right-click the tag)";

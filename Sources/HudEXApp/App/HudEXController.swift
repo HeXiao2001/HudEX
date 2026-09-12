@@ -443,10 +443,31 @@ final class HudEXController: ObservableObject {
         previewPanel.show(
             model: model,
             tagFrame: tagFrame,
+            tagVisualBounds: visualBounds(forProject: projectID),
             edge: planEdge,
             style: preferences.appearanceStyle,
             screenVisibleFrame: screen.visibleFrame
         )
+    }
+
+    /// The tag as painted: rotated around its pinned edge and pushed towards
+    /// the popup when hovered. Used so the connector starts outside the tag.
+    private func visualBounds(forProject id: String) -> CGRect? {
+        guard let tag = edgePanels.tagModel(forProject: id) else { return nil }
+        var box = EdgeLayoutEngine.rotatedBounds(
+            of: tag.screenFrame,
+            degrees: tag.rotationDegrees,
+            anchor: EdgeLayoutEngine.rotationAnchor(for: planEdge)
+        )
+        let push = tag.isHovered ? tag.hoverOffset : 0
+        if push > 0 {
+            switch planEdge {
+            case .left: box.size.width += push
+            case .right: box.origin.x -= push; box.size.width += push
+            case .bottom: box.size.height += push
+            }
+        }
+        return box
     }
 
     private func refreshPreviewContent() {

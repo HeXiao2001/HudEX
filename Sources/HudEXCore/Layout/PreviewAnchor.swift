@@ -46,18 +46,26 @@ public struct PreviewAnchor: Sendable, Equatable {
     ///
     /// - Parameters:
     ///   - tagFrame: the tag the pointer is on, in screen coordinates.
+    ///   - tagVisualBounds: the tag as actually painted (rotation and hover
+    ///     push included). The connector starts just outside it, so the curve
+    ///     never crosses the tag.
     ///   - edge: the edge the *tags* live on (not necessarily the Dock's edge).
     ///   - cardSize: the size the card wants to be.
     ///   - visible: the screen's visible frame (Dock and menu bar excluded).
     ///   - usesConnector: skeuomorphic style joins card and tag with a line.
+    /// Air between the tag and the start of the connector.
+    public static let connectorClearance: CGFloat = 4
+
     public static func solve(
         tagFrame: CGRect,
+        tagVisualBounds: CGRect? = nil,
         edge: DockEdge,
         cardSize: CGSize,
         visible: CGRect,
         usesConnector: Bool
     ) -> PreviewAnchor {
         let gap = usesConnector ? connectorGap : cardGap
+        let visual = tagVisualBounds ?? tagFrame
 
         var card = CGRect(origin: .zero, size: cardSize)
         switch edge {
@@ -107,13 +115,14 @@ public struct PreviewAnchor: Sendable, Equatable {
             end = CGPoint(x: card.midX, y: card.minY)
         }
 
-        // The line is drawn by the card's panel and may not cover the tag, so it
-        // starts exactly on the tag's card-facing edge — which is the hole's rim.
+        // The line is drawn by the card's panel, which sits above the tag's
+        // panel: starting it on the tag's *painted* edge (plus a hair) is what
+        // keeps the curve off the tag itself.
         let start: CGPoint
         switch edge {
-        case .left: start = CGPoint(x: tagFrame.maxX, y: hole.y)
-        case .right: start = CGPoint(x: tagFrame.minX, y: hole.y)
-        case .bottom: start = CGPoint(x: hole.x, y: tagFrame.maxY)
+        case .left: start = CGPoint(x: visual.maxX + connectorClearance, y: hole.y)
+        case .right: start = CGPoint(x: visual.minX - connectorClearance, y: hole.y)
+        case .bottom: start = CGPoint(x: hole.x, y: visual.maxY + connectorClearance)
         }
 
         // A shallow S-curve reads as a natural "string" rather than a rod.
@@ -149,13 +158,13 @@ public struct PreviewAnchor: Sendable, Equatable {
             // the tag and the hover would flicker.
             switch edge {
             case .left:
-                panel.origin.x = max(panel.origin.x, tagFrame.maxX)
+                panel.origin.x = max(panel.origin.x, visual.maxX + connectorClearance)
                 panel.size.width = max(1, panel.maxX - panel.origin.x)
             case .right:
-                let limit = tagFrame.minX
+                let limit = visual.minX - connectorClearance
                 panel.size.width = max(1, limit - panel.origin.x)
             case .bottom:
-                panel.origin.y = max(panel.origin.y, tagFrame.maxY)
+                panel.origin.y = max(panel.origin.y, visual.maxY + connectorClearance)
                 panel.size.height = max(1, panel.maxY - panel.origin.y)
             }
         } else {

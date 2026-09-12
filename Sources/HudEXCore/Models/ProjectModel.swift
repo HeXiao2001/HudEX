@@ -126,7 +126,7 @@ public enum SectionKind: String, Sendable, CaseIterable {
         return text
     }
 
-    static func match(_ title: String) -> SectionKind? {
+    public static func match(_ title: String) -> SectionKind? {
         let key = normalize(title)
         guard !key.isEmpty else { return nil }
         for kind in SectionKind.allCases {

@@ -38,6 +38,46 @@ public struct PaletteColor: Sendable, Equatable, Hashable {
         self
     }
 
+    // MARK: - HSB
+
+    public var hsb: (hue: Double, saturation: Double, brightness: Double) {
+        let maxValue = max(red, green, blue)
+        let minValue = min(red, green, blue)
+        let delta = maxValue - minValue
+        var hue: Double = 0
+        if delta > 0 {
+            if maxValue == red {
+                hue = ((green - blue) / delta).truncatingRemainder(dividingBy: 6)
+            } else if maxValue == green {
+                hue = (blue - red) / delta + 2
+            } else {
+                hue = (red - green) / delta + 4
+            }
+            hue /= 6
+            if hue < 0 { hue += 1 }
+        }
+        let saturation = maxValue == 0 ? 0 : delta / maxValue
+        return (hue, saturation, maxValue)
+    }
+
+    /// Builds a colour from hue/saturation/brightness.
+    public static func fromHSB(hue: Double, saturation: Double, brightness: Double) -> PaletteColor {
+        let h = (hue.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1) * 6
+        let c = brightness * saturation
+        let x = c * (1 - abs(h.truncatingRemainder(dividingBy: 2) - 1))
+        let m = brightness - c
+        let rgb: (Double, Double, Double)
+        switch Int(h) {
+        case 0: rgb = (c, x, 0)
+        case 1: rgb = (x, c, 0)
+        case 2: rgb = (0, c, x)
+        case 3: rgb = (0, x, c)
+        case 4: rgb = (x, 0, c)
+        default: rgb = (c, 0, x)
+        }
+        return PaletteColor(red: rgb.0 + m, green: rgb.1 + m, blue: rgb.2 + m)
+    }
+
     /// WCAG relative luminance.
     public var luminance: Double {
         func linear(_ component: Double) -> Double {
@@ -137,36 +177,49 @@ public enum TagPalette {
 /// Paper for the skeuomorphic card: the tag's own colour, mixed into a warm
 /// paper base so the card reads as "the same note" rather than a grey box.
 public enum PaperPalette {
+    /// Pastel paper: the tag's hue at very low saturation and high brightness,
+    /// so the card keeps the note's colour while staying light enough for dark
+    /// ink. A dark paper with light ink looked muddy and the section headings
+    /// disappeared into it.
     public static func paper(for role: TagColorRole, isDark: Bool) -> PaletteColor {
-        blend(TagPalette.color(for: role, isDark: isDark), into: base(isDark: isDark), amount: isDark ? 0.16 : 0.14)
+        paper(for: nil, role: role, isDark: isDark)
     }
 
     public static func paper(for color: PaletteColor?, role: TagColorRole, isDark: Bool) -> PaletteColor {
-        guard let color else { return paper(for: role, isDark: isDark) }
-        return blend(color, into: base(isDark: isDark), amount: isDark ? 0.16 : 0.14)
+        let source = color ?? TagPalette.color(for: role, isDark: false)
+        let hsb = source.hsb
+        return PaletteColor.fromHSB(
+            hue: hsb.hue,
+            saturation: min(hsb.saturation * 0.30, isDark ? 0.26 : 0.20),
+            brightness: isDark ? 0.86 : 0.97
+        )
     }
 
-    /// Ruled lines: a touch darker than the paper.
+    /// Ruled lines: same hue, a shade deeper than the paper.
     public static func rule(for role: TagColorRole, isDark: Bool, custom: PaletteColor? = nil) -> PaletteColor {
-        let paper = custom.map { self.paper(for: $0, role: role, isDark: isDark) } ?? paper(for: role, isDark: isDark)
-        return blend(isDark ? PaletteColor(hex: "#000000")! : PaletteColor(hex: "#8A7B58")!, into: paper, amount: isDark ? 0.22 : 0.16)
+        let paper = self.paper(for: custom, role: role, isDark: isDark)
+        let hsb = paper.hsb
+        return PaletteColor.fromHSB(
+            hue: hsb.hue,
+            saturation: min(hsb.saturation + 0.14, 0.45),
+            brightness: max(hsb.brightness - (isDark ? 0.10 : 0.07), 0)
+        )
     }
 
+    /// Ink for the card: always dark on the pastel paper.
     public static func ink(for role: TagColorRole, isDark: Bool, custom: PaletteColor? = nil) -> PaletteColor {
-        let paper = custom.map { self.paper(for: $0, role: role, isDark: isDark) } ?? paper(for: role, isDark: isDark)
+        let paper = self.paper(for: custom, role: role, isDark: isDark)
         return paper.contrastingTextColor
     }
 
-    private static func base(isDark: Bool) -> PaletteColor {
-        isDark ? PaletteColor(hex: "#1E1E22")! : PaletteColor(hex: "#FDFAF2")!
-    }
-
-    /// Mixes `color` into `base`, keeping `amount` of the original colour.
-    private static func blend(_ color: PaletteColor, into base: PaletteColor, amount: Double) -> PaletteColor {
-        PaletteColor(
-            red: base.red + (color.red - base.red) * amount,
-            green: base.green + (color.green - base.green) * amount,
-            blue: base.blue + (color.blue - base.blue) * amount
+    /// Softer ink for section headings — readable, but visibly secondary.
+    public static func softInk(for role: TagColorRole, isDark: Bool, custom: PaletteColor? = nil) -> PaletteColor {
+        let ink = self.ink(for: role, isDark: isDark, custom: custom)
+        let paper = self.paper(for: custom, role: role, isDark: isDark)
+        return PaletteColor(
+            red: (ink.red + paper.red) / 2,
+            green: (ink.green + paper.green) / 2,
+            blue: (ink.blue + paper.blue) / 2
         )
     }
 }
@@ -206,6 +259,10 @@ public struct TagAppearance: Sendable, Equatable {
 
     public func ink(isDark: Bool) -> PaletteColor {
         PaperPalette.ink(for: role, isDark: isDark, custom: customColor)
+    }
+
+    public func softInk(isDark: Bool) -> PaletteColor {
+        PaperPalette.softInk(for: role, isDark: isDark, custom: customColor)
     }
 }
 
