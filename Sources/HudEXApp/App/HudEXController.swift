@@ -443,31 +443,30 @@ final class HudEXController: ObservableObject {
         previewPanel.show(
             model: model,
             tagFrame: tagFrame,
-            tagVisualBounds: visualBounds(forProject: projectID),
+            holeEdgePoint: paintedEdgePoint(forProject: projectID),
             edge: planEdge,
             style: preferences.appearanceStyle,
             screenVisibleFrame: screen.visibleFrame
         )
     }
 
-    /// The tag as painted: rotated around its pinned edge and pushed towards
-    /// the popup when hovered. Used so the connector starts outside the tag.
-    private func visualBounds(forProject id: String) -> CGRect? {
+    /// The exact point where the hovered tag's card-facing edge crosses its
+    /// centre line, painted state included. The string starts there, which is
+    /// what removes the last pixel of gap between tag and line.
+    private func paintedEdgePoint(forProject id: String) -> CGPoint? {
         guard let tag = edgePanels.tagModel(forProject: id) else { return nil }
-        var box = EdgeLayoutEngine.rotatedBounds(
-            of: tag.screenFrame,
-            degrees: tag.rotationDegrees,
-            anchor: EdgeLayoutEngine.rotationAnchor(for: planEdge)
+        return EdgeLayoutEngine.paintedEdgePoint(
+            of: TagPlacement(
+                index: tag.index,
+                slot: .primary,
+                frame: tag.screenFrame,
+                rotationDegrees: tag.rotationDegrees,
+                zIndex: Int(tag.zIndex),
+                hoverOffset: tag.hoverOffset
+            ),
+            edge: planEdge,
+            hovered: tag.isHovered
         )
-        let push = tag.isHovered ? tag.hoverOffset : 0
-        if push > 0 {
-            switch planEdge {
-            case .left: box.size.width += push
-            case .right: box.origin.x -= push; box.size.width += push
-            case .bottom: box.size.height += push
-            }
-        }
-        return box
     }
 
     private func refreshPreviewContent() {

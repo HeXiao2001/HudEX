@@ -78,10 +78,14 @@ final class PreviewAnchorTests: XCTestCase {
                 "the line must start at the hole, not somewhere else"
             )
 
+            // The line ends at the card's punch hole, which sits inside the paper.
             switch edge {
-            case .left: XCTAssertEqual(anchor.connectorEnd.x, anchor.cardFrame.minX, accuracy: 0.01)
-            case .right: XCTAssertEqual(anchor.connectorEnd.x, anchor.cardFrame.maxX, accuracy: 0.01)
-            case .bottom: XCTAssertEqual(anchor.connectorEnd.y, anchor.cardFrame.minY, accuracy: 0.01)
+            case .left:
+                XCTAssertEqual(anchor.connectorEnd.x, anchor.cardFrame.minX + PreviewAnchor.cardHoleInset, accuracy: 0.01)
+            case .right:
+                XCTAssertEqual(anchor.connectorEnd.x, anchor.cardFrame.maxX - PreviewAnchor.cardHoleInset, accuracy: 0.01)
+            case .bottom:
+                XCTAssertEqual(anchor.connectorEnd.y, anchor.cardFrame.minY + PreviewAnchor.cardHoleInset, accuracy: 0.01)
             }
         }
     }
@@ -108,7 +112,7 @@ final class PreviewAnchorTests: XCTestCase {
                            anchor.holeCenter.y - anchor.panelFrame.maxY, 0)
             XCTAssertLessThanOrEqual(
                 max(gapX, gapY),
-                anchor.holeRadius + PreviewAnchor.connectorClearance + 5,
+                anchor.holeRadius + PreviewAnchor.connectorClearance + 6,
                 "the hole must sit right next to the panel"
             )
         }
@@ -139,29 +143,36 @@ final class PreviewAnchorTests: XCTestCase {
         XCTAssertLessThan(anchor.holeCenter.y + anchor.holeRadius, tag.maxY)
     }
 
-    func testConnectorStartsOutsideThePaintedTag() {
-        // A rotated, hovered tag is wider than its frame; the curve must clear
-        // all of it, otherwise it is drawn across the tag's own colour.
+    func testConnectorStartsOnThePaintedEdge() {
+        // A rotated, hovered tag: the string must start exactly where the tag's
+        // painted edge is — not floating a pixel away, not crossing the tag.
         let frame = CGRect(x: 0, y: 100, width: 54, height: 30)
-        let visual = EdgeLayoutEngine.rotatedBounds(
-            of: frame,
-            degrees: -5,
-            anchor: EdgeLayoutEngine.rotationAnchor(for: .left)
+        let placement = TagPlacement(
+            index: 0,
+            slot: .primary,
+            frame: frame,
+            rotationDegrees: -5,
+            hoverOffset: 2.5
         )
+        let edgePoint = EdgeLayoutEngine.paintedEdgePoint(of: placement, edge: .left, hovered: true)
+
+        // Rotation keeps the edge midpoint almost exactly on the frame edge,
+        // and the hover push moves it towards the popup.
+        XCTAssertEqual(edgePoint.x, frame.maxX + 2.5, accuracy: 0.6)
+        // Rotating about the pinned edge swings the far end by width·sin(θ).
+        XCTAssertEqual(edgePoint.y, frame.midY + frame.width * sin(-5 * .pi / 180), accuracy: 0.5)
+
         let anchor = PreviewAnchor.solve(
             tagFrame: frame,
-            tagVisualBounds: visual,
+            holeEdgePoint: edgePoint,
             edge: .left,
             cardSize: card,
             visible: visible,
             usesConnector: true
         )
-        XCTAssertGreaterThanOrEqual(
-            anchor.connectorStart.x,
-            visual.maxX,
-            "the line would be painted over the tag"
-        )
-        XCTAssertGreaterThanOrEqual(anchor.panelFrame.minX, visual.maxX)
+        XCTAssertEqual(anchor.connectorStart, edgePoint)
+        XCTAssertEqual(anchor.holeCenter.y, edgePoint.y, accuracy: 0.01)
+        XCTAssertGreaterThanOrEqual(anchor.panelFrame.minX, edgePoint.x)
     }
 
     func testBothEndsOfTheStringArePunched() {
@@ -176,9 +187,14 @@ final class PreviewAnchorTests: XCTestCase {
         // The tag hole is inside the tag...
         XCTAssertTrue(tag.insetBy(dx: -0.01, dy: -0.01).contains(anchor.holeCenter))
         // ...and the card hole sits on the card's near edge, aligned with the line.
-        XCTAssertTrue(anchor.cardFrame.insetBy(dx: -0.01, dy: -0.01).contains(anchor.cardHoleCenter))
+        XCTAssertTrue(anchor.cardFrame.insetBy(dx: 0.5, dy: 0.5).contains(anchor.cardHoleCenter))
         XCTAssertEqual(anchor.connectorEnd, anchor.cardHoleCenter)
-        XCTAssertEqual(anchor.cardHoleCenter.x, anchor.cardFrame.minX, accuracy: 0.01)
+        XCTAssertEqual(
+            anchor.cardHoleCenter.x,
+            anchor.cardFrame.minX + PreviewAnchor.cardHoleInset,
+            accuracy: 0.01,
+            "the card's hole must sit inside the paper, not straddle its edge"
+        )
     }
 
     func testTheCurveBendsVisibly() {

@@ -30,21 +30,44 @@ public struct PreviewAnchor: Sendable, Equatable {
     /// Direction the card opens in.
     public var edge: DockEdge
 
-    /// Point on the card's near edge that is closest to the tag's hole, so the
-    /// card's own punched hole lines up with the string.
-    static func nearestEdgePoint(of card: CGRect, to point: CGPoint, edge: DockEdge) -> CGPoint {
+    /// Fallback when the caller has no painted placement: the midpoint of the
+    /// tag's card-facing edge.
+    static func defaultEdgePoint(of tagFrame: CGRect, edge: DockEdge) -> CGPoint {
         switch edge {
-        case .left:
-            return CGPoint(x: card.minX, y: min(max(point.y, card.minY + cardHoleInset), card.maxY - cardHoleInset))
-        case .right:
-            return CGPoint(x: card.maxX, y: min(max(point.y, card.minY + cardHoleInset), card.maxY - cardHoleInset))
-        case .bottom:
-            return CGPoint(x: min(max(point.x, card.minX + cardHoleInset), card.maxX - cardHoleInset), y: card.minY)
+        case .left: return CGPoint(x: tagFrame.maxX, y: tagFrame.midY)
+        case .right: return CGPoint(x: tagFrame.minX, y: tagFrame.midY)
+        case .bottom: return CGPoint(x: tagFrame.midX, y: tagFrame.maxY)
         }
     }
 
+    /// The card's own punch hole: inside the paper, near the edge that faces
+    /// the tag, level with the tag's hole whenever that fits on the card.
+    static func cardHole(in card: CGRect, near point: CGPoint, edge: DockEdge) -> CGPoint {
+        switch edge {
+        case .left:
+            return CGPoint(
+                x: card.minX + cardHoleInset,
+                y: clamp(point.y, card.minY + cardHoleInset, card.maxY - cardHoleInset)
+            )
+        case .right:
+            return CGPoint(
+                x: card.maxX - cardHoleInset,
+                y: clamp(point.y, card.minY + cardHoleInset, card.maxY - cardHoleInset)
+            )
+        case .bottom:
+            return CGPoint(
+                x: clamp(point.x, card.minX + cardHoleInset, card.maxX - cardHoleInset),
+                y: card.minY + cardHoleInset
+            )
+        }
+    }
+
+    private static func clamp(_ value: CGFloat, _ low: CGFloat, _ high: CGFloat) -> CGFloat {
+        min(max(value, low), max(low, high))
+    }
+
     /// Distance the card's hole sits inside its edge.
-    public static let cardHoleInset: CGFloat = 9
+    public static let cardHoleInset: CGFloat = 11
 
     /// Bounding box of the connector path (control points included — a curve
     /// stays inside its control polygon, so the panel can never clip it).
@@ -66,9 +89,9 @@ public struct PreviewAnchor: Sendable, Equatable {
     ///
     /// - Parameters:
     ///   - tagFrame: the tag the pointer is on, in screen coordinates.
-    ///   - tagVisualBounds: the tag as actually painted (rotation and hover
-    ///     push included). The connector starts just outside it, so the curve
-    ///     never crosses the tag.
+    ///   - holeEdgePoint: the exact point where the tag's card-facing edge
+    ///     crosses its centre line, painted state included. The string starts
+    ///     here, so there is no gap and no overlap.
     ///   - edge: the edge the *tags* live on (not necessarily the Dock's edge).
     ///   - cardSize: the size the card wants to be.
     ///   - visible: the screen's visible frame (Dock and menu bar excluded).
@@ -79,14 +102,13 @@ public struct PreviewAnchor: Sendable, Equatable {
 
     public static func solve(
         tagFrame: CGRect,
-        tagVisualBounds: CGRect? = nil,
+        holeEdgePoint: CGPoint? = nil,
         edge: DockEdge,
         cardSize: CGSize,
         visible: CGRect,
         usesConnector: Bool
     ) -> PreviewAnchor {
         let gap = usesConnector ? connectorGap : cardGap
-        let visual = tagVisualBounds ?? tagFrame
 
         var card = CGRect(origin: .zero, size: cardSize)
         switch edge {
@@ -112,65 +134,51 @@ public struct PreviewAnchor: Sendable, Equatable {
         card.origin.x = card.origin.x.rounded()
         card.origin.y = card.origin.y.rounded()
 
-        // The hole sits on the tag's edge that faces the card, just inside the
-        // rounded corner so both corners stay visible.
+        // The hole sits inside the tag, just in from the edge that faces the
+        // card, so both rounded corners stay visible.
         let holeRadius: CGFloat = 3.5
         let inset = holeRadius + 3
-        var hole = CGPoint.zero
+        let edgePoint = holeEdgePoint ?? Self.defaultEdgePoint(of: tagFrame, edge: edge)
+        var hole = edgePoint
         switch edge {
-        case .left:
-            hole = CGPoint(x: tagFrame.maxX - inset, y: tagFrame.midY)
-        case .right:
-            hole = CGPoint(x: tagFrame.minX + inset, y: tagFrame.midY)
-        case .bottom:
-            hole = CGPoint(x: tagFrame.midX, y: tagFrame.maxY - inset)
+        case .left: hole = CGPoint(x: edgePoint.x - inset, y: edgePoint.y)
+        case .right: hole = CGPoint(x: edgePoint.x + inset, y: edgePoint.y)
+        case .bottom: hole = CGPoint(x: edgePoint.x, y: edgePoint.y - inset)
         }
 
-        // The string arrives at the card's own hole: the nearest point of the
-        // card to the hole, so the line stays short and obviously connected.
-        let cardHole = Self.nearestEdgePoint(of: card, to: hole, edge: edge)
-        var end = cardHole
+        // The string arrives at the card's own punch hole, which sits *inside*
+        // the paper (like a hole in a page) rather than straddling the edge.
+        let cardHole = Self.cardHole(in: card, near: hole, edge: edge)
+        let end = cardHole
 
-        // The line is drawn by the card's panel, which sits above the tag's
-        // panel: starting it on the tag's *painted* edge (plus a hair) is what
-        // keeps the curve off the tag itself.
-        let start: CGPoint
-        switch edge {
-        case .left: start = CGPoint(x: visual.maxX + connectorClearance, y: hole.y)
-        case .right: start = CGPoint(x: visual.minX - connectorClearance, y: hole.y)
-        case .bottom: start = CGPoint(x: hole.x, y: visual.maxY + connectorClearance)
-        }
+        // Starts exactly on the tag's painted edge: no gap, no overlap.
+        let start = edgePoint
 
         // A wide S-curve: both control points are pulled most of the way
         // across the gap, which is what makes the string read as a curve
         // instead of a slightly slanted rod.
-        // Even when the two holes sit on the same line, the string should hang
-        // rather than be a rod: both control points get the same sideways bow,
-        // which keeps the ends exactly on the holes while the middle sags.
-        let chord = hypot(end.x - start.x, end.y - start.y)
-        let bow = min(max(chord * 0.25, 6), 14)
-        let bowOffset: CGPoint
-        switch edge {
-        case .left, .right: bowOffset = CGPoint(x: 0, y: -bow)
-        case .bottom: bowOffset = CGPoint(x: bow, y: 0)
-        }
+        // Control points stay *between* the two ends along the gap axis, so the
+        // curve is monotone and smooth; the sideways bow makes it hang like a
+        // string. (Letting the controls cross over produced a visible elbow.)
+        let across = edge == .bottom ? (end.y - start.y) : (end.x - start.x)
+        let drop = edge == .bottom ? (end.x - start.x) : (end.y - start.y)
+        let bow = min(max(hypot(across, drop) * 0.16, 4), 10)
 
         let control1: CGPoint
         let control2: CGPoint
-        let pull: CGFloat = 0.75
+        let first: CGFloat = 0.3
+        let second: CGFloat = 0.7
         switch edge {
-        case .left:
-            let dx = end.x - start.x
-            control1 = CGPoint(x: start.x + dx * pull, y: start.y + bowOffset.y)
-            control2 = CGPoint(x: end.x - dx * pull, y: end.y + bowOffset.y)
-        case .right:
-            let dx = start.x - end.x
-            control1 = CGPoint(x: start.x - dx * pull, y: start.y + bowOffset.y)
-            control2 = CGPoint(x: end.x + dx * pull, y: end.y + bowOffset.y)
+        case .left, .right:
+            let x1 = start.x + across * first
+            let x2 = start.x + across * second
+            control1 = CGPoint(x: x1, y: start.y - bow)
+            control2 = CGPoint(x: x2, y: end.y - bow)
         case .bottom:
-            let dy = end.y - start.y
-            control1 = CGPoint(x: start.x + bowOffset.x, y: start.y + dy * pull)
-            control2 = CGPoint(x: end.x + bowOffset.x, y: end.y - dy * pull)
+            let y1 = start.y + across * first
+            let y2 = start.y + across * second
+            control1 = CGPoint(x: start.x + bow, y: y1)
+            control2 = CGPoint(x: end.x + bow, y: y2)
         }
 
         var panel = card
@@ -188,13 +196,12 @@ public struct PreviewAnchor: Sendable, Equatable {
             // the tag and the hover would flicker.
             switch edge {
             case .left:
-                panel.origin.x = max(panel.origin.x, visual.maxX + connectorClearance)
+                panel.origin.x = max(panel.origin.x, start.x)
                 panel.size.width = max(1, panel.maxX - panel.origin.x)
             case .right:
-                let limit = visual.minX - connectorClearance
-                panel.size.width = max(1, limit - panel.origin.x)
+                panel.size.width = max(1, start.x - panel.origin.x)
             case .bottom:
-                panel.origin.y = max(panel.origin.y, visual.maxY + connectorClearance)
+                panel.origin.y = max(panel.origin.y, start.y)
                 panel.size.height = max(1, panel.maxY - panel.origin.y)
             }
         } else {

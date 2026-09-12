@@ -218,7 +218,8 @@ struct EdgeTabView: View {
     }
 
     private var stubOffset: CGSize {
-        let inset: CGFloat = 4
+        // Runs all the way to the tag's edge so the curve outside continues it.
+        let inset: CGFloat = 0.5
         switch model.edge {
         case .left: return CGSize(width: tag.size.width / 2 - inset, height: 0)
         case .right: return CGSize(width: -(tag.size.width / 2 - inset), height: 0)

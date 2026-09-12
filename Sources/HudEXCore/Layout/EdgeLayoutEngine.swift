@@ -302,6 +302,40 @@ public enum EdgeLayoutEngine {
         return box.insetBy(dx: -Self.panelMargin, dy: -Self.panelMargin)
     }
 
+    /// The point where the tag's card-facing edge crosses its centre line,
+    /// with rotation and the hover push applied.
+    ///
+    /// This is the exact spot a connector has to start from: using the rotated
+    /// bounding box instead leaves a gap of up to 1.5 pt, which is what made the
+    /// string look detached from the tag.
+    public static func paintedEdgePoint(
+        of placement: TagPlacement,
+        edge: DockEdge,
+        hovered: Bool
+    ) -> CGPoint {
+        let frame = placement.frame
+        let radians = placement.rotationDegrees * .pi / 180
+        let push = hovered ? placement.hoverOffset : 0
+
+        switch edge {
+        case .left:
+            let anchor = CGPoint(x: frame.minX, y: frame.midY)
+            let x = anchor.x + frame.width * cos(radians) + push
+            let y = anchor.y + frame.width * sin(radians)
+            return CGPoint(x: x, y: y)
+        case .right:
+            let anchor = CGPoint(x: frame.maxX, y: frame.midY)
+            let x = anchor.x - frame.width * cos(radians) - push
+            let y = anchor.y - frame.width * sin(radians)
+            return CGPoint(x: x, y: y)
+        case .bottom:
+            let anchor = CGPoint(x: frame.midX, y: frame.minY)
+            let x = anchor.x - frame.height * sin(radians)
+            let y = anchor.y + frame.height * cos(radians) + push
+            return CGPoint(x: x, y: y)
+        }
+    }
+
     /// Nudges a rotated tag so its outer edge stays exactly on the screen edge.
     ///
     /// Rotating around the edge midpoint swings the corners about 1.5 pt in or

@@ -32,7 +32,7 @@ final class PreviewPanelController {
     func show(
         model: PreviewModel,
         tagFrame: CGRect,
-        tagVisualBounds: CGRect? = nil,
+        holeEdgePoint: CGPoint? = nil,
         edge: DockEdge,
         style: AppearanceStyle,
         screenVisibleFrame: CGRect
@@ -79,7 +79,7 @@ final class PreviewPanelController {
         // runs; the panel is sized to hold both.
         let anchor = PreviewAnchor.solve(
             tagFrame: tagFrame,
-            tagVisualBounds: tagVisualBounds,
+            holeEdgePoint: holeEdgePoint,
             edge: edge,
             cardSize: cardSize,
             visible: screenVisibleFrame,
