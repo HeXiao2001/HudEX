@@ -29,9 +29,18 @@ AI agent — and it deliberately isn't.
 
 ## Quick start
 
+**Install the built package** (recommended): download `HudEX-1.0.0.pkg` and
+double-click it, or `HudEX-1.0.0.dmg` and drag the app onto Applications. HudEX
+is ad-hoc signed rather than notarised, so the first launch asks for one
+confirmation: right-click the app → **Open** → **Open**. (Command line, no
+dialogs: `sudo installer -pkg HudEX-1.0.0.pkg -target /`.)
+
+**Or build it yourself:**
+
 ```bash
 git clone <this repo> && cd HudEX
 ./script/build_and_run.sh          # builds dist/HudEX.app and launches it
+./script/make_package.sh           # builds release/HudEX-1.0.0.{pkg,dmg}
 ```
 
 Then open **Settings → Source** and pick your `HudEX.md` (or press
@@ -120,8 +129,13 @@ edge**, or **pin to a screen edge of your choice** (left/right/bottom, anchored
 start/centre/end, with an offset) — so a left Dock can show bookmarks on the
 right edge if you prefer.
 
-Bookmarks are never wider than the Dock, never overlap it, never cover the menu
-bar, and overflow only starts once the primary position is full.
+Bookmarks are never wider than the Dock, never overlap it and never cover the
+menu bar.
+
+**By default they only ever appear in one place**: whatever does not fit is
+reported in Settings instead of being drawn somewhere else. Turn on
+*Allow a second position for overflow* in Settings → Layout (or
+`Overflow slot：on` in the file) if you would rather use both ends of the edge.
 
 ## Permissions, network, resources
 

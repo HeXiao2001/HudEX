@@ -35,7 +35,12 @@ public enum EdgeLayoutEngine {
             )
         }
 
-        let specs = slotSpecs(metrics: metrics, screen: screen, dock: dock, mode: mode)
+        var specs = slotSpecs(metrics: metrics, screen: screen, dock: dock, mode: mode)
+        if !mode.allowOverflowSlot {
+            // One place only: the overflow slot is not offered at all, so it can
+            // never be drawn in — the plan reports the leftovers as overflow.
+            specs[.secondary] = nil
+        }
         let visibleCount = limits.visibleCount(for: projectCount)
         var placements: [TagPlacement] = []
         var index = 0
@@ -44,7 +49,8 @@ public enum EdgeLayoutEngine {
         // slot first and only then use the secondary one.
         let primaryTarget = mode.kind == .dockSplit ? (visibleCount + 1) / 2 : visibleCount
 
-        for slot in [EdgeSlot.primary, .secondary] {
+        let slots: [EdgeSlot] = mode.allowOverflowSlot ? [.primary, .secondary] : [.primary]
+        for slot in slots {
             guard index < visibleCount, let spec = specs[slot] else { continue }
             let capacity = limits.slotCapacity(for: capacity(in: spec.range, metrics: metrics))
             let target = slot == .primary ? min(primaryTarget, visibleCount) : visibleCount
@@ -150,8 +156,11 @@ public enum EdgeLayoutEngine {
                 let needed = metrics.length
                 let center = (target.lowerBound + target.upperBound) / 2 + mode.offset
                 let start = max(target.lowerBound, min(center - needed / 2, target.upperBound - needed))
+                guard let centered = safeRange(start, target.upperBound) else {
+                    return [.primary: SlotSpec(range: target, growth: edge.naturalGrowth)]
+                }
                 var specs: [EdgeSlot: SlotSpec] = [
-                    .primary: SlotSpec(range: start...target.upperBound, growth: edge.naturalGrowth)
+                    .primary: SlotSpec(range: centered, growth: edge.naturalGrowth)
                 ]
                 if segments.count > 1 {
                     let other = segments.first { $0 != target } ?? segments[0]
@@ -160,6 +169,17 @@ public enum EdgeLayoutEngine {
                 return specs
             }
         }
+    }
+
+    /// Builds a range without trapping.
+    ///
+    /// `lower...upper` crashes when `lower > upper`, and the Dock's geometry is
+    /// user-calibratable (and only estimated), so an inverted pair is entirely
+    /// reachable — that is what took the app down before. Invalid input now
+    /// yields `nil`, and callers skip it.
+    static func safeRange(_ lower: CGFloat, _ upper: CGFloat) -> ClosedRange<CGFloat>? {
+        guard lower.isFinite, upper.isFinite, lower <= upper else { return nil }
+        return lower...upper
     }
 
     /// Free ranges along the edge axis, the Dock's reserved area removed.
@@ -179,7 +199,7 @@ public enum EdgeLayoutEngine {
             // still has somewhere to go.
             let middle = (low + high) / 2
             let gap = metrics.dockGap / 2
-            return [low...(middle - gap), (middle + gap)...high]
+            return [safeRange(low, middle - gap), safeRange(middle + gap, high)].compactMap { $0 }
         }
         guard dock.edge == edge else {
             // The Dock is on another edge: this edge is completely free.
@@ -188,13 +208,16 @@ public enum EdgeLayoutEngine {
 
         let gap = metrics.dockGap
         var segments: [ClosedRange<CGFloat>] = []
-        let before = low...min(high, dock.occupiedStart - gap)
-        if before.upperBound - before.lowerBound >= metrics.length {
+
+        // The Dock may start at or above the first usable point (a very long
+        // Dock, or a manual calibration): then there simply is no room before it.
+        if let before = safeRange(low, min(high, dock.occupiedStart - gap)),
+           before.upperBound - before.lowerBound >= metrics.length {
             segments.append(before)
         }
-        let afterLow = max(low, dock.occupiedEnd + gap)
-        if high - afterLow >= metrics.length {
-            segments.append(afterLow...high)
+        if let after = safeRange(max(low, dock.occupiedEnd + gap), high),
+           after.upperBound - after.lowerBound >= metrics.length {
+            segments.append(after)
         }
         return segments
     }
@@ -214,7 +237,7 @@ public enum EdgeLayoutEngine {
         guard offset != 0 else { return range }
         let length = range.upperBound - range.lowerBound
         let low = max(range.lowerBound, min(range.lowerBound + offset, range.upperBound - length))
-        return low...(low + length)
+        return safeRange(low, low + length) ?? range
     }
 
     // MARK: - Packing

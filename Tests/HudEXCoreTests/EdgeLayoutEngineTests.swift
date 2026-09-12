@@ -53,7 +53,8 @@ final class EdgeLayoutEngineTests: XCTestCase {
             projectCount: 30,
             metrics: metrics(),
             screen: screen,
-            dock: dock
+            dock: dock,
+            mode: LayoutMode(allowOverflowSlot: true)
         )
 
         let primary = plan.placements.filter { $0.slot == .primary }
@@ -127,7 +128,13 @@ final class EdgeLayoutEngineTests: XCTestCase {
 
     func testBottomDockOverflowGoesToTheRightSlot() {
         let dock = DockBounds(edge: .bottom, thickness: 54, occupiedStart: 200, occupiedEnd: 1270)
-        let plan = EdgeLayoutEngine.plan(projectCount: 12, metrics: metrics(), screen: screen, dock: dock)
+        let plan = EdgeLayoutEngine.plan(
+            projectCount: 12,
+            metrics: metrics(),
+            screen: screen,
+            dock: dock,
+            mode: LayoutMode(allowOverflowSlot: true)
+        )
 
         let primary = plan.placements.filter { $0.slot == .primary }
         let secondary = plan.placements.filter { $0.slot == .secondary }
@@ -182,7 +189,8 @@ final class EdgeLayoutEngineTests: XCTestCase {
             projectCount: 40,
             metrics: metrics(),
             screen: screen,
-            dock: .absent(edge: .left)
+            dock: .absent(edge: .left),
+            mode: LayoutMode(allowOverflowSlot: true)
         )
         let primary = plan.placements.filter { $0.slot == .primary }
         let secondary = plan.placements.filter { $0.slot == .secondary }
@@ -213,7 +221,8 @@ final class EdgeLayoutEngineTests: XCTestCase {
             metrics: metrics(),
             screen: screen,
             dock: dock,
-            limits: TagLimits(maxTags: 0, maxTagsPerSlot: 2)
+            limits: TagLimits(maxTags: 0, maxTagsPerSlot: 2),
+            mode: LayoutMode(allowOverflowSlot: true)
         )
         XCTAssertEqual(plan.placements.filter { $0.slot == .primary }.count, 2)
         XCTAssertEqual(plan.placements.filter { $0.slot == .secondary }.count, 2)
@@ -323,7 +332,7 @@ final class EdgeLayoutEngineTests: XCTestCase {
             metrics: metrics(),
             screen: screen,
             dock: dock,
-            mode: LayoutMode(kind: .dockSplit)
+            mode: LayoutMode(kind: .dockSplit, allowOverflowSlot: true)
         )
         let primary = plan.placements.filter { $0.slot == .primary }
         let secondary = plan.placements.filter { $0.slot == .secondary }
@@ -402,5 +411,41 @@ private extension EdgeLayoutPlan {
             }
         }
         return overlaps
+    }
+}
+// MARK: - One place only (the shipped default)
+
+extension EdgeLayoutEngineTests {
+    /// By default bookmarks live in exactly one position; anything that does not
+    /// fit is reported as overflow instead of appearing at the other end.
+    func testSingleSlotKeepsEveryTagInOnePlace() {
+        let dock = DockBounds(edge: .left, thickness: 54, occupiedStart: 420, occupiedEnd: 560)
+        let plan = EdgeLayoutEngine.plan(
+            projectCount: 30,
+            metrics: metrics(),
+            screen: screen,
+            dock: dock
+        )
+        XCTAssertFalse(plan.placements.isEmpty)
+        XCTAssertTrue(
+            plan.placements.allSatisfy { $0.slot == .primary },
+            "no tag may be drawn in the overflow slot unless it is switched on"
+        )
+        XCTAssertEqual(plan.placements.count + plan.overflowCount, 30)
+        XCTAssertGreaterThan(plan.overflowCount, 0)
+        XCTAssertEqual(plan.slotRanges.count, 1, "only the primary range is used")
+    }
+
+    func testDockSplitAlsoHonoursTheSingleSlotDefault() {
+        let dock = DockBounds(edge: .left, thickness: 54, occupiedStart: 430, occupiedEnd: 530)
+        let plan = EdgeLayoutEngine.plan(
+            projectCount: 6,
+            metrics: metrics(),
+            screen: screen,
+            dock: dock,
+            mode: LayoutMode(kind: .dockSplit)
+        )
+        XCTAssertTrue(plan.placements.allSatisfy { $0.slot == .primary })
+        XCTAssertEqual(plan.placements.count + plan.overflowCount, 6)
     }
 }

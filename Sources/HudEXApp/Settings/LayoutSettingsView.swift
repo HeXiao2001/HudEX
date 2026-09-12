@@ -52,6 +52,8 @@ struct LayoutSettingsView: View {
                 )
             }
 
+            Toggle(L10n.t("layout.overflowSlot"), isOn: $preferences.allowOverflowSlot)
+
             LabeledContent(L10n.t("layout.slot.primary")) {
                 value(L10n.t("layout.slot.capacity", controller.geometry.primaryRange, controller.geometry.primaryCapacity))
             }

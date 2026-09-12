@@ -9,8 +9,8 @@ set -euo pipefail
 
 APP_NAME="HudEX"
 BUNDLE_ID="dev.hex.hudex"
-BUNDLE_VERSION="1"
-BUNDLE_SHORT_VERSION="1.0"
+BUNDLE_VERSION="1.0.0"
+BUNDLE_SHORT_VERSION="1.0.0"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
 APP_DIR="$DIST_DIR/$APP_NAME.app"

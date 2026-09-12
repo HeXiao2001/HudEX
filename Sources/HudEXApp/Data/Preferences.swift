@@ -23,6 +23,7 @@ final class Preferences: ObservableObject {
         static let maxTags = "layout.maxTags"
         static let maxTagsPerSlot = "layout.maxTagsPerSlot"
         static let layoutKind = "layout.kind"
+        static let layoutOverflowSlot = "layout.overflowSlot"
         static let layoutEdge = "layout.fixedEdge"
         static let layoutAnchor = "layout.fixedAnchor"
         static let layoutOffset = "layout.fixedOffset"
@@ -93,6 +94,12 @@ final class Preferences: ObservableObject {
     /// Which placement mode the user picked.
     @Published var layoutKind: LayoutMode.Kind {
         didSet { defaults.set(layoutKind.rawValue, forKey: Key.layoutKind) }
+    }
+
+    /// Whether bookmarks may use the overflow slot on the other side of the
+    /// edge. Off by default: one place, always the same one.
+    @Published var allowOverflowSlot: Bool {
+        didSet { defaults.set(allowOverflowSlot, forKey: Key.layoutOverflowSlot) }
     }
 
     /// Screen edge used by `.fixedEdge`.
@@ -223,6 +230,7 @@ final class Preferences: ObservableObject {
         maxTags = defaults.object(forKey: Key.maxTags) as? Int ?? 0
         maxTagsPerSlot = defaults.object(forKey: Key.maxTagsPerSlot) as? Int ?? 0
         layoutKind = LayoutMode.Kind(rawValue: defaults.string(forKey: Key.layoutKind) ?? "") ?? .dockAdaptive
+        allowOverflowSlot = defaults.object(forKey: Key.layoutOverflowSlot) as? Bool ?? false
         layoutEdge = DockEdge(rawValue: defaults.string(forKey: Key.layoutEdge) ?? "") ?? .bottom
         layoutAnchor = LayoutMode.Anchor(rawValue: defaults.string(forKey: Key.layoutAnchor) ?? "") ?? .start
         layoutOffset = defaults.object(forKey: Key.layoutOffset) as? Double ?? 0
@@ -273,7 +281,8 @@ final class Preferences: ObservableObject {
             kind: layoutKind,
             edge: layoutEdge,
             anchor: layoutAnchor,
-            offset: CGFloat(layoutOffset)
+            offset: CGFloat(layoutOffset),
+            allowOverflowSlot: allowOverflowSlot
         )
     }
 

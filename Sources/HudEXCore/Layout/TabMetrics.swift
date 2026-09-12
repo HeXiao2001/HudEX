@@ -189,6 +189,12 @@ public struct TagLimits: Sendable, Equatable {
 
 /// Where the user wants the tags to live.
 public struct LayoutMode: Sendable, Equatable {
+    /// Whether the overflow slot (the opposite side of the same edge) may be
+    /// used at all. Off by default: bookmarks then live in exactly one place,
+    /// which is easier to predict — and projects that do not fit are reported
+    /// as overflow instead of appearing somewhere else on screen.
+    public var allowOverflowSlot: Bool
+
     public enum Kind: String, Sendable, CaseIterable {
         /// Follow the Dock: use the free side of the Dock's own edge, overflow
         /// to the other side of that edge.
@@ -216,12 +222,14 @@ public struct LayoutMode: Sendable, Equatable {
         kind: Kind = .dockAdaptive,
         edge: DockEdge = .bottom,
         anchor: Anchor = .start,
-        offset: CGFloat = 0
+        offset: CGFloat = 0,
+        allowOverflowSlot: Bool = false
     ) {
         self.kind = kind
         self.edge = edge
         self.anchor = anchor
         self.offset = offset
+        self.allowOverflowSlot = allowOverflowSlot
     }
 
     public static let dockAdaptive = LayoutMode()
