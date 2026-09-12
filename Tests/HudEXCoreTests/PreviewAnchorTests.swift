@@ -132,6 +132,95 @@ final class PreviewAnchorTests: XCTestCase {
         }
     }
 
+    /// The visual transform, replicated: this is the geometry the tag view
+    /// applies (rotate about the pinned edge, then slide towards the popup).
+    private func drawnHole(
+        frame: CGRect,
+        rotation: CGFloat,
+        edge: DockEdge,
+        hoverOffset: CGFloat,
+        hovered: Bool,
+        inset: CGFloat
+    ) -> CGPoint {
+        // In the view's flipped space the hole sits `inset` in from the
+        // card-facing edge, on the centre line.
+        let local: CGPoint
+        switch edge {
+        case .left: local = CGPoint(x: frame.maxX - inset, y: frame.midY)
+        case .right: local = CGPoint(x: frame.minX + inset, y: frame.midY)
+        case .bottom: local = CGPoint(x: frame.midX, y: frame.maxY - inset)
+        }
+        return EdgeLayoutEngine.drawnPoint(
+            localPoint: local,
+            in: frame,
+            rotationDegrees: rotation,
+            edge: edge,
+            hoverOffset: hoverOffset,
+            hovered: hovered
+        )
+    }
+
+    func testPaintedEdgeMatchesTheHoleForEveryEdgeAndRotation() {
+        let cases: [(DockEdge, CGRect)] = [
+            (.left, CGRect(x: 0, y: 8, width: 54, height: 30)),
+            (.right, CGRect(x: 1416, y: 8, width: 54, height: 30)),
+            (.bottom, CGRect(x: 38, y: 0, width: 30, height: 54))
+        ]
+        for (edge, frame) in cases {
+            for rotation in [CGFloat(0), 2.5, -2.5, 5, -5] {
+                for hovered in [true, false] {
+                    let placement = TagPlacement(
+                        index: 0,
+                        slot: .primary,
+                        frame: frame,
+                        rotationDegrees: rotation,
+                        hoverOffset: 2.5
+                    )
+                    let edgePoint = EdgeLayoutEngine.paintedEdgePoint(
+                        of: placement,
+                        edge: edge,
+                        hovered: hovered
+                    )
+
+                    // The line starts on the tag's edge...
+                    let expectedEdge = drawnHole(
+                        frame: frame, rotation: rotation, edge: edge,
+                        hoverOffset: 2.5, hovered: hovered, inset: 0
+                    )
+                    XCTAssertEqual(edgePoint.x, expectedEdge.x, accuracy: 0.01, "\(edge) \(rotation)°")
+                    XCTAssertEqual(edgePoint.y, expectedEdge.y, accuracy: 0.01, "\(edge) \(rotation)°")
+
+                    // ...and the tag's own hole is exactly one inset behind it,
+                    // along the tag's rotated axis, so the two always line up.
+                    let hole = drawnHole(
+                        frame: frame, rotation: rotation, edge: edge,
+                        hoverOffset: 2.5, hovered: hovered, inset: 6.5
+                    )
+                    XCTAssertLessThanOrEqual(
+                        hypot(hole.x - edgePoint.x, hole.y - edgePoint.y),
+                        6.6,
+                        "hole drifted away from the string on \(edge) at \(rotation)°"
+                    )
+                }
+            }
+        }
+    }
+
+    func testHoverSlidesTowardsTheCardOnEveryEdge() {
+        let cases: [(DockEdge, CGRect, (CGPoint) -> Void)] = [
+            (.left, CGRect(x: 0, y: 100, width: 54, height: 30), { XCTAssertGreaterThan($0.x, 54) }),
+            (.right, CGRect(x: 1416, y: 100, width: 54, height: 30), { XCTAssertLessThan($0.x, 1416) }),
+            (.bottom, CGRect(x: 38, y: 0, width: 30, height: 54), { XCTAssertGreaterThan($0.y, 54) })
+        ]
+        for (edge, frame, check) in cases {
+            let placement = TagPlacement(index: 0, slot: .primary, frame: frame, hoverOffset: 2.5)
+            let resting = EdgeLayoutEngine.paintedEdgePoint(of: placement, edge: edge, hovered: false)
+            let hovered = EdgeLayoutEngine.paintedEdgePoint(of: placement, edge: edge, hovered: true)
+            check(hovered)
+            XCTAssertNotEqual(resting, hovered)
+        }
+    }
+
     func testHoleSitsInsideTheTagAndTheStringMeetsItsTail() {
         // The hole stays a full circle inside the tag; the string starts on the
         // tag's edge and the tag draws the hairline that joins them.
@@ -168,8 +257,9 @@ final class PreviewAnchorTests: XCTestCase {
         // Rotation keeps the edge midpoint almost exactly on the frame edge,
         // and the hover push moves it towards the popup.
         XCTAssertEqual(edgePoint.x, frame.maxX + 2.5, accuracy: 0.6)
-        // Rotating about the pinned edge swings the far end by width·sin(θ).
-        XCTAssertEqual(edgePoint.y, frame.midY + frame.width * sin(-5 * .pi / 180), accuracy: 0.5)
+        // Rotating about the pinned edge swings the far end by width·sin(θ);
+        // the vertical term is mirrored because the view's y axis points down.
+        XCTAssertEqual(edgePoint.y, frame.midY - frame.width * sin(-5 * .pi / 180), accuracy: 0.5)
 
         let anchor = PreviewAnchor.solve(
             tagFrame: frame,

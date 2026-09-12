@@ -73,7 +73,8 @@ struct EdgeTabsView: View {
         switch model.edge {
         case .left: return CGSize(width: amount, height: 0)
         case .right: return CGSize(width: -amount, height: 0)
-        case .bottom: return CGSize(width: 0, height: amount)
+        // SwiftUI's y grows downwards, so "towards the card" (up) is negative.
+        case .bottom: return CGSize(width: 0, height: -amount)
         }
     }
 

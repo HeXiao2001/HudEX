@@ -327,6 +327,48 @@ public enum EdgeLayoutEngine {
         return box.insetBy(dx: -Self.panelMargin, dy: -Self.panelMargin)
     }
 
+    /// Where a point of a tag actually ends up on screen, once the view has
+    /// rotated it about its pinned edge and slid it towards the popup.
+    ///
+    /// The view works in SwiftUI's flipped space (y grows downwards) while the
+    /// layout is in AppKit space (y grows upwards), so the rotation's vertical
+    /// term changes sign: `y = anchor.y − x·sinθ` for a left-edge tag. Getting
+    /// that sign wrong is what made the string miss the hole by a few points on
+    /// rotated tags.
+    public static func drawnPoint(
+        localPoint: CGPoint,
+        in frame: CGRect,
+        rotationDegrees: CGFloat,
+        edge: DockEdge,
+        hoverOffset: CGFloat,
+        hovered: Bool
+    ) -> CGPoint {
+        let radians = rotationDegrees * .pi / 180
+        let push = hovered ? hoverOffset : 0
+
+        // Rotation origin: the midpoint of the edge the tag is pinned to.
+        let anchor: CGPoint
+        switch edge {
+        case .left: anchor = CGPoint(x: frame.minX, y: frame.midY)
+        case .right: anchor = CGPoint(x: frame.maxX, y: frame.midY)
+        case .bottom: anchor = CGPoint(x: frame.midX, y: frame.minY)
+        }
+
+        // Local offsets relative to that anchor, in screen terms (y up).
+        let dx = localPoint.x - anchor.x
+        let dy = localPoint.y - anchor.y
+        let rotated = CGPoint(
+            x: anchor.x + dx * cos(radians) + dy * sin(radians),
+            y: anchor.y - dx * sin(radians) + dy * cos(radians)
+        )
+
+        switch edge {
+        case .left: return CGPoint(x: rotated.x + push, y: rotated.y)
+        case .right: return CGPoint(x: rotated.x - push, y: rotated.y)
+        case .bottom: return CGPoint(x: rotated.x, y: rotated.y + push)
+        }
+    }
+
     /// The point where the tag's card-facing edge crosses its centre line,
     /// with rotation and the hover push applied.
     ///
@@ -339,26 +381,20 @@ public enum EdgeLayoutEngine {
         hovered: Bool
     ) -> CGPoint {
         let frame = placement.frame
-        let radians = placement.rotationDegrees * .pi / 180
-        let push = hovered ? placement.hoverOffset : 0
-
+        let local: CGPoint
         switch edge {
-        case .left:
-            let anchor = CGPoint(x: frame.minX, y: frame.midY)
-            let x = anchor.x + frame.width * cos(radians) + push
-            let y = anchor.y + frame.width * sin(radians)
-            return CGPoint(x: x, y: y)
-        case .right:
-            let anchor = CGPoint(x: frame.maxX, y: frame.midY)
-            let x = anchor.x - frame.width * cos(radians) - push
-            let y = anchor.y - frame.width * sin(radians)
-            return CGPoint(x: x, y: y)
-        case .bottom:
-            let anchor = CGPoint(x: frame.midX, y: frame.minY)
-            let x = anchor.x - frame.height * sin(radians)
-            let y = anchor.y + frame.height * cos(radians) + push
-            return CGPoint(x: x, y: y)
+        case .left: local = CGPoint(x: frame.maxX, y: frame.midY)
+        case .right: local = CGPoint(x: frame.minX, y: frame.midY)
+        case .bottom: local = CGPoint(x: frame.midX, y: frame.maxY)
         }
+        return drawnPoint(
+            localPoint: local,
+            in: frame,
+            rotationDegrees: placement.rotationDegrees,
+            edge: edge,
+            hoverOffset: placement.hoverOffset,
+            hovered: hovered
+        )
     }
 
     /// Nudges a rotated tag so its outer edge stays exactly on the screen edge.

@@ -38,11 +38,53 @@ enum SnapshotDebugger {
         Log.trace("snapshot: wrote \(written) windows as \(label)")
     }
 
+    /// Draws *all* visible panels into one image, positioned exactly as they
+    /// are on screen. This is the only way to check how the tag and the card
+    /// meet when they live in different windows.
+    static func captureScene(_ label: String) {
+        guard let directory else { return }
+        let windows = NSApp.windows.filter { $0.isVisible && $0.frame.width > 1 && $0.frame.height > 1 }
+        guard !windows.isEmpty else { return }
+
+        let union = windows.reduce(CGRect.null) { $0.union($1.frame) }
+        guard !union.isNull, union.width < 4000, union.height < 4000 else { return }
+
+        let image = NSImage(size: union.size)
+        image.lockFocus()
+        NSColor.clear.set()
+        NSRect(origin: .zero, size: union.size).fill()
+        for window in windows {
+            guard let view = window.contentView else { continue }
+            guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { continue }
+            view.cacheDisplay(in: view.bounds, to: rep)
+            guard let cgImage = rep.cgImage else { continue }
+            let frame = window.frame
+            // Both the canvas and the window frames use AppKit's bottom-left
+            // origin, so no flip is needed; the image then matches the screen.
+            let rect = NSRect(
+                x: frame.minX - union.minX,
+                y: frame.minY - union.minY,
+                width: frame.width,
+                height: frame.height
+            )
+            NSGraphicsContext.current?.cgContext.draw(cgImage, in: rect)
+        }
+        image.unlockFocus()
+
+        guard let tiff = image.tiffRepresentation,
+              let rep = NSBitmapImageRep(data: tiff),
+              let data = rep.representation(using: .png, properties: [:]) else { return }
+        let name = String(format: "%@-scene-%.0fx%.0f.png", label, union.width, union.height)
+        try? data.write(to: directory.appendingPathComponent(name))
+        Log.trace("snapshot: scene \(name)")
+    }
+
     /// Captures after the next run loop pass, so the views have been drawn.
     static func captureSoon(_ label: String) {
         guard isEnabled else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             capture(label)
+            captureScene(label)
         }
     }
 }
