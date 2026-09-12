@@ -101,6 +101,7 @@ final class PreviewPanelController {
             panel.orderFrontRegardless()
             startRefreshTimer()
         }
+        SnapshotDebugger.captureSoon("card")
     }
 
     /// Re-renders the current preview (used by the once-a-minute tick).

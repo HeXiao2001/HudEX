@@ -132,15 +132,16 @@ final class PreviewAnchorTests: XCTestCase {
         }
     }
 
-    func testHoleStaysInsideTheTagSoBothCornersStayVisible() {
+    func testHoleIsPunchedInTheCardFacingEdge() {
+        // The tag's hole and the start of the string are the same point, on the
+        // edge that faces the card — that is what removes the gap and the stub.
         let tag = CGRect(x: 0, y: 8, width: 54, height: 25)
         let anchor = PreviewAnchor.solve(
             tagFrame: tag, edge: .left, cardSize: card, visible: visible, usesConnector: true
         )
-        XCTAssertGreaterThan(anchor.holeCenter.x - anchor.holeRadius, tag.minX)
-        XCTAssertLessThan(anchor.holeCenter.x + anchor.holeRadius, tag.maxX)
-        XCTAssertGreaterThan(anchor.holeCenter.y - anchor.holeRadius, tag.minY)
-        XCTAssertLessThan(anchor.holeCenter.y + anchor.holeRadius, tag.maxY)
+        XCTAssertEqual(anchor.holeCenter, anchor.connectorStart)
+        XCTAssertEqual(anchor.holeCenter.x, tag.maxX, accuracy: 0.01)
+        XCTAssertEqual(anchor.holeCenter.y, tag.midY, accuracy: 0.01)
     }
 
     func testConnectorStartsOnThePaintedEdge() {

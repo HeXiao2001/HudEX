@@ -38,6 +38,7 @@ final class EdgePanelController {
                 panel.orderFrontRegardless()
                 Log.debug(Log.window, "edge panel \(slot.rawValue) shown at \(model.screenFrame)")
             }
+            SnapshotDebugger.captureSoon("tags-\(slot.rawValue)")
         }
     }
 

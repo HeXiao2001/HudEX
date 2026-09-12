@@ -27,6 +27,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: StatusItemController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Exactly one HudEX may run: two instances would each write their own
+        // settings back into the same Markdown file and fight over it.
+        if let other = Self.otherInstance() {
+            Log.app.warning("another HudEX is already running (pid \(other.processIdentifier)); handing over")
+            other.activate()
+            NSApp.terminate(nil)
+            return
+        }
+
         // LSUIElement is set in Info.plist; this keeps the behaviour when the
         // binary is run directly from a terminal.
         NSApp.setActivationPolicy(.accessory)
@@ -36,6 +45,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         controller.stop()
+    }
+
+    /// Any other running copy of this bundle, if there is one.
+    private static func otherInstance() -> NSRunningApplication? {
+        let identifier = Bundle.main.bundleIdentifier ?? "dev.hex.hudex"
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        return NSRunningApplication
+            .runningApplications(withBundleIdentifier: identifier)
+            .first { $0.processIdentifier != ownPID }
     }
 
     /// Launching HudEX again (double-clicking the app while it runs) opens

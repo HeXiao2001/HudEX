@@ -120,16 +120,19 @@ struct EdgeTabView: View {
                 .foregroundStyle(model.style == .minimal ? Color(nsColor: background) : Color(nsColor: foreground))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-                .padding(.horizontal, 3)
+                // A tag on the bottom edge is tall and narrow, so its label runs
+                // up the bookmark instead of being clipped.
+                .rotationEffect(.degrees(model.edge == .bottom ? -90 : 0))
+                .fixedSize()
             if model.style.usesHoleAndConnector {
-                // The stub only exists while the card is open: resting tags stay
-                // clean (a permanent nub on every tag looked like a defect).
-                if tag.isHovered {
-                    holeStub
-                }
                 hole
             }
         }
+        // Clip the whole card: that is what turns the hole (centred exactly on
+        // the edge) into a clean punch mark instead of a circle hanging off the
+        // side, and it keeps the bevelled edge tidy.
+        .frame(width: tag.size.width, height: tag.size.height)
+        .clipShape(shape)
         .scaleEffect(tag.isHovered ? 1.02 : 1.0)
         .accessibilityLabel(Text(tag.title))
         .contextMenu {
@@ -187,54 +190,26 @@ struct EdgeTabView: View {
         }
     }
 
-    /// The punched hole: a small ring whose colour carries the priority.
+    /// The punched hole, centred exactly on the tag's card-facing edge and
+    /// clipped by the tag itself. The string outside starts at this same point,
+    /// so hole and line meet with no gap and nothing sticks out.
     private var hole: some View {
         let color = tag.priority?.holeColor(isDark: isDark)
             ?? (isDark ? PaletteColor(hex: "#3C4046")! : PaletteColor(hex: "#FFFFFF")!)
         return Circle()
             .fill(Color(nsColor: EdgeTagStyle.color(color)))
+            .overlay(Circle().strokeBorder(Color.black.opacity(0.18), lineWidth: 0.5))
             .frame(width: 7, height: 7)
-            .overlay(
-                Circle().strokeBorder(Color.black.opacity(0.18), lineWidth: 0.5)
-            )
             .offset(holeOffset)
     }
 
-    /// A hairline from the hole to the tag's edge, so the curve that continues
-    /// in the card's panel looks like it comes out of the hole.
-    private var holeStub: some View {
-        let color = Color(nsColor: EdgeTagStyle.color(
-            PaperPalette.rule(
-                for: tag.role,
-                isDark: isDark,
-                custom: tag.colorOverride.flatMap { TagPalette.color(named: $0, isDark: isDark) }
-            )
-        ))
-        return Rectangle()
-            .fill(color.opacity(0.9))
-            .frame(width: model.edge == .bottom ? 1 : 7, height: model.edge == .bottom ? 7 : 1)
-            .offset(stubOffset)
-    }
-
-    private var stubOffset: CGSize {
-        // Runs all the way to the tag's card-facing edge so the curve outside
-        // continues it — on the correct side for every edge.
-        let inset: CGFloat = 0.5
-        switch model.edge {
-        case .left: return CGSize(width: tag.size.width / 2 - inset, height: 0)
-        case .right: return CGSize(width: -(tag.size.width / 2 - inset), height: 0)
-        case .bottom: return CGSize(width: 0, height: -(tag.size.height / 2 - inset))
-        }
-    }
-
     private var holeOffset: CGSize {
-        // The hole always sits on the side that faces the card: right for a
-        // left-edge tag, left for a right-edge tag, above for a bottom tag.
-        let inset: CGFloat = 6.5
+        // Dead centre of the card-facing edge: right for a left-edge tag, left
+        // for a right-edge tag, above for a bottom tag.
         switch model.edge {
-        case .left: return CGSize(width: tag.size.width / 2 - inset, height: 0)
-        case .right: return CGSize(width: -(tag.size.width / 2 - inset), height: 0)
-        case .bottom: return CGSize(width: 0, height: -(tag.size.height / 2 - inset))
+        case .left: return CGSize(width: tag.size.width / 2, height: 0)
+        case .right: return CGSize(width: -(tag.size.width / 2), height: 0)
+        case .bottom: return CGSize(width: 0, height: -(tag.size.height / 2))
         }
     }
 }

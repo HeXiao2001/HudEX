@@ -58,7 +58,12 @@ public enum EdgeLayoutEngine {
                         screen: screen,
                         edge: edge
                     ),
-                    rotationDegrees: rotation(forOffset: offset, count: visibleCount, stack: metrics.stack),
+                    rotationDegrees: rotation(
+                        forOffset: offset,
+                        count: visibleCount,
+                        stack: metrics.stack,
+                        edge: edge
+                    ),
                     edge: edge
                 )
                 placements.append(
@@ -66,7 +71,12 @@ public enum EdgeLayoutEngine {
                         index: index,
                         slot: slot,
                         frame: frame,
-                        rotationDegrees: rotation(forOffset: offset, count: visibleCount, stack: metrics.stack),
+                        rotationDegrees: rotation(
+                            forOffset: offset,
+                            count: visibleCount,
+                            stack: metrics.stack,
+                            edge: edge
+                        ),
                         zIndex: index,
                         hoverOffset: hoverOffset(forOffset: offset, stack: metrics.stack)
                     )
@@ -256,10 +266,25 @@ public enum EdgeLayoutEngine {
         return stack.stagger
     }
 
-    private static func rotation(forOffset offset: Int, count: Int, stack: StackStyle) -> CGFloat {
+    private static func rotation(
+        forOffset offset: Int,
+        count: Int,
+        stack: StackStyle,
+        edge: DockEdge
+    ) -> CGFloat {
         guard stack.isEnabled, stack.rotationDegrees != 0, count > 1 else { return 0 }
         let progress = CGFloat(min(offset, count - 1)) / CGFloat(count - 1)
-        return stack.rotationDegrees * progress
+        return stack.rotationDegrees * progress * rotationSign(for: edge)
+    }
+
+    /// Mirrors the slant per edge, so the stack always fans the same way as
+    /// seen on screen: the far end of each card leans along the run, never
+    /// against it (the right and bottom edges need the mirrored angle).
+    public static func rotationSign(for edge: DockEdge) -> CGFloat {
+        switch edge {
+        case .left: return 1
+        case .right, .bottom: return -1
+        }
     }
 
     /// Bounding box of a set of tags including everything they can paint:
