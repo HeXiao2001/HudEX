@@ -10,17 +10,14 @@ import HudEXCore
 ///    pinning and the pinned tile list. Public, permission-free, always works.
 /// 2. `NSScreen.visibleFrame` — the exact reserved band while the Dock is not
 ///    auto-hidden.
-/// 3. `CGWindowListCopyWindowInfo`, paused to Dock-owned windows that form a
-///    thin band against a screen edge. This is the documented approach, but on
-///    macOS 26 the Dock's own window covers the whole screen, so it usually
-///    yields nothing; it is therefore only called on real events and never in a
-///    loop. (Apple documents the call as relatively expensive.)
-/// 4. The Dock's Accessibility element, *only* when HudEX is already trusted —
-///    HudEX never prompts for that permission. It gives exact bounds for users
-///    who happen to have granted it.
+/// 3. The user's manual calibration, when the two above are not enough.
 ///
-/// Whatever happens, the last good geometry is kept: a failed probe never moves
-/// the tabs on top of the Dock.
+/// Nothing here needs a permission. Listing other applications' windows would
+/// (Screen Recording), and the Dock's Accessibility element would (Accessibility)
+/// — so HudEX does neither: it reads public preferences and the screen's own
+/// reserved area, and lets the person correct it in Settings if macOS reports
+/// something unusual. Whatever happens, the last good geometry is kept, so a
+/// failed reading never moves the bookmarks on top of the Dock.
 @MainActor
 final class DockGeometryProvider {
     struct Snapshot {
@@ -31,10 +28,8 @@ final class DockGeometryProvider {
     }
 
     /// How often the expensive probes may run, at most.
-    private let deepScanMinimumInterval: TimeInterval = 30
 
     private var lastKnownGood: [String: DockBounds] = [:]
-    private var lastDeepScan: [String: Date] = [:]
     private var cachedPreferences: DockPreferences?
     private var preferencesReadAt: Date?
 
@@ -45,7 +40,10 @@ final class DockGeometryProvider {
 
     /// Current best knowledge of the Dock for one screen.
     ///
-    /// - Parameter allowExpensiveProbes: pass `true` only for real events
+    /// - Parameter allowExpensiveProbes: pass `true` only for real events; it
+    ///   forces a fresh read of the Dock's preferences (never a window scan —
+    ///   listing other apps' windows needs Screen Recording, and HudEX asks for
+    ///   no permissions at all).
     ///   (launch, screen change, space change, wake, Dock preference change).
     func snapshot(for screen: NSScreen, allowExpensiveProbes: Bool = false) -> Snapshot {
         let preferences = readPreferences(force: allowExpensiveProbes)
@@ -60,7 +58,6 @@ final class DockGeometryProvider {
 
     func resetCache() {
         lastKnownGood.removeAll()
-        lastDeepScan.removeAll()
         cachedPreferences = nil
         preferencesReadAt = nil
         lastDiagnostic = nil
@@ -142,14 +139,7 @@ final class DockGeometryProvider {
             manualLength: settings.dockLengthOverride > 0 ? CGFloat(settings.dockLengthOverride) : nil
         )
 
-        if allowExpensiveProbes, settings.dockLengthOverride <= 0 {
-            if let measured = measuredBounds(for: screen, edge: edge), measured.occupiedLength > 0 {
-                bounds = measured
-                lastDiagnostic = L10n.t(measured.source.displayNameKey)
-            } else {
-                lastDiagnostic = L10n.t(bounds.source.displayNameKey)
-            }
-        }
+        lastDiagnostic = L10n.t(bounds.source.displayNameKey)
 
         // Never let a detection failure shrink the reserved area: keep the
         // larger (safer) of the new and the last good value.
@@ -173,85 +163,8 @@ final class DockGeometryProvider {
         return bounds
     }
 
-    // MARK: - CGWindowList probe
 
     /// Looks for a Dock-owned window that is a thin band against the screen
     /// edge. Returns `nil` on macOS versions where the Dock window covers the
     /// whole screen (macOS 26), which is why it is only a refinement.
-    private func measuredBounds(for screen: NSScreen, edge: DockEdge) -> DockBounds? {
-        let displayID = ScreenGeometry.displayID(of: screen)
-        let now = Date()
-        if let last = lastDeepScan[displayID], now.timeIntervalSince(last) < deepScanMinimumInterval {
-            return nil
-        }
-        lastDeepScan[displayID] = now
-
-        guard let dockPID = NSRunningApplication
-            .runningApplications(withBundleIdentifier: "com.apple.dock")
-            .first?
-            .processIdentifier else {
-            return nil
-        }
-
-        let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
-        guard let windows = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
-            return nil
-        }
-
-        let mainHeight = NSScreen.screens.first?.frame.maxY ?? screen.frame.maxY
-        let screenFrame = screen.frame
-
-        for window in windows {
-            guard let pid = window[kCGWindowOwnerPID as String] as? pid_t, pid == dockPID else { continue }
-            guard let boundsDict = window[kCGWindowBounds as String] as? [String: Any],
-                  let rect = CGRect(dictionaryRepresentation: boundsDict as CFDictionary) else { continue }
-
-            let appKitRect = ScreenCoordinates.appKitRect(
-                fromWindowServerRect: rect,
-                mainScreenHeight: mainHeight
-            )
-            guard appKitRect.intersects(screenFrame) else { continue }
-
-            // A Dock strip is thin on exactly one axis and hugs one edge; the
-            // full-screen Dock window macOS 26 uses is rejected here.
-            switch edge {
-            case .left, .right:
-                let thickness = appKitRect.width
-                guard thickness > 10, thickness < screenFrame.height * 0.5 else { continue }
-                guard abs(appKitRect.height - screenFrame.height) > 40 else { continue }
-            case .bottom:
-                let thickness = appKitRect.height
-                guard thickness > 10, thickness < screenFrame.width * 0.5 else { continue }
-                guard abs(appKitRect.width - screenFrame.width) > 40 else { continue }
-            }
-
-            let clamped = appKitRect.intersection(screenFrame)
-            switch edge {
-            case .left, .right:
-                return DockBounds(
-                    edge: edge,
-                    thickness: clamped.width,
-                    occupiedStart: clamped.minY,
-                    occupiedEnd: clamped.maxY,
-                    isVisible: true,
-                    isPresent: true,
-                    source: .windowList
-                )
-            case .bottom:
-                return DockBounds(
-                    edge: edge,
-                    thickness: clamped.height,
-                    occupiedStart: clamped.minX,
-                    occupiedEnd: clamped.maxX,
-                    isVisible: true,
-                    isPresent: true,
-                    source: .windowList
-                )
-            }
-        }
-
-        Log.debug(Log.dock, "CGWindowList: no thin Dock window for edge \(edge.rawValue)")
-        return nil
-    }
-
 }

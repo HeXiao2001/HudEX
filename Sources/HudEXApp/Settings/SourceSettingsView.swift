@@ -57,6 +57,19 @@ struct SourceSettingsView: View {
             .onAppear { pathDraft = controller.documentSummary.path }
             .onChange(of: controller.documentSummary.path) { _, new in pathDraft = new }
 
+            Section {
+                Text(L10n.t("source.ownership.body"))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } header: {
+                Text(L10n.t("source.ownership"))
+            } footer: {
+                Text(L10n.t("source.ownership.footer"))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
             syncSection
 
             Section {
@@ -85,6 +98,28 @@ struct SourceSettingsView: View {
             if let error = controller.documentSummary.errorMessage {
                 Section { Text(error).font(.callout).foregroundStyle(.red) }
             }
+            if let recovered = controller.recoveredLaunch {
+                Section {
+                    Text(L10n.t("source.recovered", recovered.attempts))
+                        .font(.callout)
+                    if let report = recovered.report {
+                        LabeledContent(L10n.t("source.report")) {
+                            value(report.lastPathComponent)
+                        }
+                    }
+                    HStack(spacing: 8) {
+                        Button(L10n.t("source.revealReport")) { revealReports() }
+                        Button(L10n.t("source.clearReports")) { clearReports() }
+                    }
+                } header: {
+                    Text(L10n.t("source.section.recovery"))
+                } footer: {
+                    Text(L10n.t("source.recovered.footer"))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Section {
                 LabeledContent(L10n.t("advanced.memory")) {
                     value(String(format: "%.1f MB", controller.performance.residentMegabytes))
@@ -142,6 +177,22 @@ struct SourceSettingsView: View {
 
     private func value(_ text: String) -> some View {
         Text(text).foregroundStyle(.secondary)
+    }
+
+    private func revealReports() {
+        let folder = LaunchGuard.reportFolder
+        if let folder, FileManager.default.fileExists(atPath: folder.path) {
+            NSWorkspace.shared.activateFileViewerSelecting([folder])
+        } else {
+            NSWorkspace.shared.open(URL(fileURLWithPath: NSHomeDirectory() + "/Library/Logs"))
+        }
+    }
+
+    private func clearReports() {
+        if let folder = LaunchGuard.reportFolder {
+            try? FileManager.default.removeItem(at: folder)
+        }
+        controller.clearRecoveredLaunch()
     }
 
     private func copyDiagnostics() {

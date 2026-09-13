@@ -1,5 +1,64 @@
 # Changelog
 
+## 1.0.1 — 2026-09-13
+
+Starting up, for real this time, and a first run that explains itself.
+
+**First launch**
+
+* HudEX now writes its own file — `~/Library/Application Support/HudEX/HudEX.md` —
+  the first time it runs. That folder belongs to HudEX, so nothing has to be
+  authorised. To watch a file somewhere else (Documents, a synced folder, a git
+  checkout), pick it yourself: macOS asks for that folder once, and the answer
+  is yours.
+* Settings opens on a short **Welcome** pane the first time: where the file is,
+  whether it parsed, and which look you want (skeuomorphic by default). The pane
+  disappears once there is something to show.
+
+**Starting badly is now survivable**
+
+* A launch that never reaches its first six healthy seconds is noticed; two in a
+  row and HudEX clears the manual Dock calibration and turns stacking off (never
+  touching your Markdown) so it can start again at all.
+* A second launch checks with the kernel that the other copy is really alive
+  before handing over, so a stale LaunchServices entry can no longer make a fresh
+  launch quit instantly.
+* The recovery case writes `~/Library/Logs/HudEX/last-launch.txt`, and Settings
+  lists any macOS crash reports for HudEX with a button that reveals the folder.
+
+**No permissions, provably**
+
+* Removed the `CGWindowListCopyWindowInfo` probe (a Screen Recording API that
+  returned nothing on macOS 26 anyway). The binary now links no permission-gated
+  API at all: the Dock's position comes from its public preferences and the
+  screen's reserved area.
+
+**Settings that explain themselves**
+
+* The Layout pane leads with a diagram drawn by the real layout engine, plus one
+  plain sentence: "Bookmarks appear along the left edge — beside the Dock,
+  growing away from it."
+* The Source pane says who owns the content: write it by hand, have an AI keep it
+  tidy, or keep it in any folder a sync service mirrors. HudEX reads it, and
+  writes nothing back except the settings block at the bottom.
+* Bookmarks live in one place only by default; the overflow slot is opt-in.
+* Style previews use ordinary sample content (SHOP / Shopping list) instead of a
+  project name.
+
+**Installation**
+
+* `HudEX-1.0.1.dmg` is the recommended download: drag the app onto the
+  Applications shortcut in a plain window, no installer pages.
+* `script/make_package.sh` builds both artefacts from one bundle and refuses to
+  package a stale or invisible build (`script/smoke_test.sh` launches it and
+  checks that it actually appears).
+
+**Fixed**
+
+* The app could launch with no status item, no bookmarks and no windows at all —
+  a missing `NSApplicationDelegate` assignment in `main()`. The smoke test above
+  is what now stops that from shipping.
+
 ## 1.0.0 — 2026-09-12
 
 First public release. HudEX is a rewrite of the earlier DeskHUD/DockCue

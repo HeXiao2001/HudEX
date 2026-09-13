@@ -109,10 +109,11 @@ struct StyleCardView: View {
             VStack(spacing: 6) {
                 artwork
                     .frame(height: 62)
-                Text(L10n.t(style.displayNameKey))
+                Text(L10n.t(style.shortNameKey))
                     .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
                     .foregroundStyle(isSelected ? Color.accentColor : .primary)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
@@ -146,7 +147,7 @@ struct StyleCardView: View {
                     RoundedRectangle(cornerRadius: 3, style: .continuous)
                         .strokeBorder(Color(nsColor: tag), lineWidth: 1)
                 }
-                Text("OD")
+                Text(L10n.t("appearance.sample.tag"))
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(style == .minimal ? Color(nsColor: tag) : Color(nsColor: tagText))
                 if style.usesHoleAndConnector {

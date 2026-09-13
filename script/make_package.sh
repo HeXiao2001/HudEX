@@ -27,11 +27,36 @@ DMG="$RELEASE/$APP-$VERSION.dmg"
 echo "==> Building $APP $VERSION (release)"
 HUDEX_SWIFT_FLAGS=--disable-sandbox ./script/build_and_run.sh --release --no-launch
 
+# Both artefacts come from this one bundle, and the bundle is checked before it
+# is packaged: shipping a package that is older than the source is the one
+# mistake that is invisible until someone installs it.
+BUNDLE="$ROOT/.build/$APP.app"
+BUNDLE_VERSION=$(defaults read "$BUNDLE/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "?")
+STRINGS=$(find "$BUNDLE/Contents/Resources" -name Localizable.strings | head -1)
+if [[ "$BUNDLE_VERSION" != "$VERSION" ]]; then
+  echo "!! bundle is $BUNDLE_VERSION but the script says $VERSION — rebuild first" >&2
+  exit 1
+fi
+for marker in '"welcome.title"' '"source.ownership"'; do
+  if ! grep -q "$marker" "$STRINGS" 2>/dev/null; then
+    echo "!! the packaged bundle is missing $marker — it is stale" >&2
+    exit 1
+  fi
+done
+echo "    bundle $BUNDLE_VERSION verified ($(basename "$STRINGS"))"
+
+# A build that launches but shows nothing passes every other check — it happened
+# once, so the package build refuses to continue without this.
+if [[ "${HUDEX_SKIP_SMOKE:-0}" != "1" ]]; then
+  echo "==> Launch smoke test"
+  "$ROOT/script/smoke_test.sh" "$BUNDLE"
+fi
+
 rm -rf "$STAGE" "$PKG" "$DMG"
 mkdir -p "$STAGE/pkgroot/Applications" "$STAGE/dmg"
 
 echo "==> Installer package (.pkg)"
-cp -R "dist/$APP.app" "$STAGE/pkgroot/Applications/"
+cp -R ".build/$APP.app" "$STAGE/pkgroot/Applications/"
 pkgbuild \
   --root "$STAGE/pkgroot" \
   --install-location / \
@@ -40,8 +65,8 @@ pkgbuild \
   --ownership recommended \
   "$PKG"
 
-echo "==> Disk image (.dmg)"
-cp -R "dist/$APP.app" "$STAGE/dmg/"
+echo "==> Disk image (.dmg) — drag onto Applications"
+cp -R ".build/$APP.app" "$STAGE/dmg/"
 ln -s /Applications "$STAGE/dmg/Applications"
 cat > "$STAGE/dmg/Read Me First.txt" <<'NOTE'
 HudEX — first launch / 第一次打开
@@ -66,12 +91,26 @@ HudEX needs no permissions and no network: it only reads and writes that one
 Markdown file. 它不需要任何权限、不联网，只读写那一个 Markdown 文件。
 NOTE
 
-if hdiutil create -volname "$APP $VERSION" -srcfolder "$STAGE/dmg" -ov -format UDZO "$DMG" >/dev/null 2>&1; then
-  echo "    created $DMG"
-else
-  rm -f "$DMG"
-  echo "    !! hdiutil failed (restricted shell?) — the .pkg is still available"
+DMGBUILD=""
+for candidate in /tmp/dmgvenv/bin/dmgbuild "$(command -v dmgbuild 2>/dev/null)"; do
+  [[ -x "$candidate" ]] && DMGBUILD="$candidate" && break
+done
+
+if [[ -n "$DMGBUILD" ]]; then
+  "$DMGBUILD" -s "$ROOT/script/dmg-settings.py" \
+    -D app="$ROOT/.build/$APP.app" -D volume_name="$APP $VERSION" \
+    "$APP $VERSION" "$DMG" >/dev/null 2>&1
 fi
+
+if [[ ! -f "$DMG" ]]; then
+  if hdiutil create -volname "$APP $VERSION" -srcfolder "$STAGE/dmg" -ov -format UDZO "$DMG" >/dev/null 2>&1; then
+    echo "    created (plain layout; dmgbuild unavailable)"
+  else
+    rm -f "$DMG"
+    echo "    !! could not create the disk image in this shell (hdiutil needs device access)"
+  fi
+fi
+[[ -f "$DMG" ]] && echo "    created $DMG"
 
 rm -rf "$STAGE"
 

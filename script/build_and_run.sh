@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 #
-# Builds HudEX, assembles dist/HudEX.app and launches it.
+# Builds HudEX, assembles it as .build/HudEX.app and launches it.
+#
+# The bundle is assembled inside .build/ on purpose: it is a dotted directory, so
+# Spotlight never indexes it and a scratch build can never show up next to the
+# installed copy in search results or Launchpad.
 #
 # The bundle makes HudEX a menu-bar application. It deliberately does *not* set
 # LSUIElement: that flag also hides the app from Launchpad, and users expect to
@@ -11,11 +15,12 @@ set -euo pipefail
 
 APP_NAME="HudEX"
 BUNDLE_ID="dev.hex.hudex"
-BUNDLE_VERSION="1.0.0"
-BUNDLE_SHORT_VERSION="1.0.0"
+BUNDLE_VERSION="1.0.1"
+BUNDLE_SHORT_VERSION="1.0.1"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BUILD_APP_DIR="$ROOT_DIR/.build/$APP_NAME.app"
 DIST_DIR="$ROOT_DIR/dist"
-APP_DIR="$DIST_DIR/$APP_NAME.app"
+APP_DIR="$BUILD_APP_DIR"
 BUILD_CONFIG="debug"
 BUNDLE_EXECUTABLE="$APP_DIR/Contents/MacOS/$APP_NAME"
 ICNS_FILE="$ROOT_DIR/script/HudEX.icns"

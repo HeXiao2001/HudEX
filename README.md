@@ -32,6 +32,10 @@ AI agent — and it deliberately isn't.
 
 ## Quick start
 
+**First run:** HudEX writes nothing outside its own folder, asks for no
+permission, and opens Settings on the Welcome pane so you can see where the file
+lives before anything else happens.
+
 **Install the built package** (recommended): download `HudEX-1.0.0.pkg` and
 double-click it, or `HudEX-1.0.0.dmg` and drag the app onto Applications. HudEX
 is ad-hoc signed rather than notarised, so the first launch asks for one
@@ -42,13 +46,16 @@ dialogs: `sudo installer -pkg HudEX-1.0.0.pkg -target /`.)
 
 ```bash
 git clone <this repo> && cd HudEX
-./script/build_and_run.sh          # builds dist/HudEX.app and launches it
+./script/build_and_run.sh          # builds .build/HudEX.app and launches it
 ./script/make_package.sh           # builds release/HudEX-1.0.0.{pkg,dmg}
 ```
 
-Then open **Settings → Source** and pick your `HudEX.md` (or press
-*Create Example File*). That's it — HudEX only ever reads and writes that one
-file, plus its own settings block at the bottom of it.
+On the first launch HudEX opens a short **Welcome** pane: it offers its own
+folder for the file — `~/Library/Application Support/HudEX/HudEX.md`, which needs
+no authorisation — and one click creates the template there. Any other location
+works too: choose it yourself and macOS asks for that folder once.
+
+That file (and the settings block at its bottom) is all HudEX ever touches.
 
 Requires macOS 26 and Xcode 26 (SwiftPM only, no Xcode project).
 
@@ -98,6 +105,16 @@ Pick one in **Settings → Appearance**; each option previews itself.
 Every string hangs differently — direction, curve and even the occasional
 S-bend come from a stable hash of the project, so the same bookmark always
 hangs the same way, and nothing animates while the pointer is still.
+
+## Who manages the content
+
+The file is yours. Write it by hand, have an AI keep it tidy — live or on a
+schedule — or keep it in any folder a sync service mirrors for you (iCloud
+Drive, OneDrive, Dropbox, WebDAV, a git checkout…). HudEX only reads it; two
+Macs can even point at the same synced copy.
+
+The one thing HudEX writes is the settings block described below. Everything
+above that block is left byte-for-byte alone.
 
 ## Settings live in the file
 
@@ -154,7 +171,9 @@ reported in Settings instead of being drawn somewhere else. Turn on
 No AI calls, no sync service, no built-in editor, no WebView/Electron/Node, no
 history, no auto-scroll, no progress bars, no image attachments, no mobile app.
 Editing means "open `HudEX.md` in whatever your default Markdown editor is".
-Syncing is your sync client's job (the file just has to be local and up to date).
+Syncing is your sync client's job (the file just has to be local and up to date),
+and how the content gets written is yours: by hand, by an AI, or by whatever
+already produces your notes.
 
 ## Repository layout
 

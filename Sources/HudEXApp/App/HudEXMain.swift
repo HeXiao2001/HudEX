@@ -16,6 +16,7 @@ enum HudEXMain {
         let application = NSApplication.shared
         let delegate = AppDelegate()
         application.delegate = delegate
+        // A menu-bar app: no Dock icon, no ⌘-Tab entry, no main menu of its own.
         application.setActivationPolicy(.accessory)
         application.run()
     }
@@ -36,24 +37,63 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        // LSUIElement is set in Info.plist; this keeps the behaviour when the
-        // binary is run directly from a terminal.
         NSApp.setActivationPolicy(.accessory)
         statusItem = StatusItemController(controller: controller)
+
+        // First seconds: notice a previous interrupted launch, and make this one
+        // visible. A menu-bar app that starts with nothing to show is
+        // indistinguishable from one that failed to start.
+        let outcome = LaunchGuard.begin()
+        let firstLaunch = LaunchGuard.consumeFirstLaunch()
+        controller.isFirstRunSession = firstLaunch
         controller.start()
+
+        var recovered = false
+        if case .recovered(let attempts, let report) = outcome {
+            recovered = true
+            controller.noteRecoveredLaunch(attempts: attempts, report: report)
+        }
+
+        // A menu-bar app that starts with nothing on screen is indistinguishable
+        // from one that failed to start, so say something — but only when there
+        // is something to say: a genuine first run, a recovered crash, or no
+        // usable document. A normal launch (including launch-at-login) stays out
+        // of the way, as it should.
+        var announced = false
+        func announce(needsHelp: Bool) {
+            guard needsHelp, !announced else { return }
+            announced = true
+            SettingsWindowController.shared.show(pane: .welcome)
+        }
+        controller.whenDocumentResolved { usable in
+            announce(needsHelp: firstLaunch || recovered || !usable)
+        }
+        // Never rely on that call alone: a fresh install must always end up with
+        // something on screen, whatever the file system says.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
+            announce(needsHelp: !(self?.controller.hasUsableDocument ?? false))
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         controller.stop()
     }
 
-    /// Any other running copy of this bundle, if there is one.
+    /// Any other *live* copy of this bundle.
+    ///
+    /// LaunchServices sometimes reports stale entries; quitting on one of those
+    /// would make the app vanish the moment it is opened, so every candidate is
+    /// checked with the kernel before we hand over.
     private static func otherInstance() -> NSRunningApplication? {
         let identifier = Bundle.main.bundleIdentifier ?? "dev.hex.hudex"
         let ownPID = ProcessInfo.processInfo.processIdentifier
         return NSRunningApplication
             .runningApplications(withBundleIdentifier: identifier)
-            .first { $0.processIdentifier != ownPID }
+            .first { candidate in
+                let pid = candidate.processIdentifier
+                guard pid != ownPID, pid > 0, !candidate.isTerminated else { return false }
+                return kill(pid, 0) == 0
+            }
     }
 
     /// Launching HudEX again (Spotlight, Launchpad, Finder, `open`) while it is

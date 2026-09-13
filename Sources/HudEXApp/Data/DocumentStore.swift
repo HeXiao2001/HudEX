@@ -18,6 +18,9 @@ final class DocumentStore: ObservableObject {
     @Published private(set) var lastError: String?
     @Published private(set) var lastLoadedAt: Date?
     @Published private(set) var isLoading = false
+    /// Bumped every time a load attempt finishes, successful or not, so startup
+    /// can wait for a real answer instead of guessing with a timer.
+    @Published private(set) var loadAttempts = 0
 
     /// Fired after `document` changes, so the layout layer can rebuild.
     var onDocumentChanged: (() -> Void)?
@@ -123,7 +126,8 @@ final class DocumentStore: ObservableObject {
             Log.debug(Log.markdown, "loaded \(loaded.document.projects.count) projects (\(reason))")
 
         case .failure(.unchanged):
-            break
+            // Nothing new to read: the previous attempt already counted.
+            return
 
         case .failure(let error):
             if case .fileMissing = error {
@@ -133,6 +137,7 @@ final class DocumentStore: ObservableObject {
             }
             Log.markdown.warning("load failed: \(error.displayMessage, privacy: .public)")
         }
+        loadAttempts += 1
     }
 
     /// One deferred re-read after a transient empty file. Bounded: at most one

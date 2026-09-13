@@ -6,6 +6,7 @@ import SwiftUI
 struct LayoutSettingsView: View {
     @ObservedObject private var preferences = Preferences.shared
     @ObservedObject private var controller = HudEXController.shared
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Form {
@@ -20,6 +21,29 @@ struct LayoutSettingsView: View {
 
     private var placementSection: some View {
         Section {
+            LayoutDiagram(
+                mode: preferences.layoutMode,
+                metrics: TabMetrics.make(
+                    dockThickness: CGFloat(max(24, controller.geometry.thickness)),
+                    stack: preferences.stackStyle
+                ),
+                dock: controller.geometry.dockBounds,
+                projectCount: max(1, controller.documentSummary.projectCount),
+                isDark: colorScheme == .dark
+            )
+            .frame(height: 150)
+            .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+
+            Text(LayoutSummary.text(
+                mode: preferences.layoutMode,
+                edge: controller.geometry.edge,
+                capacity: controller.geometry.primaryCapacity,
+                overflow: controller.overflowCount
+            ))
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
             Picker(L10n.t("layout.mode"), selection: $preferences.layoutKind) {
                 Text(L10n.t("layout.mode.dockAdaptive")).tag(LayoutMode.Kind.dockAdaptive)
                 Text(L10n.t("layout.mode.dockSplit")).tag(LayoutMode.Kind.dockSplit)

@@ -4,19 +4,28 @@ import SwiftUI
 /// The settings window content. HudEX hosts it in its own window (see
 /// `SettingsWindowController`) but the controls are all native SwiftUI.
 struct SettingsView: View {
-    /// Which pane to show first. `HUDEX_SETTINGS_TAB` (general/source/layout/
-    /// appearance) selects it for development and documentation captures.
-    @State private var selection: String = {
-        switch ProcessInfo.processInfo.environment["HUDEX_SETTINGS_TAB"]?.lowercased() {
-        case "source": return "source"
-        case "layout": return "layout"
-        case "appearance": return "appearance"
-        default: return "general"
-        }
-    }()
+    /// Which pane to show first. `HUDEX_SETTINGS_TAB` still wins for development
+    /// and documentation captures.
+    init(initialPane: SettingsPane = .general) {
+        let override = ProcessInfo.processInfo.environment["HUDEX_SETTINGS_TAB"]?.lowercased()
+        let requested = SettingsPane(rawValue: override ?? "") ?? initialPane
+        // Without a file there is nothing to configure, so land on the welcome
+        // pane instead of the empty panes behind it.
+        let pane = (requested == .source && HudEXController.shared.needsOnboarding)
+            ? .welcome
+            : requested
+        _selection = State(initialValue: pane.rawValue)
+    }
+
+    @State private var selection: String
 
     var body: some View {
         TabView(selection: $selection) {
+            if HudEXController.shared.needsOnboarding {
+                WelcomeSettingsView()
+                    .tabItem { Label(L10n.t("settings.tab.welcome"), systemImage: "sparkles") }
+                    .tag("welcome")
+            }
             GeneralSettingsView()
                 .tabItem { Label(L10n.t("settings.tab.general"), systemImage: "gearshape") }
                 .tag("general")

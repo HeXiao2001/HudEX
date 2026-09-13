@@ -176,12 +176,34 @@ public struct MarkdownDocumentLoader: Sendable {
 
 /// Resolves which `HudEX.md` to use when the user has not chosen one yet.
 public enum SourceLocator {
+    /// Where HudEX keeps its own file by default.
+    ///
+    /// `~/Library/Application Support/HudEX/` is ours: no TCC prompt, no cloud
+    /// client in the way, and it survives however the app is launched. A file
+    /// anywhere else (Documents, Desktop, a synced folder) is only used when the
+    /// person picks it themselves — at which point macOS asks for the folder and
+    /// the answer is theirs to give.
+    public static func defaultURL(
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
+    ) -> URL {
+        applicationSupportDirectory(homeDirectory: homeDirectory)
+            .appendingPathComponent("HudEX.md")
+    }
+
+    public static func applicationSupportDirectory(
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
+    ) -> URL {
+        homeDirectory
+            .appendingPathComponent("Library/Application Support/HudEX", isDirectory: true)
+    }
+
     /// Candidate locations, in priority order.
     public static func candidates(
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
         cloudStorageRoot: URL? = nil
     ) -> [URL] {
         var urls: [URL] = [
+            defaultURL(homeDirectory: homeDirectory),
             homeDirectory.appendingPathComponent("Documents/HudEX.md")
         ]
 

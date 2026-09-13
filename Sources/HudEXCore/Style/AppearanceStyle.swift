@@ -17,6 +17,9 @@ public enum AppearanceStyle: String, Sendable, CaseIterable, Hashable {
 
     public var displayNameKey: String { "style.\(rawValue)" }
 
+    /// A one-or-two word name, for the preview cards.
+    public var shortNameKey: String { "style.\(rawValue).short" }
+
     public var guideKey: String { "style.\(rawValue).guide" }
 
     /// The punched hole and its connector line only exist in the skeuomorphic

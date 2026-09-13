@@ -93,20 +93,41 @@ enum ExternalOpenService {
 /// second scene alive makes SwiftUI rebuild the app main menu in a loop.
 /// The window still uses native controls only.
 @MainActor
+/// The four panes, by name, so a first launch can open the one that matters.
+enum SettingsPane: String {
+    case welcome, general, source, layout, appearance
+}
+
+@MainActor
 final class SettingsWindowController: NSObject, NSWindowDelegate {
     static let shared = SettingsWindowController()
 
     private var window: NSWindow?
+    /// Applied when the window is (re)created.
+    private var pendingPane: SettingsPane?
+    /// Which pane the live window is showing.
+    private var currentPane: SettingsPane = .general
 
     var isVisible: Bool { window?.isVisible ?? false }
 
-    func show() {
+    func show(pane: SettingsPane? = nil) {
+        if let pane {
+            // Rebuild if the window does not exist yet, otherwise select the tab
+            // through the touch of a fresh window: the panes are cheap to build.
+            if window != nil, pane != currentPane {
+                window?.close()
+                window = nil
+            }
+            pendingPane = pane
+        }
         let window = ensureWindow()
+        Log.trace("settings window: pane=\(currentPane.rawValue) requested=\(pane?.rawValue ?? "—")")
         NSApp.activate(ignoringOtherApps: true)
         if !window.isVisible {
             window.center()
         }
         window.makeKeyAndOrderFront(nil)
+        SnapshotDebugger.captureSoon("settings")
     }
 
     func close() {
@@ -124,7 +145,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     private func ensureWindow() -> NSWindow {
         if let window { return window }
-        let hosting = NSHostingView(rootView: SettingsView())
+        let hosting = NSHostingView(rootView: SettingsView(initialPane: pendingPane ?? .general))
+        currentPane = pendingPane ?? .general
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 560, height: 640),
             styleMask: [.titled, .closable, .miniaturizable],

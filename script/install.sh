@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 #
-# Copies dist/HudEX.app into /Applications. HudEX is a single self-contained
+# Copies .build/HudEX.app into /Applications. HudEX is a single self-contained
 # bundle: no helper process, no login item plist, no support files.
 #
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SOURCE_APP="$ROOT_DIR/dist/HudEX.app"
+SOURCE_APP="$ROOT_DIR/.build/HudEX.app"
 TARGET_APP="/Applications/HudEX.app"
 
 if [[ ! -d "$SOURCE_APP" ]]; then
-  echo "dist/HudEX.app not found — run script/build_and_run.sh first." >&2
+  echo ".build/HudEX.app not found — run script/build_and_run.sh first." >&2
   exit 1
 fi
 

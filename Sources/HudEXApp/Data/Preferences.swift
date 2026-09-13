@@ -276,6 +276,12 @@ final class Preferences: ObservableObject {
         TagLimits(maxTags: maxTags, maxTagsPerSlot: maxTagsPerSlot)
     }
 
+    /// Where a first launch offers to put the file: `~/Library/Application
+    /// Support/HudEX/HudEX.md`. HudEX owns that folder, so nothing has to be
+    /// authorised and no cloud client is involved. Anything outside it is opened
+    /// only when the person chooses it — macOS then asks for that folder.
+    static var defaultSourceURL: URL { SourceLocator.defaultURL() }
+
     var layoutMode: LayoutMode {
         LayoutMode(
             kind: layoutKind,

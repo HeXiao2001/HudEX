@@ -38,12 +38,15 @@ HudEX 在你屏幕边缘空出来的地方——通常是 Dock 旁边——放�
 
 ```bash
 git clone <本仓库> && cd HudEX
-./script/build_and_run.sh          # 构建 dist/HudEX.app 并启动
+./script/build_and_run.sh          # 构建 .build/HudEX.app 并启动
 ./script/make_package.sh           # 生成 release/HudEX-1.0.0.{pkg,dmg}
 ```
 
-然后打开 **设置 → 数据源**，选择你的 `HudEX.md`（或者点「创建示例文件」）。
-之后 HudEX 只读写这一个文件，以及文件底部的它自己的设置段。
+第一次启动时 HudEX 会自动打开一个简短的 **「开始使用」** 页：它提供自己的文件夹
+`~/Library/Application Support/HudEX/HudEX.md` 作为默认位置——这个位置不需要任何授权——
+点一下就在那里生成模板。想放在别处也行：自己选一个位置，macOS 会为该文件夹问一次。
+
+那个文件（以及它底部的设置段）就是 HudEX 唯一会碰的东西。
 
 要求 macOS 26 与 Xcode 26（纯 SwiftPM，没有 Xcode 工程）。
 
@@ -89,6 +92,14 @@ git clone <本仓库> && cd HudEX
 
 每个项目的连接线都不一样——方向、弧度甚至偶尔的 S 形，都由项目名的稳定哈希决定，
 所以同一个标签每次悬停都一样，静止时也不播放任何动画。
+
+## 内容归你管，HudEX 只读
+
+文件是你的：可以自己手写，也可以让 AI 实时或定期帮你整理，还可以把它放在任意
+一个会被云服务（iCloud 云盘、OneDrive、Dropbox、WebDAV、git 仓库……）同步的
+目录里。HudEX 只负责读取；两台 Mac 也可以指向同一份同步过来的文件。
+
+HudEX 唯一会写的是下面那段设置：除此之外，设置段以上的内容一字不改。
 
 ## 设置就写在 Markdown 里
 
@@ -138,7 +149,8 @@ git clone <本仓库> && cd HudEX
 不调用 AI、不接同步服务、不内置编辑器、不用 WebView/Electron/Node、不存历史、
 自动滚动、不做进度条、不加载图片附件、没有手机端。
 「编辑」就是「用你系统的默认 Markdown 程序打开 `HudEX.md`」，
-同步交给同步客户端——文件只要在本地是新的就行。
+同步交给同步客户端——文件只要在本地是新的就行；内容由谁写、怎么写，也完全由你决定
+（手写、让 AI 整理、或者用你已有的笔记流程）。
 
 ## 工程结构
 

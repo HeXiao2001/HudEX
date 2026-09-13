@@ -35,6 +35,7 @@ final class HudEXController: ObservableObject {
     // MARK: - Published state (read by Settings and the menu)
 
     struct GeometrySummary: Equatable {
+        var edge: DockEdge = .bottom
         var edgeName: String = "—"
         var thickness: Int = 0
         var occupiedStart: Int = 0
@@ -47,6 +48,17 @@ final class HudEXController: ObservableObject {
         var secondaryRange: String = "—"
         var primaryCapacity: Int = 0
         var secondaryCapacity: Int = 0
+
+        /// The Dock as the layout engine wants it, for the Settings diagram.
+        var dockBounds: DockBounds {
+            DockBounds(
+                edge: edge,
+                thickness: CGFloat(thickness),
+                occupiedStart: CGFloat(occupiedStart),
+                occupiedEnd: CGFloat(occupiedEnd),
+                isPresent: isDockPresent
+            )
+        }
 
         static let empty = GeometrySummary()
     }
@@ -104,6 +116,8 @@ final class HudEXController: ObservableObject {
         guard !started else { return }
         started = true
         Log.app.info("HudEX \(Self.version, privacy: .public) starting")
+
+        createStarterFileIfNeeded()
 
         store.onDocumentChanged = { [weak self] in
             guard let self else { return }
@@ -203,6 +217,7 @@ final class HudEXController: ObservableObject {
     // MARK: - Refresh
 
     private func preferencesDidChange() {
+
         if preferences.resolvedSourceURL != store.sourceURL {
             store.configureSource(preferences.resolvedSourceURL)
         }
@@ -387,6 +402,7 @@ final class HudEXController: ObservableObject {
     ) {
         let bounds = snapshot.bounds
         var summary = GeometrySummary()
+        summary.edge = bounds.edge
         summary.edgeName = L10n.t(bounds.edge.displayNameKey)
         summary.thickness = Int(bounds.thickness.rounded())
         summary.occupiedStart = Int(bounds.occupiedStart.rounded())
@@ -435,7 +451,32 @@ final class HudEXController: ObservableObject {
         if documentSummary != summary {
             documentSummary = summary
         }
+        resolveDocumentWaiters()
     }
+
+    /// Runs `body` once the first document load has finished (immediately when it
+    /// already has). Startup decisions must not guess at this: the read is
+    /// asynchronous, and a fixed delay is a race.
+    func whenDocumentResolved(_ body: @escaping (Bool) -> Void) {
+        if documentResolved {
+            body(hasUsableDocument)
+            return
+        }
+        documentWaiters.append(body)
+    }
+
+    private func resolveDocumentWaiters() {
+        guard !documentResolved else { return }
+        guard store.loadAttempts > 0 else { return }
+        documentResolved = true
+        let usable = hasUsableDocument
+        let waiters = documentWaiters
+        documentWaiters.removeAll()
+        waiters.forEach { $0(usable) }
+    }
+
+    private var documentResolved = false
+    private var documentWaiters: [(Bool) -> Void] = []
 
     // MARK: - Hover
 
@@ -487,6 +528,39 @@ final class HudEXController: ObservableObject {
             hash = hash &* 0x0000_0100_0000_01B3
         }
         return hash
+    }
+
+    /// True while HudEX should be introducing itself: the first launch of a
+    /// fresh install (so the person sees where the file went and picks a look),
+    /// or any time there is no usable document. Afterwards the pane disappears
+    /// and Settings opens on General like it does for everyone else.
+    var needsOnboarding: Bool { isFirstRunSession || !hasUsableDocument }
+
+    /// Set for the duration of the very first launch.
+    var isFirstRunSession = false
+
+    /// Whether there is a document worth showing: the file exists and at least
+    /// one project parsed out of it.
+    var hasUsableDocument: Bool {
+        documentSummary.projectCount > 0 && FileManager.default.fileExists(
+            atPath: documentSummary.path
+        )
+    }
+
+    /// Remembers that the last launch was interrupted, and why it matters.
+    func noteRecoveredLaunch(attempts: Int, report: URL?) {
+        recoveredLaunch = (attempts, report)
+        Log.app.warning("recovered from \(attempts) interrupted launch(es)")
+        refresh(reason: "safemode", allowExpensiveProbes: false)
+    }
+
+    /// Shown in Settings when the guard had to clean up.
+    private(set) var recoveredLaunch: (attempts: Int, report: URL?)?
+
+    /// Dismisses the recovery notice (the report file itself is removed by the
+    /// settings pane).
+    func clearRecoveredLaunch() {
+        recoveredLaunch = nil
     }
 
     /// Asks the user for the Markdown file. The panel is created per call and
@@ -611,7 +685,22 @@ final class HudEXController: ObservableObject {
 
     /// Writes the example document, used by Settings when no `HudEX.md` exists.
     @discardableResult
-    func createExampleFile(at url: URL) -> Bool {
+    /// A first launch with nothing configured gets a file in HudEX's own folder
+    /// straight away — that folder needs no authorisation, so the bookmarks have
+    /// something to show before the person has decided anything. Once a source
+    /// has been chosen, this never runs again: a missing file the user pointed at
+    /// stays missing (and is reported), rather than being silently recreated.
+    private func createStarterFileIfNeeded() {
+        guard preferences.sourcePath.isEmpty else { return }
+        let url = Preferences.defaultSourceURL
+        guard !FileManager.default.fileExists(atPath: url.path) else {
+            store.configureSource(url)
+            return
+        }
+        _ = createExampleFile(at: url, openAfterwards: false)
+    }
+
+    func createExampleFile(at url: URL, openAfterwards: Bool = true) -> Bool {
         do {
             try FileManager.default.createDirectory(
                 at: url.deletingLastPathComponent(),
@@ -621,7 +710,9 @@ final class HudEXController: ObservableObject {
             Log.markdown.info("created example document at \(url.path, privacy: .public)")
             store.configureSource(url)
             store.reload(reason: "example created")
-            ExternalOpenService.openFile(url)
+            if openAfterwards {
+                ExternalOpenService.openFile(url)
+            }
             return true
         } catch {
             Log.markdown.error("could not create \(url.path, privacy: .public): \(error.localizedDescription, privacy: .public)")
@@ -751,6 +842,10 @@ final class HudEXController: ObservableObject {
         lines.append(L10n.t("diagnostics.title", Self.version))
         lines.append(L10n.t("diagnostics.system", ProcessInfo.processInfo.operatingSystemVersionString))
         lines.append(L10n.t("diagnostics.source", documentSummary.path))
+        let crashes = LaunchGuard.crashReports()
+        lines.append(
+            L10n.t("diagnostics.crashReports", crashes.isEmpty ? L10n.t("common.none") : crashes.joined(separator: ", "))
+        )
         lines.append(L10n.t("diagnostics.projects", documentSummary.projectCount))
         lines.append(L10n.t("diagnostics.edge", geometry.edgeName))
         lines.append(L10n.t("diagnostics.thickness", geometry.thickness))

@@ -43,7 +43,7 @@
 "source.open" = "打开文件";
 "source.reveal" = "在 Finder 中显示";
 "source.reload" = "重新载入";
-"source.footer" = "HudEX 只读写这一个本地文件，不连接 OneDrive、也不连接任何网络服务；同步交给同步客户端。";
+"source.footer" = "HudEX 只读取这一个本地文件，除了最下面的设置段之外不会往里面写任何东西，自身也不连接任何云服务或网络。";
 "source.section.status" = "状态";
 "source.lastLoaded" = "最近载入";
 "source.createExample" = "创建示例文件";
@@ -264,7 +264,7 @@
 "sync.never" = "还没有";
 "sync.writeNow" = "立即写回";
 "sync.readNow" = "从文件读取";
-"sync.footer" = "HudEX 会把所有设置写进 HudEX.md 最下面那一段带说明的文字里：你（或者 AI）只要改文字就能调整布局、颜色、阈值。改文件，应用会跟着变；在应用里改，文件也会跟着变。";
+"sync.footer" = "HudEX 会把所有设置写进 HudEX.md 最下面那一段带说明的文字里：你（或者 AI）只要改文字就能调整布局、颜色、阈值。改文件，应用会跟着变；在应用里改，文件也会跟着变。只动这一段，上面的项目内容一字不改。";
 
 /* 设置段字段名 */
 "settingsblock.label.layout.mode" = "布局模式";
@@ -321,7 +321,7 @@
 "style.frosted.guide" = "标签保持纯色；卡片是磨砂半透明，圆角柔和，任何背景下文字都清楚。";
 "style.minimal" = "极简";
 "style.minimal.guide" = "完全不加填充：标签是线框，卡片也是线框，三种里最安静的一种。";
-"appearance.sample.title" = "OD";
+"appearance.sample.title" = "购物清单";
 
 /* 首次运行时写入的示例项目 */
 "sample.project1" = "## 网站改版\n\n短名：WEB\n状态：进行中\n更新：{DATE}\n优先级：高\n\n### 当前\n\n新版首页在评审中，站点其他页面还是旧版。\n\n### 下一步\n\n补齐移动端断点，然后把文案交给团队。\n\n### 最新对话\n\n首页布局评审\n\n### 备注\n\n- 等最终的 logo 文件";
@@ -329,8 +329,52 @@
 "sample.project3" = "## 读书清单\n\n状态：暂停\n更新：{DATE}\n\n### 当前\n\n这阵子在忙上线的事，先放一放。\n\n### 下一步\n\n把已经开始的两本读完，再挑下一本。";
 
 "layout.overflowSlot" = "允许使用第二个溢出位置";
-"settingsblock.guide.overflowSlot" = "标签是否可以使用同一条边另一端的位置。关闭时只在一个地方显示，放不下的会隐藏并在设置里提示数量。";
+"settingsblock.guide.layout.overflowSlot" = "标签是否可以使用同一条边另一端的位置。关闭时只在一个地方显示，放不下的会隐藏并在设置里提示数量。";
 
 "source.path.placeholder" = "HudEX.md 的路径";
 "source.apply" = "使用这个路径";
 "source.dropHint" = "……也可以直接把 .md 文件拖到这一页。";
+
+"source.section.recovery" = "恢复";
+"source.recovered" = "上一次启动有 %lld 次没有正常完成。HudEX 已经清掉手动校准的 Dock 尺寸并关闭了叠放，好让它能正常启动——你的 Markdown 文件没有被改动。";
+"source.recovered.footer" = "如果一直这样，可以把这份报告连同你的 macOS 版本一起发给我。";
+"source.report" = "报告";
+"source.revealReport" = "打开报告文件夹";
+"source.clearReports" = "清除";
+"diagnostics.crashReports" = "macOS 崩溃报告：%@";
+"common.none" = "无";
+
+/* 数据源页：内容归谁管 */
+"source.ownership" = "内容怎么管理，完全由你决定";
+"source.ownership.body" = "你可以自己手写；也可以让 AI 实时或定期帮你整理后写进这个文件；还可以把它放在任意一个会被云服务（iCloud 云盘、OneDrive、Dropbox、WebDAV、git 仓库……）同步的目录里。HudEX 只负责读取，除了下面那段设置之外不写回任何内容。";
+"source.ownership.footer" = "两台 Mac 指向同一份同步过来的文件也可以，不需要各自一份。";
+
+/* 首次运行 */
+"welcome.title" = "欢迎使用 HudEX";
+"welcome.intro" = "HudEX 会在屏幕边缘放几个纯色小书签，显示你手上几个项目的近期状态。在下面选一个 Markdown 文件——它只读这一个文件，并且不需要任何权限。";
+"welcome.step1" = "① 选择你的 Markdown 文件";
+"welcome.step1.location" = "文件";
+"welcome.step1.useDefault" = "用软件自己的文件夹";
+"welcome.step1.footer" = "默认放在软件自己的文件夹里（~/Library/Application Support/HudEX/HudEX.md），这样不需要任何授权。想用别处的文件——文稿、云盘同步目录、git 仓库——自己选一下就行：macOS 会为该文件夹问一次，答不答应由你决定。HudEX 只会读取这个文件（以及它自己在最下面维护的设置段）。";
+"welcome.step1.fixHint" = "这个位置上还没有可用的 Markdown 文件：换一个位置、创建模板，或者稍后在「数据源」里设置。";
+"welcome.status.missing" = "这个位置上没有文件";
+"welcome.status.empty" = "文件存在，但里面还没有项目——至少需要一个 ## 标题";
+"welcome.status.found" = "找到 %lld 个项目";
+"welcome.step2" = "② 选一种外观";
+"welcome.step2.footer" = "默认为拟物风格：标签同色的纸张卡片，用打孔和一条线连到书签上。这些以后都能在「外观」里改。";
+"appearance.sample.tag" = "购物";
+"settings.tab.welcome" = "开始使用";
+
+"layout.summary" = "书签会沿着**%@**排列：%@。";
+"layout.summary.overflow" = "书签会沿着**%@**排列：%@。放得下 %lld 个，还有 %lld 个放不下。";
+"layout.summary.dockAdaptive" = "紧贴 Dock，朝远离 Dock 的方向排";
+"layout.summary.dockSplit" = "分在 Dock 那条边的两侧";
+
+"style.skeuomorphic.short" = "拟物";
+"style.frosted.short" = "磨砂玻璃";
+"style.minimal.short" = "极简";
+
+"layout.summary.edge.left" = "屏幕左侧";
+"layout.summary.edge.right" = "屏幕右侧";
+"layout.summary.edge.bottom" = "屏幕底边";
+

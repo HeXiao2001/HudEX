@@ -43,7 +43,7 @@
 "source.open" = "Open File";
 "source.reveal" = "Show in Finder";
 "source.reload" = "Reload";
-"source.footer" = "HudEX reads and writes only this one local file. It never talks to OneDrive or any network service; syncing is the sync client's job.";
+"source.footer" = "HudEX reads this one local file and writes nothing into it except the settings block at the bottom. It never talks to a cloud service or the network itself.";
 "source.section.status" = "Status";
 "source.lastLoaded" = "Last loaded";
 "source.createExample" = "Create Example File";
@@ -264,7 +264,7 @@
 "sync.never" = "not yet";
 "sync.writeNow" = "Write now";
 "sync.readNow" = "Read from file";
-"sync.footer" = "HudEX keeps every setting in a documented block at the bottom of HudEX.md, so you — or an AI — can change the layout, colours and thresholds by editing text. Editing the block updates the app; changing a setting in the app updates the block.";
+"sync.footer" = "HudEX keeps every setting in a documented block at the bottom of HudEX.md, so you — or an AI — can change the layout, colours and thresholds by editing text. Editing the block updates the app; changing a setting in the app updates the block. Only that block is ever touched: the projects above it are never modified.";
 
 /* Settings block labels */
 "settingsblock.label.layout.mode" = "Layout mode";
@@ -321,7 +321,7 @@
 "style.frosted.guide" = "Tags stay solid; the card is a frosted, translucent pane with soft corners, so the text stays readable over any background.";
 "style.minimal" = "Minimal";
 "style.minimal.guide" = "No fills at all: outlined tags and an outlined card, the quietest of the three.";
-"appearance.sample.title" = "OD";
+"appearance.sample.title" = "Shopping list";
 
 /* Starter file sample projects (shown to the user on first run) */
 "sample.project1" = "## Website redesign\n\nshort: WEB\nstatus: active\nupdated: {DATE}\npriority: high\n\n### Current\n\nThe new homepage is in review; the rest of the site still uses the old layout.\n\n### Next\n\nFinish the mobile breakpoints, then hand the copy over to the team.\n\n### Latest conversation\n\nHomepage layout review\n\n### Notes\n\n- Waiting on the final logo files";
@@ -329,8 +329,52 @@
 "sample.project3" = "## Reading list\n\nstatus: paused\nupdated: {DATE}\n\n### Current\n\nPaused while the launch work is on.\n\n### Next\n\nFinish the two books already started, then pick the next one.";
 
 "layout.overflowSlot" = "Allow a second position for overflow";
-"settingsblock.guide.overflowSlot" = "Whether bookmarks may also use the overflow slot at the other end of the same edge. Off: one place only, extras are hidden and counted in Settings.";
+"settingsblock.guide.layout.overflowSlot" = "Whether bookmarks may also use the overflow slot at the other end of the same edge. Off: one place only, extras are hidden and counted in Settings.";
 
 "source.path.placeholder" = "Path to HudEX.md";
 "source.apply" = "Use this path";
 "source.dropHint" = "…or drop a .md file anywhere on this pane.";
+
+"source.section.recovery" = "Recovery";
+"source.recovered" = "The previous launch did not finish %lld time(s). HudEX cleared the manual Dock calibration and turned stacking off so it can start cleanly — your Markdown file was not touched.";
+"source.recovered.footer" = "If this keeps happening, send the report along with your macOS version.";
+"source.report" = "Report";
+"source.revealReport" = "Show report folder";
+"source.clearReports" = "Clear";
+"diagnostics.crashReports" = "macOS crash reports: %@";
+"common.none" = "none";
+
+/* Source pane: who owns the content */
+"source.ownership" = "The content is yours to manage";
+"source.ownership.body" = "Write it by hand, have an AI tidy it up for you — live or on a schedule — or keep it in any folder that a sync service (iCloud Drive, OneDrive, Dropbox, WebDAV, a git checkout …) mirrors for you. HudEX only ever reads it, and writes nothing back except the settings block underneath.";
+"source.ownership.footer" = "One file per machine is enough: point two Macs at the same synced copy if you like.";
+
+/* First run */
+"welcome.title" = "Welcome to HudEX";
+"welcome.intro" = "HudEX keeps a few solid-colour bookmarks along the edge of the screen and shows the recent context of the projects you are juggling. Pick one Markdown file below — that is the only thing it reads, and it needs no permissions at all.";
+"welcome.step1" = "1 · Choose your Markdown file";
+"welcome.step1.location" = "File";
+"welcome.step1.useDefault" = "Use HudEX’s own folder";
+"welcome.step1.footer" = "By default the file lives in HudEX’s own folder (~/Library/Application Support/HudEX/HudEX.md), so nothing has to be authorised. To use a file somewhere else — Documents, a synced folder, a git checkout — choose it yourself: macOS will ask for that folder once, and the answer is yours. HudEX only ever reads the file (plus the settings block it maintains at the bottom).";
+"welcome.step1.fixHint" = "That location has no usable Markdown file yet: choose another one, create the template, or set it later under Source.";
+"welcome.status.missing" = "No file at this location";
+"welcome.status.empty" = "The file exists but has no projects in it — it needs at least one ## heading";
+"welcome.status.found" = "Found %lld project(s)";
+"welcome.step2" = "2 · Choose a look";
+"welcome.step2.footer" = "Skeuomorphic is the default: coloured paper cards joined to the bookmark by a punched hole. You can change all of this later in Appearance.";
+"appearance.sample.tag" = "SHOP";
+"settings.tab.welcome" = "Welcome";
+
+"layout.summary" = "Bookmarks appear along the %@ — %@.";
+"layout.summary.overflow" = "Bookmarks appear along the %@ — %@. %lld fit, %lld do not.";
+"layout.summary.dockAdaptive" = "beside the Dock, growing away from it";
+"layout.summary.dockSplit" = "split across both sides of the Dock's edge";
+
+"style.skeuomorphic.short" = "Skeuomorphic";
+"style.frosted.short" = "Frosted glass";
+"style.minimal.short" = "Minimal";
+
+"layout.summary.edge.left" = "left edge";
+"layout.summary.edge.right" = "right edge";
+"layout.summary.edge.bottom" = "bottom edge";
+
