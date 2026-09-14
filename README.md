@@ -1,198 +1,174 @@
 # HudEX
 
-**Always present, almost invisible.**
+[English](README.en.md) · **中文**
 
-HudEX puts a handful of solid-colour bookmarks in the free space along the edge
-of your screen — normally right next to the Dock. Each bookmark is one project
-you are juggling. Hover it and a small card shows where that project stands,
-what is next, and the name of the most recent conversation about it.
+**一直存在，尽可能不打扰。**（Always present, almost invisible.）
 
-Everything comes from **one Markdown file** that you — or an AI — can edit.
+HudEX 在你屏幕边缘空出来的地方——通常是 Dock 旁边——放几个纯色小书签，
+每个书签是一个你正在推进的项目。鼠标悬停时弹出一张小卡片，告诉你这个项目
+做到哪了、下一步是什么、最近一次聊的是什么。
 
-![HudEX overview: hover card, Dock bookmarks, layout options](docs/images/overview.jpg)
+这些内容全部来自**一个 Markdown 文件**，你自己写、AI 写都行。
 
-*Hover card over the Dock bookmarks · a left-edge Dock with its card · the layout
-pane (here pinning the bookmarks to the right edge) · the bookmarks up close.*
+![HudEX 总览：悬停卡片、Dock 旁的书签、布局设置](docs/images/overview.jpg)
 
-## What it is
+*Dock 下方书签的悬停卡片 · Dock 在左侧时的书签与卡片 · 布局设置（这里把书签固定到屏幕右边）· 书签特写*
 
-A tiny, always-on display of *recent project context*, for anyone who keeps
-several projects moving at once: a launch, a report, a side project, a reading
-list, a room you are renovating.
+## 它是什么
 
-It answers four questions without you opening anything:
+一个常驻的「近期项目上下文」小显示器，适合任何同时推进几件事的人：
+一次上线、一份报告、一个副业、一张书单、一间正在收拾的房间。
 
-1. Which projects am I in the middle of?
-2. Where did each one get to?
-3. What is the next step?
-4. Which one has gone quiet?
+它回答四个问题，不用你打开任何东西：
 
-It is **not** a task manager, a calendar, a Kanban board, a note archive or an
-AI agent — and it deliberately isn't.
+1. 我现在手上有哪些项目？
+2. 每个项目做到哪了？
+3. 下一步要做什么？
+4. 哪一个已经放了很久没动？
 
-## Quick start
+它**不是**任务管理器、日历、看板、笔记库，也不是 AI Agent——刻意不做这些。
 
-**First run:** HudEX writes nothing outside its own folder, asks for no
-permission, and opens Settings on the Welcome pane so you can see where the file
-lives before anything else happens.
+## 快速开始
 
-**Install the built package** (recommended): download `HudEX-1.0.0.pkg` and
-double-click it, or `HudEX-1.0.0.dmg` and drag the app onto Applications. HudEX
-is ad-hoc signed rather than notarised, so the first launch asks for one
-confirmation: right-click the app → **Open** → **Open**. (Command line, no
-dialogs: `sudo installer -pkg HudEX-1.0.0.pkg -target /`.)
+**安装（推荐用拖拽版）**
 
-**Or build it yourself:**
+1. 下载 **`HudEX-1.0.2.dmg`** 并打开，把 **HudEX** 拖到窗口里的 **Applications** 快捷方式上。
+2. **第一次打开会被系统拦下来**——因为 HudEX 没有做 Apple 公证签名（个人开发者没有付费账号），
+   这一步只需要做一次：
+   - 直接双击 HudEX 会看到「Apple 无法验证此 App 是否包含恶意软件」；
+   - 打开 **系统设置 → 隐私与安全性**，往下滚到「安全性」；
+   - 会看到一行 *「已阻止使用 HudEX，因为来自身份不明的开发者」*，点右边的 **仍要打开**；
+   - 输入你的开机密码（或 Touch ID）确认，然后再点一次 **打开**。
+3. 之后就能正常启动了。HudEX 只做**本地 ad-hoc 签名**，没有任何网络请求，
+   也没有申请任何权限（不需要辅助功能、屏幕录制、通知）。系统设置里那条
+   「已阻止」的记录在成功打开后就不再出现。
+4. 第一次启动时 HudEX 会自己创建文件
+   （`~/Library/Application Support/HudEX/HudEX.md`）并打开「开始使用」页，
+   告诉你文件在哪里、选哪种外观。
 
-```bash
-git clone <this repo> && cd HudEX
-./script/build_and_run.sh          # builds .build/HudEX.app and launches it
-./script/make_package.sh           # builds release/HudEX-1.0.0.{pkg,dmg}
-```
+> 想放在别处？在「开始使用」页点「选择文件…」选你自己的 Markdown 文件即可——
+> macOS 会为该文件夹问一次，答不答应由你决定。
 
-On the first launch HudEX opens a short **Welcome** pane: it offers its own
-folder for the file — `~/Library/Application Support/HudEX/HudEX.md`, which needs
-no authorisation — and one click creates the template there. Any other location
-works too: choose it yourself and macOS asks for that folder once.
 
-That file (and the settings block at its bottom) is all HudEX ever touches.
-
-Requires macOS 26 and Xcode 26 (SwiftPM only, no Xcode project).
-
-## The file
+## 文件格式
 
 ```markdown
-## Website redesign          ← one project per `##` heading
+## 网站改版                  ← 一个 `##` 就是一个项目
 
-short: WEB                   ← optional: the label on the bookmark
-status: active               ← active / paused / archived / done
-updated: 2026-09-12 16:30    ← drives the colour
-priority: high               ← optional: colours the punched hole
+短名：WEB                    ← 可选：书签上显示的字
+状态：进行中                 ← 进行中 / 暂停 / 归档 / 已完成
+更新：2026-09-12 16:30       ← 决定书签颜色
+优先级：高                   ← 可选：给标签上的洞洞上色
 
-### Current                  ← sections; 当前 / 下一步 / 最新对话 / 备注 are
-The new homepage is in review; the rest of the site still uses the old layout.
+### 当前                     ← 小节；当前 / 下一步 / 最新对话 / 备注 会被识别
+新版首页在评审中，站点其他页面还是旧版。
 
-### Next
-Finish the mobile breakpoints, then hand the copy over to the team.
+### 下一步
+补齐移动端断点，然后把文案交给团队。
 
-### Latest conversation
-Homepage layout review
+### 最新对话
+首页布局评审
 ```
 
-* `###` headings are free-form: the four above are recognised and shown in the
-  hover card, any other heading (`### Data sources`, …) renders in the full view.
-* Extra per-project keys: `order: 1` (position among the bookmarks),
-  `color: #4C6FA0` or `color: teal` (override the bookmark colour).
-* Chinese keys work too (`短名：`, `状态：`, `更新：`, `顺序：`, `颜色：`, `优先级：`) —
-  the two spellings can even be mixed in one file.
-* Only text and ordinary `http(s)` links. Images, attachments and embeds are
-  never loaded, downloaded or rendered.
-* A project with no `short:` gets an abbreviation derived from its title
-  (`GeoRule` → `GR`, `Reading list` → `RL`).
+* `###` 标题完全自由：上面四个会被识别并显示在悬停卡片里，其他标题
+  （比如 `### 数据来源`）会显示在「完整窗口」中。
+* 项目级可选字段还有：`顺序：1`（决定标签先后）、
+  `颜色：#4C6FA0` 或 `颜色：绿色`（单独覆盖标签颜色）。
+* 英文键名同样可用（`short:` `status:` `updated:` `order:` `color:` `priority:`），中英文可以混写。
+* 只处理文字和普通 `http(s)` 链接；图片、附件、嵌入一律不加载、不下载、不渲染。
+* 没写 `短名` 的项目会自动生成缩写（`GeoRule` → `GR`，`Reading list` → `RL`）。
 
-Examples: [`Examples/HudEX.md`](Examples/HudEX.md) (English) ·
-[`Examples/HudEX.zh.md`](Examples/HudEX.zh.md) (中文)
+示例文件：[`Examples/HudEX.md`](Examples/HudEX.md)（英文）·
+[`Examples/HudEX.zh.md`](Examples/HudEX.zh.md)（中文）
 
-## Styles
+## 三种外观风格
 
-Pick one in **Settings → Appearance**; each option previews itself.
+在 **设置 → 外观** 里选择，每个选项自己就是预览图。
 
-| Skeuomorphic (default) | Frosted glass | Minimal |
+| 拟物（默认） | 磨砂玻璃 | 极简 |
 |---|---|---|
-| ![skeuomorphic](docs/images/style-skeuomorphic.png) | ![frosted](docs/images/style-frosted.png) | ![minimal](docs/images/style-minimal.png) |
-| Coloured paper card with ruled lines; a punched hole joins it to the bookmark with its own little string. | Translucent pane, readable over any background. | Outlines only. |
+| ![拟物](docs/images/style-skeuomorphic.png) | ![磨砂](docs/images/style-frosted.png) | ![极简](docs/images/style-minimal.png) |
+| 标签同色的纸张卡片、带横线；标签上的洞洞用一条曲线连到卡片。 | 半透明材质，任何背景下文字都清楚。 | 只有线框。 |
 
-Every string hangs differently — direction, curve and even the occasional
-S-bend come from a stable hash of the project, so the same bookmark always
-hangs the same way, and nothing animates while the pointer is still.
+每个项目的连接线都不一样——方向、弧度甚至偶尔的 S 形，都由项目名的稳定哈希决定，
+所以同一个标签每次悬停都一样，静止时也不播放任何动画。
 
-## Who manages the content
+## 内容归你管，HudEX 只读
 
-The file is yours. Write it by hand, have an AI keep it tidy — live or on a
-schedule — or keep it in any folder a sync service mirrors for you (iCloud
-Drive, OneDrive, Dropbox, WebDAV, a git checkout…). HudEX only reads it; two
-Macs can even point at the same synced copy.
+文件是你的：可以自己手写，也可以让 AI 实时或定期帮你整理，还可以把它放在任意
+一个会被云服务（iCloud 云盘、OneDrive、Dropbox、WebDAV、git 仓库……）同步的
+目录里。HudEX 只负责读取；两台 Mac 也可以指向同一份同步过来的文件。
 
-The one thing HudEX writes is the settings block described below. Everything
-above that block is left byte-for-byte alone.
+HudEX 唯一会写的是下面那段设置：除此之外，设置段以上的内容一字不改。
 
-## Settings live in the file
+## 设置就写在 Markdown 里
 
-The bottom of `HudEX.md` holds a documented settings block — one guide line,
-then one `key：value` line per option:
+`HudEX.md` 最下面是一段自带说明的设置段：每个选项**上面一行说明、下面一行 `名称：值`**。
 
 ```markdown
-# HudEX Settings
+# HudEX 设置
 
-> Appearance style: skeuomorphic / frosted / minimal
-Appearance style：skeuomorphic
+> 外观风格：skeuomorphic（拟物）/ frosted（磨砂）/ minimal（极简）
+外观风格：skeuomorphic
 
-> Tag width into the screen, in points. 0 = follow the Dock thickness
-Tag width：0
+> 标签伸进屏幕的宽度，单位 pt；0 = 跟随 Dock 厚度
+标签宽度：0
 ```
 
-Change a value there and HudEX applies it. Change a setting in the app and
-HudEX writes it back (debounced, atomically; your project content above is left
-untouched). That makes the file fully driveable by a person or an AI — layout,
-colours, thresholds, counts, even the style.
+改文件里的值，HudEX 立刻生效；在应用里改了设置，HudEX 也会写回这一段
+（1.2 秒防抖、原子替换，上面的项目内容一字不动）。所以这个文件完全可以
+由人或者 AI 来驱动：布局、颜色、阈值、数量上限，连风格都能改。
 
-## Where the bookmarks go
+## 标签放在哪
 
-| Dock | Primary position | Overflow |
+| Dock 位置 | 主位置 | 溢出位置 |
 |---|---|---|
-| Left | bottom-left, growing up | top-left, growing down |
-| Right | bottom-right, growing up | top-right, growing down |
-| Bottom | bottom-left, growing right | bottom-right, growing left |
+| 左 | 左下角，向上排 | 左上角，向下排 |
+| 右 | 右下角，向上排 | 右上角，向下排 |
+| 下 | 左下角，向右排 | 右下角，向左排 |
 
-Three modes: **follow the Dock** (default), **split both sides of the Dock's
-edge**, or **pin to a screen edge of your choice** (left/right/bottom, anchored
-start/centre/end, with an offset) — so a left Dock can show bookmarks on the
-right edge if you prefer.
+三种模式：**跟随 Dock**（默认）、**Dock 那条边两侧分布**、
+**固定屏幕边**（自选左/右/下 + 起点/居中/终点 + 偏移）——所以 Dock 在左边时，
+标签也可以放到屏幕右边。
 
-Bookmarks are never wider than the Dock, never overlap it and never cover the
-menu bar.
+标签永远不会比 Dock 厚、不会压住 Dock、也不会盖住菜单栏。
 
-**By default they only ever appear in one place**: whatever does not fit is
-reported in Settings instead of being drawn somewhere else. Turn on
-*Allow a second position for overflow* in Settings → Layout (or
-`Overflow slot：on` in the file) if you would rather use both ends of the edge.
+**默认只在同一个地方显示**：放不下的项目会在设置里提示数量，而不会跑到边上另一处去画。
+如果确实想用同一条边的两端，可以在 设置 → 布局 里打开「允许使用第二个溢出位置」
+（或者在文件里写 `溢出位置：on`）。
 
-## Permissions, network, resources
+## 权限、网络、资源占用
 
-* **No permissions at all.** No Accessibility, no Screen Recording, no network.
-  Dock position and thickness come from the system's reserved screen area and
-  the Dock's own preferences; screen changes arrive as ordinary notifications.
-* **No polling.** No timers except a single one at midnight (colour rollover)
-  and a once-a-minute refresh while a card is on screen.
-* Measured idle cost: **~0 % CPU, ~16 MB, ~0.1 wakeups/s, 0 network**.
+* **不需要任何权限**：不用辅助功能、不用屏幕录制、不联网。Dock 的位置与厚度
+  来自系统保留区和 Dock 偏好设置，屏幕变化通过系统通知获知。
+* **没有轮询**：除了午夜那次（刷新颜色）和卡片在屏时每分钟一次，没有任何定时器。
+* 实测空闲占用：**≈0% CPU、≈16 MB 内存、≈0.1 次唤醒/秒、0 网络请求**。
 
-## What it deliberately does not do
+## 明确不做的事
 
-No AI calls, no sync service, no built-in editor, no WebView/Electron/Node, no
-history, no auto-scroll, no progress bars, no image attachments, no mobile app.
-Editing means "open `HudEX.md` in whatever your default Markdown editor is".
-Syncing is your sync client's job (the file just has to be local and up to date),
-and how the content gets written is yours: by hand, by an AI, or by whatever
-already produces your notes.
+不调用 AI、不接同步服务、不内置编辑器、不用 WebView/Electron/Node、不存历史、
+自动滚动、不做进度条、不加载图片附件、没有手机端。
+「编辑」就是「用你系统的默认 Markdown 程序打开 `HudEX.md`」，
+同步交给同步客户端——文件只要在本地是新的就行；内容由谁写、怎么写，也完全由你决定
+（手写、让 AI 整理、或者用你已有的笔记流程）。
 
-## Repository layout
+## 工程结构
 
 ```
-Sources/HudEXCore     parsing / layout / colour / file signatures — pure logic, unit tested
-Sources/HudEXApp      AppKit shell (panels, status item, settings window) + SwiftUI views
-Tests/HudEXCoreTests  123 tests: parser, layout modes, stacking, palette, sync, i18n
-Examples/             example documents (English + Chinese)
-docs/                 design and verification notes
-script/               build / install / asset scripts (script/demo.swift sweeps the bookmarks for demo recordings)
+Sources/HudEXCore     解析 / 布局 / 颜色 / 文件签名 —— 纯逻辑，有单元测试
+Sources/HudEXApp      AppKit 外壳（面板、状态栏菜单、设置窗口）+ SwiftUI 视图
+Tests/HudEXCoreTests  123 项测试：解析、布局模式、叠放、调色板、双向同步、本地化
+Examples/             示例文件（英文 + 中文）
+docs/                 设计说明与验证记录
+script/               构建 / 安装 / 资源脚本（script/demo.swift 可以自动扫过标签，方便录演示）
 ```
 
 ```bash
-swift script/demo.swift 3   # sweeps the bookmarks (for screen recordings)
-swift test                  # 123 tests
-./script/build_and_run.sh # build + bundle + sign + run
-./script/install.sh       # copy to /Applications
+swift test                # 123 项测试
+./script/build_and_run.sh # 构建 + 组 bundle + 签名 + 启动
+./script/install.sh       # 安装到 /Applications
 ```
 
-## Licence
+## 许可
 
-Not chosen yet — add one before publishing.
+尚未选择——发布前请先补一个。

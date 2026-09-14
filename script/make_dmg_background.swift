@@ -87,8 +87,11 @@ context.addLine(to: CGPoint(x: width * 0.60, y: arrowY))
 context.addLine(to: CGPoint(x: width * 0.57, y: arrowY - 6))
 context.strokePath()
 
-draw("First launch: right-click, then Open", size: 10, weight: .regular, y: 56, alpha: 0.45)
-draw("macOS 26 · needs no permissions", size: 9.5, weight: .regular, y: 28, alpha: 0.3)
+// The right-click → Open shortcut stopped working for unnotarised apps in
+// macOS 15; Privacy & Security is now the only route, so that is what the
+// window says.
+draw("First launch: System Settings ▸ Privacy & Security ▸ Open Anyway", size: 9.5, weight: .regular, y: 54, alpha: 0.5)
+draw("macOS 26 · no permissions needed", size: 9, weight: .regular, y: 30, alpha: 0.3)
 
 NSGraphicsContext.restoreGraphicsState()
 
