@@ -8,6 +8,7 @@ import Foundation
 public enum SettingsKeys {
     public static let updated = "updated"
     public static let appearanceStyle = "appearance.style"
+    public static let appearanceMainDesktopOnly = "appearance.mainDesktopOnly"
     public static let layoutMode = "layout.mode"
     public static let layoutEdge = "layout.edge"
     public static let layoutAnchor = "layout.anchor"
@@ -36,6 +37,7 @@ public enum SettingsKeys {
     /// Order the writer emits the block in.
     public static let orderedKeys: [String] = [
         appearanceStyle,
+        appearanceMainDesktopOnly,
         layoutMode, layoutEdge, layoutAnchor, layoutOffset,
         tagWidth, tagHeight, tagFontSize, tagMaxCount, tagMaxPerSlot,
         tagGap, tagCorner,
@@ -53,6 +55,7 @@ public enum SettingsKeys {
                 table[normalize(spelling)] = key
             }
         }
+        add(appearanceMainDesktopOnly, ["main desktop only", "main desktop", "主桌面", "只在主桌面"])
         add(appearanceStyle, ["外观", "风格", "外观风格", "样式", "style", "appearance", "look", "theme"])
         add(layoutMode, ["布局", "布局模式", "layout", "mode", "layoutmode"])
         add(layoutEdge, ["边缘", "屏幕边", "边", "edge", "screen", "screenedge", "fixededge", "固定屏幕边"])

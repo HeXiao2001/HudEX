@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.2 — 2026-09-13
+
+The bookmarks can now stay out of the way.
+
+* **Only on the main desktop** (Settings → General → Desktop, on by default): the
+  bookmarks stay on the desktop they were created on — desktop 1 when HudEX
+  starts at login — and never appear over a full-screen app. Turn it off and they
+  follow you to every desktop again, as before.
+* Settable from the file too: `Main desktop only：on` (or `只在主桌面：on`).
+
 ## 1.0.1 — 2026-09-13
 
 Starting up, for real this time, and a first run that explains itself.

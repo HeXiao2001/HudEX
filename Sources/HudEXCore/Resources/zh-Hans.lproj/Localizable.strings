@@ -378,3 +378,9 @@
 "layout.summary.edge.right" = "屏幕右侧";
 "layout.summary.edge.bottom" = "屏幕底边";
 
+"general.mainDesktopOnly" = "只在主桌面显示";
+"settingsblock.guide.appearance.mainDesktopOnly" = "打开时：标签固定留在启动时所在的那个桌面，也不会盖在全屏应用上。关闭时：切换桌面会跟着走。";
+"settingsblock.label.appearance.mainDesktopOnly" = "只在主桌面";
+
+"general.section.desktop" = "桌面";
+"general.desktopFooter" = "标签会固定留在它创建时所在的那个桌面（登录启动时就是第一个桌面），也不会盖在全屏应用上。关闭后：切换桌面会跟着走。";

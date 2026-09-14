@@ -57,6 +57,17 @@ final class EdgePanelController {
     /// Number of live panels — used by the performance test.
     var panelCount: Int { panels.count }
 
+    /// Applies a new visibility mode to the panels that are already on screen.
+    func applyVisibility(_ visibility: PanelVisibility) {
+        for panel in panels.values {
+            panel.collectionBehavior = HudEXPanelFactory.collectionBehavior(for: visibility)
+            // Re-showing is what makes AppKit move the window to the right space.
+            if panel.isVisible {
+                panel.orderFrontRegardless()
+            }
+        }
+    }
+
     /// The model of one tag, used to place the hover card precisely.
     func tagModel(forProject id: String) -> EdgeTagModel? {
         for model in models.values {
@@ -74,9 +85,14 @@ final class EdgePanelController {
 
     private func panel(for slot: EdgeSlot) -> HudEXPanel {
         if let panel = panels[slot] { return panel }
-        let panel = HudEXPanelFactory.makePanel(level: HudEXPanelFactory.tagLevel, allowsKeyStatus: false)
+        let panel = HudEXPanelFactory.makePanel(
+            level: HudEXPanelFactory.tagLevel,
+            allowsKeyStatus: false,
+            visibility: Preferences.shared.panelVisibility
+        )
         panel.contentView = host(for: slot)
         panels[slot] = panel
+        Log.trace("panel \(slot.rawValue) collectionBehavior=\(panel.collectionBehavior.rawValue)")
         return panel
     }
 

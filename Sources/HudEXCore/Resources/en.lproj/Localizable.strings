@@ -378,3 +378,9 @@
 "layout.summary.edge.right" = "right edge";
 "layout.summary.edge.bottom" = "bottom edge";
 
+"general.mainDesktopOnly" = "Only on the main desktop";
+"settingsblock.guide.appearance.mainDesktopOnly" = "On: the bookmarks stay on the desktop they were created on and never appear over a full-screen app. Off: they follow you to every desktop.";
+"settingsblock.label.appearance.mainDesktopOnly" = "Main desktop only";
+
+"general.section.desktop" = "Desktop";
+"general.desktopFooter" = "The bookmarks stay on the desktop they were created on — desktop 1 when HudEX starts at login — and never appear over a full-screen app. Turn this off to have them follow you to every desktop.";

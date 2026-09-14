@@ -203,7 +203,11 @@ final class PreviewPanelController {
         if let panel { return panel }
         // The preview never becomes key and never asks for key status, so
         // hovering can never disturb the frontmost application.
-        let panel = HudEXPanelFactory.makePanel(level: .floating, allowsKeyStatus: false)
+        let panel = HudEXPanelFactory.makePanel(
+            level: .floating,
+            allowsKeyStatus: false,
+            visibility: Preferences.shared.panelVisibility
+        )
         panel.contentView = ensureHost()
         self.panel = panel
         return panel

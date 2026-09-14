@@ -65,6 +65,7 @@ final class SettingsSync {
             }
         }
 
+        set(SettingsKeys.appearanceMainDesktopOnly, bool, into: \.mainDesktopOnly)
         set(SettingsKeys.appearanceStyle, { AppearanceStyle.parse($0) }, into: \.appearanceStyle)
         set(SettingsKeys.layoutMode, { LayoutMode.Kind(rawValue: $0.lowercased()) }, into: \.layoutKind)
         set(SettingsKeys.layoutEdge, { DockEdge(rawValue: $0.lowercased()) }, into: \.layoutEdge)
@@ -215,6 +216,7 @@ final class SettingsSync {
         }
 
         field(SettingsKeys.appearanceStyle, preferences.appearanceStyle.rawValue)
+        field(SettingsKeys.appearanceMainDesktopOnly, preferences.mainDesktopOnly ? "on" : "off")
         field(SettingsKeys.layoutMode, preferences.layoutKind.rawValue)
         field(SettingsKeys.layoutEdge, preferences.layoutEdge.rawValue)
         field(SettingsKeys.layoutAnchor, preferences.layoutAnchor.rawValue)

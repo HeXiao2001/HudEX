@@ -1,11 +1,13 @@
 import AppKit
+import HudEXCore
 import SwiftUI
 
 /// Base panel for every HudEX surface.
 ///
-/// `NSPanel` (not `NSWindow`) with `.nonactivatingPanel` + `.borderless` is what
-/// keeps the tabs visible over full-screen apps and other Spaces without ever
-/// taking focus away from the app the user is working in.
+/// `NSPanel` (not `NSWindow`) with `.nonactivatingPanel` + `.borderless` never
+/// takes focus away from the app being used. Where it may appear is decided by
+/// `PanelVisibility`: by default the bookmarks stay on the desktop they were
+/// created on and never cover a full-screen app.
 class HudEXPanel: NSPanel {
     /// Edge tabs must never become key: clicking them cannot interrupt typing.
     var allowsKeyStatus = false
@@ -19,10 +21,22 @@ enum HudEXPanelFactory {
     /// apps. `statusBar` is only used when `floating` proved insufficient.
     static let tagLevel: NSWindow.Level = .floating
 
+    /// AppKit flags for a visibility mode: the two that decide whether the
+    /// bookmarks follow the user across desktops and sit above full-screen apps.
+    static func collectionBehavior(for visibility: PanelVisibility) -> NSWindow.CollectionBehavior {
+        let flags = visibility.collectionBehaviorFlags
+        var behavior: NSWindow.CollectionBehavior = [.stationary, .ignoresCycle]
+        if flags.joinAllSpaces { behavior.insert(.canJoinAllSpaces) }
+        if flags.canJoinAllApplications { behavior.insert(.canJoinAllApplications) }
+        if flags.fullScreenAuxiliary { behavior.insert(.fullScreenAuxiliary) }
+        return behavior
+    }
+
     static func makePanel(
         level: NSWindow.Level,
         allowsKeyStatus: Bool,
-        autoSaves: Bool = false
+        autoSaves: Bool = false,
+        visibility: PanelVisibility = .mainDesktopOnly
     ) -> HudEXPanel {
         let panel = HudEXPanel(
             contentRect: NSRect(x: 0, y: 0, width: 10, height: 10),
@@ -35,13 +49,7 @@ enum HudEXPanelFactory {
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = true
         panel.level = level
-        panel.collectionBehavior = [
-            .canJoinAllSpaces,
-            .canJoinAllApplications,
-            .fullScreenAuxiliary,
-            .stationary,
-            .ignoresCycle
-        ]
+        panel.collectionBehavior = Self.collectionBehavior(for: visibility)
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false

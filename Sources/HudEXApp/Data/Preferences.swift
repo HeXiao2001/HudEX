@@ -34,6 +34,7 @@ final class Preferences: ObservableObject {
         static let settingsWriteBack = "settings.writeBack"
         static let language = "ui.language"
         static let appearanceStyle = "appearance.style"
+        static let mainDesktopOnly = "appearance.mainDesktopOnly"
         static let thresholdActive = "appearance.threshold.active"
         static let thresholdAttention = "appearance.threshold.attention"
         static let thresholdAging = "appearance.threshold.aging"
@@ -98,6 +99,16 @@ final class Preferences: ObservableObject {
 
     /// Whether bookmarks may use the overflow slot on the other side of the
     /// edge. Off by default: one place, always the same one.
+    /// Keep the bookmarks on the desktop they were created on, and never float
+    /// them above a full-screen app. Off restores "follows you everywhere".
+    @Published var mainDesktopOnly: Bool {
+        didSet { defaults.set(mainDesktopOnly, forKey: Key.mainDesktopOnly) }
+    }
+
+    var panelVisibility: PanelVisibility {
+        mainDesktopOnly ? .mainDesktopOnly : .everyDesktop
+    }
+
     @Published var allowOverflowSlot: Bool {
         didSet { defaults.set(allowOverflowSlot, forKey: Key.layoutOverflowSlot) }
     }
@@ -231,6 +242,7 @@ final class Preferences: ObservableObject {
         maxTagsPerSlot = defaults.object(forKey: Key.maxTagsPerSlot) as? Int ?? 0
         layoutKind = LayoutMode.Kind(rawValue: defaults.string(forKey: Key.layoutKind) ?? "") ?? .dockAdaptive
         allowOverflowSlot = defaults.object(forKey: Key.layoutOverflowSlot) as? Bool ?? false
+        mainDesktopOnly = defaults.object(forKey: Key.mainDesktopOnly) as? Bool ?? true
         layoutEdge = DockEdge(rawValue: defaults.string(forKey: Key.layoutEdge) ?? "") ?? .bottom
         layoutAnchor = LayoutMode.Anchor(rawValue: defaults.string(forKey: Key.layoutAnchor) ?? "") ?? .start
         layoutOffset = defaults.object(forKey: Key.layoutOffset) as? Double ?? 0

@@ -449,3 +449,21 @@ extension EdgeLayoutEngineTests {
         XCTAssertEqual(plan.placements.count + plan.overflowCount, 6)
     }
 }
+
+// MARK: - Where the panels may appear
+
+extension EdgeLayoutEngineTests {
+    /// The default keeps the bookmarks on the desktop they were made on and off
+    /// full-screen apps; the opt-in mode restores following the user everywhere.
+    func testVisibilityModesChooseTheRightWindowFlags() {
+        let main = PanelVisibility.mainDesktopOnly.collectionBehaviorFlags
+        XCTAssertFalse(main.joinAllSpaces, "main-desktop mode must not join every Space")
+        XCTAssertFalse(main.fullScreenAuxiliary, "main-desktop mode must not sit over full-screen apps")
+        XCTAssertFalse(main.canJoinAllApplications)
+
+        let everywhere = PanelVisibility.everyDesktop.collectionBehaviorFlags
+        XCTAssertTrue(everywhere.joinAllSpaces)
+        XCTAssertTrue(everywhere.fullScreenAuxiliary)
+        XCTAssertTrue(everywhere.canJoinAllApplications)
+    }
+}

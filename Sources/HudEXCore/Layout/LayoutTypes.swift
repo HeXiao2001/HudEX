@@ -180,3 +180,29 @@ public struct DockBounds: Sendable, Equatable {
         )
     }
 }
+
+/// Where a HudEX panel is allowed to appear.
+///
+/// `mainDesktopOnly` is the default: the bookmarks stay on the desktop they were
+/// created on (the one active at launch — desktop 1 when HudEX starts at login)
+/// and never float over a full-screen app. Turning it off restores the old
+/// behaviour of following the person to every desktop and every full-screen
+/// space, which is handy on a single-purpose Mac and distracting otherwise.
+public enum PanelVisibility: String, Sendable, CaseIterable {
+    case mainDesktopOnly
+    case everyDesktop
+
+    /// AppKit collection behaviour for each mode.
+    ///
+    /// `.canJoinAllSpaces` / `.fullScreenAuxiliary` are what make a panel follow
+    /// the user across desktops and appear above full-screen apps, so they are
+    /// left out of the default mode.
+    public var collectionBehaviorFlags: (joinAllSpaces: Bool, fullScreenAuxiliary: Bool, canJoinAllApplications: Bool) {
+        switch self {
+        case .mainDesktopOnly:
+            return (joinAllSpaces: false, fullScreenAuxiliary: false, canJoinAllApplications: false)
+        case .everyDesktop:
+            return (joinAllSpaces: true, fullScreenAuxiliary: true, canJoinAllApplications: true)
+        }
+    }
+}

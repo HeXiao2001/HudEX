@@ -217,6 +217,9 @@ final class HudEXController: ObservableObject {
     // MARK: - Refresh
 
     private func preferencesDidChange() {
+        // Visibility can change while the panels are on screen.
+        edgePanels.applyVisibility(preferences.panelVisibility)
+        previewPanel.hide()
 
         if preferences.resolvedSourceURL != store.sourceURL {
             store.configureSource(preferences.resolvedSourceURL)
@@ -683,8 +686,6 @@ final class HudEXController: ObservableObject {
         refresh(reason: "source changed", allowExpensiveProbes: true)
     }
 
-    /// Writes the example document, used by Settings when no `HudEX.md` exists.
-    @discardableResult
     /// A first launch with nothing configured gets a file in HudEX's own folder
     /// straight away — that folder needs no authorisation, so the bookmarks have
     /// something to show before the person has decided anything. Once a source

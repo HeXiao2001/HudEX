@@ -83,6 +83,16 @@ struct GeneralSettingsView: View {
             }
 
             Section {
+                Toggle(L10n.t("general.mainDesktopOnly"), isOn: $preferences.mainDesktopOnly)
+            } header: {
+                Text(L10n.t("general.section.desktop"))
+            } footer: {
+                Text(L10n.t("general.desktopFooter"))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 Picker(L10n.t("general.language"), selection: $preferences.language) {
                     Text(L10n.t("general.language.system")).tag("")
                     Text("English").tag("en")
