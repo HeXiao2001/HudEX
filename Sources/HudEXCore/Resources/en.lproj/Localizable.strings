@@ -266,6 +266,17 @@
 "sync.readNow" = "Read from file";
 "sync.footer" = "HudEX keeps every setting in a documented block at the bottom of HudEX.md, so you — or an AI — can change the layout, colours and thresholds by editing text. Editing the block updates the app; changing a setting in the app updates the block. Only that block is ever touched: the projects above it are never modified.";
 
+/* Apple Reminders sync */
+"reminders.section" = "Apple Reminders sync";
+"reminders.convert" = "Convert current file to JSON";
+"reminders.convertHint" = "Keeps the current path and project content, then changes the file to versioned JSON for two-way Reminders sync. Back up the file first.";
+"reminders.syncNow" = "Sync Reminders now";
+"reminders.footer" = "Each HudEX project maps to a separate Reminders list. Items in those lists can be added, edited, or deleted on either side. The first sync requests full Reminders access.";
+"reminders.converted" = "Converted to JSON.";
+"reminders.convertFirst" = "Convert the current file to JSON first.";
+"reminders.syncing" = "Syncing…";
+"reminders.synced" = "Reminders sync complete.";
+
 /* Settings block labels */
 "settingsblock.label.layout.mode" = "Layout mode";
 "settingsblock.label.layout.edge" = "Fixed edge";
@@ -346,16 +357,16 @@
 
 /* Source pane: who owns the content */
 "source.ownership" = "The content is yours to manage";
-"source.ownership.body" = "Write it by hand, have an AI tidy it up for you — live or on a schedule — or keep it in any folder that a sync service (iCloud Drive, OneDrive, Dropbox, WebDAV, a git checkout …) mirrors for you. HudEX only ever reads it, and writes nothing back except the settings block underneath.";
+"source.ownership.body" = "Write it by hand, have an AI tidy it up for you — live or on a schedule — or keep it in any folder that a sync service (iCloud Drive, OneDrive, Dropbox, WebDAV, a git checkout …) mirrors for you. In Markdown mode HudEX only reads project content; after converting to JSON, Reminders sync updates the reminder fields.";
 "source.ownership.footer" = "One file per machine is enough: point two Macs at the same synced copy if you like.";
 
 /* First run */
 "welcome.title" = "Welcome to HudEX";
-"welcome.intro" = "HudEX keeps a few solid-colour bookmarks along the edge of the screen and shows the recent context of the projects you are juggling. Pick one Markdown file below — that is the only thing it reads, and it needs no permissions at all.";
+"welcome.intro" = "HudEX keeps a few solid-colour bookmarks along the edge of the screen and shows the recent context of the projects you are juggling. Choose a project file below. Bookmarks need no system permissions; only Reminders sync requests access to Reminders.";
 "welcome.step1" = "1 · Choose your Markdown file";
 "welcome.step1.location" = "File";
 "welcome.step1.useDefault" = "Use HudEX’s own folder";
-"welcome.step1.footer" = "By default the file lives in HudEX’s own folder (~/Library/Application Support/HudEX/HudEX.md), so nothing has to be authorised. To use a file somewhere else — Documents, a synced folder, a git checkout — choose it yourself: macOS will ask for that folder once, and the answer is yours. HudEX only ever reads the file (plus the settings block it maintains at the bottom).";
+"welcome.step1.footer" = "By default the file lives in HudEX’s own folder (~/Library/Application Support/HudEX/HudEX.md). To use a file somewhere else — Documents, a synced folder, a git checkout — choose it yourself: macOS will ask for that folder once, and the answer is yours.";
 "welcome.step1.fixHint" = "That location has no usable Markdown file yet: choose another one, create the template, or set it later under Source.";
 "welcome.status.missing" = "No file at this location";
 "welcome.status.empty" = "The file exists but has no projects in it — it needs at least one ## heading";

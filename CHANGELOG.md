@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.3 — 2026-09-23
+
+Apple Reminders is now an additional entry point for project tasks.
+
+* Convert the current project file in place to versioned JSON while preserving
+  its path, projects, sections and settings.
+* Sync each HudEX project with its own Reminders list. Reminder titles, notes,
+  due dates, completion, priority, creation and deletion sync in both directions.
+* Request full Reminders access only when the user starts synchronization.
+* Keep Markdown sources supported for existing workflows.
+
 ## 1.0.2 — 2026-09-13
 
 The bookmarks can now stay out of the way.

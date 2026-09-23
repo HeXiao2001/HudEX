@@ -179,6 +179,22 @@ final class SettingsSync {
         pendingWrite?.cancel()
         pendingWrite = nil
         guard preferences.settingsWriteBack else { return false }
+        if let data = try? Data(contentsOf: url),
+           let first = String(data: data, encoding: .utf8)?.first(where: { !$0.isWhitespace }), first == "{" {
+            do {
+                var document = try HudEXJSONCodec.decode(data)
+                document.settings = MarkdownProjectParser().parse(renderBlock()).settings
+                let encoded = try HudEXJSONCodec.encode(document)
+                guard encoded != data else { return false }
+                try encoded.write(to: url, options: .atomic)
+                lastWriteAt = Date()
+                Log.markdown.info("settings written to JSON source \(url.lastPathComponent, privacy: .public)")
+                return true
+            } catch {
+                Log.markdown.error("settings write failed: \(error.localizedDescription, privacy: .public)")
+                return false
+            }
+        }
         guard let existing = try? String(contentsOf: url, encoding: .utf8) else { return false }
 
         let rendered = renderBlock(now: Date())

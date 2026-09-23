@@ -36,7 +36,7 @@ AI agent — and it deliberately isn't.
 
 **Install (the drag-and-drop disk image is the recommended way)**
 
-1. Download **`HudEX-1.0.2.dmg`**, open it, and drag **HudEX** onto the
+1. Download **`HudEX-1.0.3.dmg`**, open it, and drag **HudEX** onto the
    **Applications** shortcut in the window.
 2. **The first launch is blocked by macOS** — HudEX is ad-hoc signed rather than
    notarised (a paid Apple account is not involved), and this happens once:
@@ -46,8 +46,9 @@ AI agent — and it deliberately isn't.
    - there is a line saying HudEX was blocked because it is from an unidentified
      developer — click **Open Anyway**;
    - confirm with your password or Touch ID, then click **Open** once more.
-3. That is it. HudEX is signed locally (ad-hoc), makes no network requests and
-   asks for no permissions at all — no Accessibility, no Screen Recording, no
+3. That is it. HudEX is signed locally (ad-hoc) and makes no network requests.
+   It needs no system access for bookmarks; only Reminders sync requests full
+   Reminders access. It does not use Accessibility, Screen Recording, or
    notifications. The "blocked" line in Settings disappears once it has opened.
 4. On the first launch HudEX creates its own file
    (`~/Library/Application Support/HudEX/HudEX.md`) and opens a short Welcome
@@ -91,6 +92,20 @@ Homepage layout review
 Examples: [`Examples/HudEX.md`](Examples/HudEX.md) (English) ·
 [`Examples/HudEX.zh.md`](Examples/HudEX.zh.md) (中文)
 
+### Apple Reminders sync
+
+Under **Settings → Source → Apple Reminders sync**, convert the current file
+in place to versioned JSON; its path, projects, sections and settings are
+preserved. Then choose **Sync Reminders now** and grant HudEX Reminders access.
+Each project maps to its own Reminders list, with the project's `reminders`
+array mapped to items in that list.
+
+Items can be added, edited and deleted on either side. If both sides change the
+same item, the newer modification wins. Sync is started manually from Settings.
+Unmarked items in a HudEX-managed list are adopted, so keep those lists for
+HudEX project reminders. Markdown files remain supported; back up before
+converting.
+
 ## First launch
 
 Two things happen on their own:
@@ -128,8 +143,9 @@ hangs the same way, and nothing animates while the pointer is still.
 
 The file is yours. Write it by hand, have an AI keep it tidy — live or on a
 schedule — or keep it in any folder a sync service mirrors for you (iCloud
-Drive, OneDrive, Dropbox, WebDAV, a git checkout…). HudEX only reads it; two
-Macs can even point at the same synced copy.
+Drive, OneDrive, Dropbox, WebDAV, a git checkout…). In Markdown mode HudEX only
+reads project content; in JSON mode Reminders sync updates task fields. Two Macs
+can point at the same synced copy.
 
 The one thing HudEX writes is the settings block described below. Everything
 above that block is left byte-for-byte alone.
@@ -177,7 +193,8 @@ reported in Settings instead of being drawn somewhere else. Turn on
 
 ## Permissions, network, resources
 
-* **No permissions at all.** No Accessibility, no Screen Recording, no network.
+* **Permissions only when needed.** Bookmarks need no Accessibility or Screen
+  Recording access. Reminders sync requests full Reminders access; no network.
   Dock position and thickness come from the system's reserved screen area and
   the Dock's own preferences; screen changes arrive as ordinary notifications.
 * **No polling.** No timers except a single one at midnight (colour rollover)

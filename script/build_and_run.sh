@@ -15,8 +15,8 @@ set -euo pipefail
 
 APP_NAME="HudEX"
 BUNDLE_ID="dev.hex.hudex"
-BUNDLE_VERSION="1.0.2"
-BUNDLE_SHORT_VERSION="1.0.2"
+BUNDLE_VERSION="1.0.3"
+BUNDLE_SHORT_VERSION="1.0.3"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_APP_DIR="$ROOT_DIR/.build/$APP_NAME.app"
 DIST_DIR="$ROOT_DIR/dist"
@@ -105,6 +105,8 @@ write_info_plist() {
   <string>public.app-category.productivity</string>
   <key>NSHighResolutionCapable</key>
   <true/>
+  <key>NSRemindersFullAccessUsageDescription</key>
+  <string>HudEX syncs the reminder tasks in your project file with the matching Apple Reminders lists.</string>
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
   <key>CFBundleDevelopmentRegion</key>

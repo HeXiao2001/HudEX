@@ -91,7 +91,7 @@ context.strokePath()
 // macOS 15; Privacy & Security is now the only route, so that is what the
 // window says.
 draw("First launch: System Settings ▸ Privacy & Security ▸ Open Anyway", size: 9.5, weight: .regular, y: 54, alpha: 0.5)
-draw("macOS 26 · no permissions needed", size: 9, weight: .regular, y: 30, alpha: 0.3)
+draw("macOS 26 · Reminders access is optional", size: 9, weight: .regular, y: 30, alpha: 0.3)
 
 NSGraphicsContext.restoreGraphicsState()
 

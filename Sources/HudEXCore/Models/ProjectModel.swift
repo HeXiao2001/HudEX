@@ -94,6 +94,41 @@ public struct ProjectSection: Identifiable, Hashable, Sendable {
     }
 }
 
+/// A task mirrored between the structured project file and Apple Reminders.
+public struct HudEXReminder: Identifiable, Hashable, Sendable {
+    public let id: String
+    public var title: String
+    public var notes: String?
+    public var dueDate: Date?
+    public var isCompleted: Bool
+    public var priority: Int
+    public var reminderIdentifier: String?
+    public var modifiedAt: Date?
+    public var syncFingerprint: String?
+
+    public init(
+        id: String = UUID().uuidString.lowercased(),
+        title: String,
+        notes: String? = nil,
+        dueDate: Date? = nil,
+        isCompleted: Bool = false,
+        priority: Int = 0,
+        reminderIdentifier: String? = nil,
+        modifiedAt: Date? = nil,
+        syncFingerprint: String? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.notes = notes
+        self.dueDate = dueDate
+        self.isCompleted = isCompleted
+        self.priority = priority
+        self.reminderIdentifier = reminderIdentifier
+        self.modifiedAt = modifiedAt
+        self.syncFingerprint = syncFingerprint
+    }
+}
+
 /// The section headings HudEX gives special meaning to, plus everything else.
 public enum SectionKind: String, Sendable, CaseIterable {
     case current
@@ -162,6 +197,7 @@ public struct HudEXProject: Identifiable, Hashable, Sendable {
     public let colorOverride: String?
     /// Optional `优先级：` — drawn as the colour of the tag's punched hole.
     public let priority: ProjectPriority?
+    public let reminders: [HudEXReminder]
 
     public init(
         id: String,
@@ -176,7 +212,8 @@ public struct HudEXProject: Identifiable, Hashable, Sendable {
         sections: [ProjectSection],
         sortOrder: Int? = nil,
         colorOverride: String? = nil,
-        priority: ProjectPriority? = nil
+        priority: ProjectPriority? = nil,
+        reminders: [HudEXReminder] = []
     ) {
         self.id = id
         self.title = title
@@ -191,6 +228,7 @@ public struct HudEXProject: Identifiable, Hashable, Sendable {
         self.sortOrder = sortOrder
         self.colorOverride = colorOverride
         self.priority = priority
+        self.reminders = reminders
     }
 
     // MARK: - Semantic section helpers
@@ -289,6 +327,9 @@ public struct ParseDiagnostic: Hashable, Sendable {
 /// A document is an immutable value: a successful parse replaces the previous
 /// one atomically, and a failed parse keeps the last good document on screen.
 public struct HudEXDocument: Hashable, Sendable {
+    public enum Format: String, Hashable, Sendable { case markdown, json }
+
+    public var format: Format
     public var title: String?
     public var projects: [HudEXProject]
     public var diagnostics: [ParseDiagnostic]
@@ -310,8 +351,10 @@ public struct HudEXDocument: Hashable, Sendable {
         parsedAt: Date = Date(),
         fileModifiedAt: Date? = nil,
         settings: HudEXSettingsBlock? = nil,
-        bodyWithoutSettings: String = ""
+        bodyWithoutSettings: String = "",
+        format: Format = .markdown
     ) {
+        self.format = format
         self.title = title
         self.projects = projects
         self.diagnostics = diagnostics

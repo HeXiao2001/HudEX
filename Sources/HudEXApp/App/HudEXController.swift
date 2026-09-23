@@ -27,6 +27,7 @@ final class HudEXController: ObservableObject {
     let dockProvider: DockGeometryProvider
     let launchAtLogin: LaunchAtLoginService
     private let settingsSync: SettingsSync
+    private let remindersSync = RemindersSyncService()
 
     private let edgePanels = EdgePanelController()
     private let previewPanel = PreviewPanelController()
@@ -101,6 +102,8 @@ final class HudEXController: ObservableObject {
 
     /// When the settings block in the Markdown file was last written.
     @Published private(set) var lastSettingsWrite: Date?
+    @Published private(set) var remindersSyncStatus: String?
+    @Published private(set) var remindersSyncing = false
 
     private init() {
         preferences = Preferences.shared
@@ -264,7 +267,44 @@ final class HudEXController: ObservableObject {
 
     /// Re-reads the settings block from the file, ignoring the write debounce.
     func applySettingsFromMarkdown() {
+        guard store.document.format == .markdown else { return }
         store.reload(reason: "settings re-read")
+    }
+
+    /// Converts the currently loaded document in place while keeping its path.
+    /// The migration preserves project sections and the existing settings block.
+    func convertSourceToJSON() {
+        guard store.document.format == .markdown, let url = store.sourceURL,
+              let data = try? HudEXJSONCodec.encode(store.document) else { return }
+        settingsSync.cancelPendingWrite()
+        do {
+            try data.write(to: url, options: .atomic)
+            remindersSyncStatus = L10n.t("reminders.converted")
+            store.reload(reason: "convert to JSON")
+        } catch {
+            remindersSyncStatus = error.localizedDescription
+        }
+    }
+
+    func syncRemindersNow() {
+        guard !remindersSyncing else { return }
+        guard store.document.format == .json else {
+            remindersSyncStatus = L10n.t("reminders.convertFirst")
+            return
+        }
+        remindersSyncing = true
+        remindersSyncStatus = L10n.t("reminders.syncing")
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let updated = try await self.remindersSync.sync(document: self.store.document)
+                _ = self.store.saveSynchronizedJSON(updated)
+                self.remindersSyncStatus = L10n.t("reminders.synced")
+            } catch {
+                self.remindersSyncStatus = error.localizedDescription
+            }
+            self.remindersSyncing = false
+        }
     }
 
     /// Recomputes everything that depends on the document, the Dock and the
@@ -566,14 +606,18 @@ final class HudEXController: ObservableObject {
         recoveredLaunch = nil
     }
 
-    /// Asks the user for the Markdown file. The panel is created per call and
+    /// Asks the user for the Markdown or JSON source file. The panel is created per call and
     /// dropped immediately: keeping one alive (or keeping its URLs) pins the
     /// directory listing, icons and QuickLook previews in memory.
     func chooseMarkdownFile() {
         let panel = NSOpenPanel()
         panel.title = L10n.t("source.panel.title")
         panel.prompt = L10n.t("source.panel.prompt")
-        panel.allowedContentTypes = [.init(filenameExtension: "md") ?? .plainText, .plainText]
+        panel.allowedContentTypes = [
+            .init(filenameExtension: "md") ?? .plainText,
+            .init(filenameExtension: "json") ?? .plainText,
+            .plainText
+        ]
         panel.allowsOtherFileTypes = true
         panel.canChooseDirectories = false
         panel.canChooseFiles = true

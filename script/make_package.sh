@@ -83,12 +83,14 @@ HudEX — first launch / 第一次打开
        xattr -dr com.apple.quarantine /Applications/HudEX.app
 
 3. HudEX has no Dock icon: it lives in the menu bar.
-   Open Settings → Source to pick your HudEX.md, or create the example file.
+   Open Settings → Source to pick your project file, convert it to JSON and
+   sync its projects with Apple Reminders. HudEX asks for Reminders access only
+   when you start the first sync.
    HudEX 没有 Dock 图标，它住在菜单栏里。
    打开 设置 → 数据源 选择你的 HudEX.md，没有文件时点「创建示例文件」。
 
-HudEX needs no permissions and no network: it only reads and writes that one
-Markdown file. 它不需要任何权限、不联网，只读写那一个 Markdown 文件。
+HudEX makes no network requests. Reminders access is optional and requested
+only when you start syncing. 不联网；只有主动同步时才请求提醒事项权限。
 NOTE
 
 DMGBUILD=""

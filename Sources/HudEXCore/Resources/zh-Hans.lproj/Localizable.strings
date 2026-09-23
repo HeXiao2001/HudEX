@@ -266,6 +266,17 @@
 "sync.readNow" = "从文件读取";
 "sync.footer" = "HudEX 会把所有设置写进 HudEX.md 最下面那一段带说明的文字里：你（或者 AI）只要改文字就能调整布局、颜色、阈值。改文件，应用会跟着变；在应用里改，文件也会跟着变。只动这一段，上面的项目内容一字不改。";
 
+/* Apple Reminders sync */
+"reminders.section" = "Apple 提醒事项同步";
+"reminders.convert" = "将当前文件转换为 JSON";
+"reminders.convertHint" = "保留当前文件路径和项目内容，并把文件改为版本化 JSON；转换后可与提醒事项双向同步。建议先备份文件。";
+"reminders.syncNow" = "现在同步提醒事项";
+"reminders.footer" = "每个 HudEX 项目对应提醒事项中的一个独立列表。列表中的提醒可在两边新增、修改或删除。首次同步会请求完整的提醒事项访问权限。";
+"reminders.converted" = "已转换为 JSON。";
+"reminders.convertFirst" = "请先将当前文件转换为 JSON。";
+"reminders.syncing" = "正在同步……";
+"reminders.synced" = "提醒事项同步完成。";
+
 /* 设置段字段名 */
 "settingsblock.label.layout.mode" = "布局模式";
 "settingsblock.label.layout.edge" = "固定屏幕边";
@@ -346,16 +357,16 @@
 
 /* 数据源页：内容归谁管 */
 "source.ownership" = "内容怎么管理，完全由你决定";
-"source.ownership.body" = "你可以自己手写；也可以让 AI 实时或定期帮你整理后写进这个文件；还可以把它放在任意一个会被云服务（iCloud 云盘、OneDrive、Dropbox、WebDAV、git 仓库……）同步的目录里。HudEX 只负责读取，除了下面那段设置之外不写回任何内容。";
+"source.ownership.body" = "你可以自己手写；也可以让 AI 实时或定期帮你整理后写进这个文件；还可以把它放在任意一个会被云服务（iCloud 云盘、OneDrive、Dropbox、WebDAV、git 仓库……）同步的目录里。Markdown 模式下 HudEX 只读项目内容；转换为 JSON 后，提醒事项同步会更新提醒字段。";
 "source.ownership.footer" = "两台 Mac 指向同一份同步过来的文件也可以，不需要各自一份。";
 
 /* 首次运行 */
 "welcome.title" = "欢迎使用 HudEX";
-"welcome.intro" = "HudEX 会在屏幕边缘放几个纯色小书签，显示你手上几个项目的近期状态。在下面选一个 Markdown 文件——它只读这一个文件，并且不需要任何权限。";
+"welcome.intro" = "HudEX 会在屏幕边缘放几个纯色小书签，显示你手上几个项目的近期状态。在下面选择项目文件。书签不需要系统权限；只有启用提醒事项同步时才会请求提醒事项访问权限。";
 "welcome.step1" = "① 选择你的 Markdown 文件";
 "welcome.step1.location" = "文件";
 "welcome.step1.useDefault" = "用软件自己的文件夹";
-"welcome.step1.footer" = "默认放在软件自己的文件夹里（~/Library/Application Support/HudEX/HudEX.md），这样不需要任何授权。想用别处的文件——文稿、云盘同步目录、git 仓库——自己选一下就行：macOS 会为该文件夹问一次，答不答应由你决定。HudEX 只会读取这个文件（以及它自己在最下面维护的设置段）。";
+"welcome.step1.footer" = "默认放在软件自己的文件夹里（~/Library/Application Support/HudEX/HudEX.md）。想用别处的文件——文稿、云盘同步目录、git 仓库——自己选一下就行：macOS 会为该文件夹问一次，答不答应由你决定。";
 "welcome.step1.fixHint" = "这个位置上还没有可用的 Markdown 文件：换一个位置、创建模板，或者稍后在「数据源」里设置。";
 "welcome.status.missing" = "这个位置上没有文件";
 "welcome.status.empty" = "文件存在，但里面还没有项目——至少需要一个 ## 标题";

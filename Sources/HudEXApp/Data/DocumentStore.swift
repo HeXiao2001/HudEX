@@ -74,6 +74,24 @@ final class DocumentStore: ObservableObject {
         load(url: sourceURL, reason: reason)
     }
 
+    /// Writes an EventKit reconciliation back to a JSON source and reloads it
+    /// through the normal file-watching path.
+    @discardableResult
+    func saveSynchronizedJSON(_ updated: HudEXDocument) -> Bool {
+        guard updated.format == .json, let sourceURL,
+              let data = try? HudEXJSONCodec.encode(updated) else { return false }
+        guard (try? Data(contentsOf: sourceURL)) != data else { return false }
+        do {
+            try data.write(to: sourceURL, options: .atomic)
+            signature = nil
+            reload(reason: "Reminders sync")
+            return true
+        } catch {
+            lastError = error.localizedDescription
+            return false
+        }
+    }
+
     // MARK: - Loading
 
     private func load(url: URL, reason: String) {

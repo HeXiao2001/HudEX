@@ -46,7 +46,7 @@ struct SourceSettingsView: View {
             .onDrop(of: [.fileURL], isTargeted: $isDropping) { providers in
                 guard let provider = providers.first else { return false }
                 _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                    guard let url, url.pathExtension.lowercased() == "md" else { return }
+                    guard let url, ["md", "json"].contains(url.pathExtension.lowercased()) else { return }
                     Task { @MainActor in
                         controller.setSourceURL(url)
                         pathDraft = url.path
@@ -71,6 +71,7 @@ struct SourceSettingsView: View {
             }
 
             syncSection
+            remindersSection
 
             Section {
                 if fileExists {
@@ -166,12 +167,34 @@ struct SourceSettingsView: View {
                 Button(L10n.t("sync.writeNow")) { controller.writeSettingsToMarkdown() }
                 Button(L10n.t("sync.readNow")) { controller.applySettingsFromMarkdown() }
             }
+            .disabled(controller.store.document.format == .json)
         } header: {
             Text(L10n.t("sync.section"))
         } footer: {
             Text(L10n.t("sync.footer"))
                 .font(.callout)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    private var remindersSection: some View {
+        Section {
+            if controller.store.document.format == .markdown {
+                Button(L10n.t("reminders.convert")) { controller.convertSourceToJSON() }
+                Text(L10n.t("reminders.convertHint"))
+                    .font(.callout).foregroundStyle(.secondary)
+            } else {
+                Button(L10n.t("reminders.syncNow")) { controller.syncRemindersNow() }
+                    .disabled(controller.remindersSyncing)
+            }
+            if let status = controller.remindersSyncStatus {
+                Text(status).font(.callout).foregroundStyle(.secondary)
+            }
+        } header: {
+            Text(L10n.t("reminders.section"))
+        } footer: {
+            Text(L10n.t("reminders.footer"))
+                .font(.callout).foregroundStyle(.secondary)
         }
     }
 

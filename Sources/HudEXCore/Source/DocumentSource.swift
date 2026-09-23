@@ -145,7 +145,16 @@ public struct MarkdownDocumentLoader: Sendable {
             return .failure(.undecodable(url))
         }
 
-        let document = parser.parse(text, fileModifiedAt: signature.modificationDate, now: now)
+        let document: HudEXDocument
+        if let first = text.first(where: { !$0.isWhitespace }), first == "{" {
+            do {
+                document = try HudEXJSONCodec.decode(data, fileModifiedAt: signature.modificationDate, now: now)
+            } catch {
+                return .failure(.unreadable(url, error.localizedDescription))
+            }
+        } else {
+            document = parser.parse(text, fileModifiedAt: signature.modificationDate, now: now)
+        }
         return .success(LoadedDocument(document: document, signature: signature, text: text))
     }
 
