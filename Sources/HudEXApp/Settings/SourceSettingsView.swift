@@ -184,6 +184,7 @@ struct SourceSettingsView: View {
                 Text(L10n.t("reminders.convertHint"))
                     .font(.callout).foregroundStyle(.secondary)
             } else {
+                Toggle(L10n.t("reminders.autoSync"), isOn: $preferences.remindersAutoSyncEnabled)
                 Button(L10n.t("reminders.syncNow")) { controller.syncRemindersNow() }
                     .disabled(controller.remindersSyncing)
             }

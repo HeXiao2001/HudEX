@@ -2,16 +2,42 @@ import Foundation
 
 /// Versioned, human-readable source format for projects and reminders.
 public enum HudEXJSONCodec {
-    public static let currentVersion = 1
+    public static let currentVersion = 2
+
+    /// Kept in the source file so future people and AI editors follow the same
+    /// ownership and Reminders rules as the app.
+    public static let defaultAIInstructions = [
+        "This file is the source of truth for HudEX projects and reminders.",
+        "Preserve schemaVersion, sourceID, stable project IDs, and stable reminder IDs when editing this file.",
+        "Keep project reminders in each project's reminders array; edit or delete them by their stable id.",
+        "HudEX uses one Apple Reminders list named 'HudEX · Synced'. Prefix native reminder titles with the project's shortTitle and ' · ' to assign them to a project.",
+        "To create a project from Apple Reminders, add a reminder titled '@project SHORT | Project title'; SHORT must be unique. HudEX writes the new project to this file before consuming that command reminder.",
+        "Give every project a distinct shortTitle so reminders can be assigned unambiguously.",
+        "Preserve settings and project sections. HudEX updates hudexVersion during synchronization."
+    ]
 
     public struct File: Codable, Sendable {
         public var schemaVersion: Int
+        public var sourceID: String?
+        public var hudexVersion: String?
+        public var aiInstructions: [String]?
         public var title: String?
         public var projects: [Project]
         public var settings: [String: String]?
 
-        public init(schemaVersion: Int = currentVersion, title: String? = nil, projects: [Project], settings: [String: String]? = nil) {
+        public init(
+            schemaVersion: Int = currentVersion,
+            sourceID: String? = nil,
+            hudexVersion: String? = nil,
+            aiInstructions: [String]? = nil,
+            title: String? = nil,
+            projects: [Project],
+            settings: [String: String]? = nil
+        ) {
             self.schemaVersion = schemaVersion
+            self.sourceID = sourceID
+            self.hudexVersion = hudexVersion
+            self.aiInstructions = aiInstructions
             self.title = title
             self.projects = projects
             self.settings = settings
@@ -91,7 +117,9 @@ public enum HudEXJSONCodec {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let file = try decoder.decode(File.self, from: data)
-        guard file.schemaVersion == currentVersion else { throw CodecError.unsupportedVersion(file.schemaVersion) }
+        guard (1...currentVersion).contains(file.schemaVersion) else {
+            throw CodecError.unsupportedVersion(file.schemaVersion)
+        }
         let projects = file.projects.map { item in
             HudEXProject(
                 id: item.id,
@@ -122,12 +150,26 @@ public enum HudEXJSONCodec {
                 raw: "json"
             )
         }
-        return HudEXDocument(title: file.title, projects: projects, parsedAt: now,
-                             fileModifiedAt: fileModifiedAt, settings: settings, format: .json)
+        return HudEXDocument(
+            title: file.title,
+            projects: projects,
+            parsedAt: now,
+            fileModifiedAt: fileModifiedAt,
+            settings: settings,
+            format: .json,
+            sourceID: file.sourceID,
+            hudexVersion: file.hudexVersion,
+            aiInstructions: file.aiInstructions,
+            schemaVersion: file.schemaVersion
+        )
     }
 
     public static func encode(_ document: HudEXDocument) throws -> Data {
         let file = File(
+            schemaVersion: currentVersion,
+            sourceID: document.sourceID,
+            hudexVersion: document.hudexVersion,
+            aiInstructions: document.aiInstructions,
             title: document.title,
             projects: document.projects.map { item in
                 Project(

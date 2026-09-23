@@ -32,6 +32,7 @@ final class Preferences: ObservableObject {
         static let stackRotation = "stack.rotation"
         static let stackStagger = "stack.stagger"
         static let settingsWriteBack = "settings.writeBack"
+        static let remindersAutoSync = "reminders.autoSync"
         static let language = "ui.language"
         static let appearanceStyle = "appearance.style"
         static let mainDesktopOnly = "appearance.mainDesktopOnly"
@@ -163,6 +164,12 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(settingsWriteBack, forKey: Key.settingsWriteBack) }
     }
 
+    /// Keep a JSON source and the single HudEX-managed Apple Reminders list in
+    /// sync automatically. Users can turn this off and still sync on demand.
+    @Published var remindersAutoSyncEnabled: Bool {
+        didSet { defaults.set(remindersAutoSyncEnabled, forKey: Key.remindersAutoSync) }
+    }
+
     /// Highest number of tags shown at all. 0 = no limit.
     @Published var maxTags: Int {
         didSet { defaults.set(maxTags, forKey: Key.maxTags) }
@@ -251,6 +258,7 @@ final class Preferences: ObservableObject {
         stackRotation = defaults.object(forKey: Key.stackRotation) as? Double ?? -5
         stackStagger = defaults.object(forKey: Key.stackStagger) as? Double ?? 2.5
         settingsWriteBack = defaults.object(forKey: Key.settingsWriteBack) as? Bool ?? true
+        remindersAutoSyncEnabled = defaults.object(forKey: Key.remindersAutoSync) as? Bool ?? true
         appearanceStyle = AppearanceStyle.parse(defaults.string(forKey: Key.appearanceStyle) ?? "")
             ?? .default
         let storedLanguage = defaults.string(forKey: Key.language) ?? ""

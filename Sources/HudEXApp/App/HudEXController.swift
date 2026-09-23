@@ -83,6 +83,9 @@ final class HudEXController: ObservableObject {
     private var started = false
     private var observerTokens: [NSObjectProtocol] = []
     private var preferencesObserver: AnyCancellable?
+    private var pendingReminderSync: DispatchWorkItem?
+    private var remindersSyncRerunPending = false
+    private var remindersManualRerunPending = false
     private var midnightTimer: Timer?
     private var previewHideWorkItem: DispatchWorkItem?
     private var currentScreen: NSScreen?
@@ -136,6 +139,10 @@ final class HudEXController: ObservableObject {
                 self.settingsSync.scheduleWrite(to: url)
             }
             self.lastSettingsWrite = self.settingsSync.lastWriteAt
+            self.scheduleAutomaticRemindersSync()
+        }
+        remindersSync.onStoreChanged = { [weak self] in
+            self?.scheduleAutomaticRemindersSync()
         }
         edgePanels.onHoverChange = { [weak self] id in
             self?.handleHover(id)
@@ -211,6 +218,8 @@ final class HudEXController: ObservableObject {
         }
         observerTokens.removeAll()
         previewHideWorkItem?.cancel()
+        pendingReminderSync?.cancel()
+        pendingReminderSync = nil
         store.stop()
         edgePanels.hideAll()
         previewPanel.hide()
@@ -227,6 +236,7 @@ final class HudEXController: ObservableObject {
         if preferences.resolvedSourceURL != store.sourceURL {
             store.configureSource(preferences.resolvedSourceURL)
         }
+        scheduleAutomaticRemindersSync()
         preferencesBinding?.updateVisibility()
 
         // A style change is visible immediately, including on a card that is
@@ -274,10 +284,16 @@ final class HudEXController: ObservableObject {
     /// Converts the currently loaded document in place while keeping its path.
     /// The migration preserves project sections and the existing settings block.
     func convertSourceToJSON() {
-        guard store.document.format == .markdown, let url = store.sourceURL,
-              let data = try? HudEXJSONCodec.encode(store.document) else { return }
+        guard store.document.format == .markdown, let url = store.sourceURL else { return }
         settingsSync.cancelPendingWrite()
         do {
+            var document = store.document
+            document.format = .json
+            document.sourceID = UUID().uuidString.lowercased()
+            document.hudexVersion = Self.appReleaseVersion
+            document.aiInstructions = HudEXJSONCodec.defaultAIInstructions
+            document.schemaVersion = HudEXJSONCodec.currentVersion
+            let data = try HudEXJSONCodec.encode(document)
             try data.write(to: url, options: .atomic)
             remindersSyncStatus = L10n.t("reminders.converted")
             store.reload(reason: "convert to JSON")
@@ -287,7 +303,15 @@ final class HudEXController: ObservableObject {
     }
 
     func syncRemindersNow() {
-        guard !remindersSyncing else { return }
+        startRemindersSync(automatic: false)
+    }
+
+    private func startRemindersSync(automatic: Bool) {
+        guard !remindersSyncing else {
+            remindersSyncRerunPending = true
+            remindersManualRerunPending = remindersManualRerunPending || !automatic
+            return
+        }
         guard store.document.format == .json else {
             remindersSyncStatus = L10n.t("reminders.convertFirst")
             return
@@ -297,14 +321,73 @@ final class HudEXController: ObservableObject {
         Task { @MainActor [weak self] in
             guard let self else { return }
             do {
-                let updated = try await self.remindersSync.sync(document: self.store.document)
-                _ = self.store.saveSynchronizedJSON(updated)
-                self.remindersSyncStatus = L10n.t("reminders.synced")
+                let result = try await self.remindersSync.sync(
+                    document: self.store.document,
+                    appVersion: Self.appReleaseVersion
+                )
+                switch self.store.saveSynchronizedJSON(result.document) {
+                case .failed(let message):
+                    self.remindersSyncStatus = L10n.t("reminders.saveFailed", message)
+                case .written, .unchanged:
+                    var statusParts: [String] = []
+                    if result.createdProjects > 0 {
+                        statusParts.append(L10n.t("reminders.projectsCreated", result.createdProjects))
+                    }
+                    if result.removedLegacyLists > 0 {
+                        statusParts.append(L10n.t("reminders.synced.cleaned", result.removedLegacyLists))
+                    }
+                    if result.retainedLegacyLists > 0 {
+                        statusParts.append(L10n.t("reminders.synced.retained", result.retainedLegacyLists))
+                    }
+                    if result.projectCommandConflicts > 0 {
+                        statusParts.append(L10n.t("reminders.projectConflict", result.projectCommandConflicts))
+                    }
+                    if !result.projectCommandIdentifiers.isEmpty {
+                        do {
+                            try await self.remindersSync.consumeProjectCommands(
+                                identifiers: result.projectCommandIdentifiers
+                            )
+                        } catch {
+                            statusParts.append(L10n.t("reminders.projectCommandCleanupFailed"))
+                        }
+                    }
+                    self.remindersSyncStatus = statusParts.isEmpty
+                        ? L10n.t("reminders.synced")
+                        : statusParts.joined(separator: " ")
+                }
             } catch {
                 self.remindersSyncStatus = error.localizedDescription
             }
             self.remindersSyncing = false
+            if self.remindersSyncRerunPending {
+                let manualRerun = self.remindersManualRerunPending
+                let automaticRerun = self.preferences.remindersAutoSyncEnabled
+                self.remindersSyncRerunPending = false
+                self.remindersManualRerunPending = false
+                guard manualRerun || automaticRerun else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+                    guard let self else { return }
+                    self.startRemindersSync(automatic: !manualRerun)
+                }
+            }
         }
+    }
+
+    private func scheduleAutomaticRemindersSync() {
+        guard preferences.remindersAutoSyncEnabled,
+              store.document.format == .json,
+              store.sourceURL != nil else {
+            pendingReminderSync?.cancel()
+            pendingReminderSync = nil
+            return
+        }
+        pendingReminderSync?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, self.preferences.remindersAutoSyncEnabled else { return }
+            self.startRemindersSync(automatic: true)
+        }
+        pendingReminderSync = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: work)
     }
 
     /// Recomputes everything that depends on the document, the Dock and the
@@ -880,6 +963,10 @@ final class HudEXController: ObservableObject {
         let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
         return "\(short) (\(build))"
+    }
+
+    static var appReleaseVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.4"
     }
 
     var diagnosticsText: String {

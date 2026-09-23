@@ -32,7 +32,7 @@ HudEX 在你屏幕边缘空出来的地方——通常是 Dock 旁边——放�
 
 **安装（推荐用拖拽版）**
 
-1. 下载 **`HudEX-1.0.3.dmg`** 并打开，把 **HudEX** 拖到窗口里的 **Applications** 快捷方式上。
+1. 下载 **`HudEX-1.0.4.dmg`** 并打开，把 **HudEX** 拖到窗口里的 **Applications** 快捷方式上。
 2. **第一次打开会被系统拦下来**——因为 HudEX 没有做 Apple 公证签名（个人开发者没有付费账号），
    这一步只需要做一次：
    - 直接双击 HudEX 会看到「Apple 无法验证此 App 是否包含恶意软件」；
@@ -84,11 +84,22 @@ HudEX 在你屏幕边缘空出来的地方——通常是 Dock 旁边——放�
 
 ### Apple 提醒事项同步
 
-在 **设置 → 数据源 → Apple 提醒事项同步** 中，可以把当前文件原地转换成带版本号的 JSON，路径不变，项目和现有设置会保留。之后点「现在同步提醒事项」并授权 HudEX 访问提醒事项：每个项目对应一个独立列表，项目里的 `reminders` 数组对应列表中的提醒。
+在 **设置 → 数据源 → Apple 提醒事项同步** 中，把当前文件原地转换成版本化 JSON；路径、项目和现有设置会保留。JSON 是项目与提醒的唯一主文件，默认自动与 Apple 提醒事项双向同步，也可关闭自动同步后手动触发。
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "sourceID": "a-stable-source-uuid",
+  "hudexVersion": "1.0.4",
+  "aiInstructions": [
+    "This file is the source of truth for HudEX projects and reminders.",
+    "Preserve schemaVersion, sourceID, stable project IDs, and stable reminder IDs when editing this file.",
+    "Keep project reminders in each project's reminders array; edit or delete them by their stable id.",
+    "HudEX uses one Apple Reminders list named 'HudEX · Synced'. Prefix native reminder titles with the project's shortTitle and ' · ' to assign them to a project.",
+    "To create a project from Apple Reminders, add a reminder titled '@project SHORT | Project title'; SHORT must be unique. HudEX writes the new project to this file before consuming that command reminder.",
+    "Give every project a distinct shortTitle so reminders can be assigned unambiguously.",
+    "Preserve settings and project sections. HudEX updates hudexVersion during synchronization."
+  ],
   "projects": [{
     "id": "website-redesign",
     "title": "网站改版",
@@ -105,7 +116,9 @@ HudEX 在你屏幕边缘空出来的地方——通常是 Dock 旁边——放�
 }
 ```
 
-文件与 Reminders 都可以新增、修改和删除提醒；同一提醒两边都改动时，较新的修改优先。同步由设置页手动触发。每个 HudEX 项目列表中的无标记事项会被纳入 HudEX；请只在 HudEX 管理的列表中放这些项目的提醒。原 Markdown 文件仍可读取，转换前建议保留备份。
+Reminders 中只维护一个 `HudEX · Synced` 列表，提醒标题显示为「项目短名 · 提醒标题」。用此前缀新增提醒可指定项目，每个项目可以有多个提醒。创建项目时新增 `@project 短名 | 项目名称` 提醒（短名需唯一）；HudEX 会先把项目写入主文件，再移除这条命令。两边的新增、修改、完成和删除会自动同步，同一条提醒两边都改动时按修改时间合并。切换主文件后，旧文件对应的 HudEX 提醒会清理；早期版本生成的项目列表会迁移并删除。普通 Reminders 列表不会被 HudEX 管理。转换前建议备份。
+
+JSON 顶层的 `schemaVersion` 表示文件格式，`hudexVersion` 表示最后同步它的 HudEX 发布版本。`aiInstructions` 是给后续 AI 编辑者的持续规则；请保留 `sourceID`、项目 ID 和提醒 ID，并确保项目短名唯一。
 
 ## 三种外观风格
 
@@ -126,7 +139,7 @@ HudEX 在你屏幕边缘空出来的地方——通常是 Dock 旁边——放�
 目录里。Markdown 模式下 HudEX 只读项目内容；JSON 模式下提醒事项同步会更新任务字段。
 两台 Mac 也可以指向同一份同步过来的文件。
 
-HudEX 唯一会写的是下面那段设置：除此之外，设置段以上的内容一字不改。
+Markdown 模式下 HudEX 只写下面那段设置；JSON 模式下还会更新提醒数据与同步元信息。
 
 ## 设置就写在 Markdown 里
 

@@ -269,13 +269,20 @@
 /* Apple Reminders sync */
 "reminders.section" = "Apple Reminders sync";
 "reminders.convert" = "Convert current file to JSON";
-"reminders.convertHint" = "Keeps the current path and project content, then changes the file to versioned JSON for two-way Reminders sync. Back up the file first.";
+"reminders.convertHint" = "Keeps the path and project content, and adds stable IDs plus AI editing rules. JSON becomes the single source of truth and syncs automatically with one HudEX Reminders list. Back up the file first.";
+"reminders.autoSync" = "Automatically sync Apple Reminders";
 "reminders.syncNow" = "Sync Reminders now";
-"reminders.footer" = "Each HudEX project maps to a separate Reminders list. Items in those lists can be added, edited, or deleted on either side. The first sync requests full Reminders access.";
+"reminders.footer" = "HudEX uses one 'HudEX · Synced' list instead of creating one list per project. The JSON source and Reminders additions, edits, completions, and deletions sync both ways automatically. With multiple projects, prefix a reminder with 'shortTitle · ' to assign it. Add a reminder titled '@project SHORT | Project title' to create a project; HudEX removes that command after writing the project to the source file. Switching the source cleans up old HudEX reminders and legacy lists. The first sync requests full access.";
 "reminders.converted" = "Converted to JSON.";
 "reminders.convertFirst" = "Convert the current file to JSON first.";
 "reminders.syncing" = "Syncing…";
 "reminders.synced" = "Reminders sync complete.";
+"reminders.synced.cleaned" = "Sync complete; removed %d old HudEX list(s).";
+"reminders.synced.retained" = "Sync complete; %d old list(s) could not be removed, possibly because they are read-only.";
+"reminders.saveFailed" = "Reminders synced, but the HudEX file could not be written: %@";
+"reminders.projectsCreated" = "Created %d HudEX project(s) from Reminders.";
+"reminders.projectConflict" = "%d project command(s) use a short title already assigned to another project. Choose a unique short title.";
+"reminders.projectCommandCleanupFailed" = "The project was written to the source file, but its command reminder could not be removed; sync will retry.";
 
 /* Settings block labels */
 "settingsblock.label.layout.mode" = "Layout mode";

@@ -12,6 +12,12 @@ import HudEXCore
 /// * the directory is watched, so atomic replace/rename keeps working.
 @MainActor
 final class DocumentStore: ObservableObject {
+    enum SynchronizedWriteResult {
+        case written
+        case unchanged
+        case failed(String)
+    }
+
     @Published private(set) var document: HudEXDocument = .empty
     @Published private(set) var sourceURL: URL?
     @Published private(set) var statusMessage: String?
@@ -77,18 +83,20 @@ final class DocumentStore: ObservableObject {
     /// Writes an EventKit reconciliation back to a JSON source and reloads it
     /// through the normal file-watching path.
     @discardableResult
-    func saveSynchronizedJSON(_ updated: HudEXDocument) -> Bool {
-        guard updated.format == .json, let sourceURL,
-              let data = try? HudEXJSONCodec.encode(updated) else { return false }
-        guard (try? Data(contentsOf: sourceURL)) != data else { return false }
+    func saveSynchronizedJSON(_ updated: HudEXDocument) -> SynchronizedWriteResult {
+        guard updated.format == .json, let sourceURL else {
+            return .failed("The current source is not a writable JSON file.")
+        }
         do {
+            let data = try HudEXJSONCodec.encode(updated)
+            guard (try? Data(contentsOf: sourceURL)) != data else { return .unchanged }
             try data.write(to: sourceURL, options: .atomic)
             signature = nil
             reload(reason: "Reminders sync")
-            return true
+            return .written
         } catch {
             lastError = error.localizedDescription
-            return false
+            return .failed(error.localizedDescription)
         }
     }
 

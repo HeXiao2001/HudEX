@@ -269,13 +269,20 @@
 /* Apple Reminders sync */
 "reminders.section" = "Apple 提醒事项同步";
 "reminders.convert" = "将当前文件转换为 JSON";
-"reminders.convertHint" = "保留当前文件路径和项目内容，并把文件改为版本化 JSON；转换后可与提醒事项双向同步。建议先备份文件。";
+"reminders.convertHint" = "保留路径和项目内容，并加入稳定 ID 与 AI 编辑规范。JSON 会成为唯一主文件；转换后自动与一个 HudEX 提醒事项列表双向同步。建议先备份文件。";
+"reminders.autoSync" = "自动同步 Apple 提醒事项";
 "reminders.syncNow" = "现在同步提醒事项";
-"reminders.footer" = "每个 HudEX 项目对应提醒事项中的一个独立列表。列表中的提醒可在两边新增、修改或删除。首次同步会请求完整的提醒事项访问权限。";
+"reminders.footer" = "HudEX 使用一个「HudEX · Synced」列表，避免每个项目创建独立列表。JSON 主文件、Reminders 中的新增/修改/完成/删除会自动双向同步。多个项目时，在提醒标题前加「项目短名 · 」指定项目；新建提醒「@project 短名 | 项目名称」可创建项目，主文件写入成功后命令项会被移除。切换主文件会清理旧 HudEX 提醒和旧列表。首次同步会请求完整访问权限。";
 "reminders.converted" = "已转换为 JSON。";
 "reminders.convertFirst" = "请先将当前文件转换为 JSON。";
 "reminders.syncing" = "正在同步……";
 "reminders.synced" = "提醒事项同步完成。";
+"reminders.synced.cleaned" = "同步完成；已移除 %d 个旧 HudEX 列表。";
+"reminders.synced.retained" = "同步完成；%d 个旧列表无法移除，可能是只读列表。";
+"reminders.saveFailed" = "提醒事项已同步，但无法写回 HudEX 文件：%@";
+"reminders.projectsCreated" = "已从 Reminders 创建 %d 个 HudEX 项目。";
+"reminders.projectConflict" = "%d 条项目命令的短名已被其他项目使用，请改用唯一短名。";
+"reminders.projectCommandCleanupFailed" = "项目已写入主文件，但项目命令提醒未能移除；下次同步会重试。";
 
 /* 设置段字段名 */
 "settingsblock.label.layout.mode" = "布局模式";

@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.0.4 — 2026-09-23
+
+Reminders now follows the active HudEX JSON source automatically.
+
+* Replace per-project Reminders lists with one `HudEX · Synced` list; project
+  membership appears as a `shortTitle ·` prefix so multiple projects can share
+  one clean entry point.
+* Create HudEX projects from Reminders with `@project SHORT | Project title`;
+  HudEX writes the project to JSON before removing the command reminder.
+* Sync file changes and Apple Reminders changes automatically, including task
+  additions, edits, completion and deletion. A setting keeps manual-only sync
+  available.
+* Give each source file a stable identity. Switching the active source removes
+  its former HudEX reminders and cleans up or migrates lists made by 1.0.3.
+* Upgrade JSON to schema v2 with `sourceID`, `hudexVersion` and durable
+  `aiInstructions`, while continuing to read schema v1 files.
+
 ## 1.0.3 — 2026-09-23
 
 Apple Reminders is now an additional entry point for project tasks.

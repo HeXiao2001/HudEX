@@ -56,7 +56,7 @@ rm -rf "$STAGE" "$PKG" "$DMG"
 mkdir -p "$STAGE/pkgroot/Applications" "$STAGE/dmg"
 
 echo "==> Installer package (.pkg)"
-cp -R ".build/$APP.app" "$STAGE/pkgroot/Applications/"
+/usr/bin/ditto --noextattr --norsrc ".build/$APP.app" "$STAGE/pkgroot/Applications/$APP.app"
 pkgbuild \
   --root "$STAGE/pkgroot" \
   --install-location / \
@@ -66,7 +66,7 @@ pkgbuild \
   "$PKG"
 
 echo "==> Disk image (.dmg) — drag onto Applications"
-cp -R ".build/$APP.app" "$STAGE/dmg/"
+/usr/bin/ditto --noextattr --norsrc ".build/$APP.app" "$STAGE/dmg/$APP.app"
 ln -s /Applications "$STAGE/dmg/Applications"
 cat > "$STAGE/dmg/Read Me First.txt" <<'NOTE'
 HudEX — first launch / 第一次打开
@@ -84,13 +84,14 @@ HudEX — first launch / 第一次打开
 
 3. HudEX has no Dock icon: it lives in the menu bar.
    Open Settings → Source to pick your project file, convert it to JSON and
-   sync its projects with Apple Reminders. HudEX asks for Reminders access only
-   when you start the first sync.
+   convert it to JSON to enable automatic two-way sync with the single
+   'HudEX · Synced' Apple Reminders list. HudEX asks for Reminders access on the
+   first sync. Project reminders use the title prefix 'shortTitle ·'.
    HudEX 没有 Dock 图标，它住在菜单栏里。
    打开 设置 → 数据源 选择你的 HudEX.md，没有文件时点「创建示例文件」。
 
 HudEX makes no network requests. Reminders access is optional and requested
-only when you start syncing. 不联网；只有主动同步时才请求提醒事项权限。
+when automatic or manual sync first runs. 不联网；首次自动或手动同步时请求权限。
 NOTE
 
 DMGBUILD=""

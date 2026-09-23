@@ -330,6 +330,13 @@ public struct HudEXDocument: Hashable, Sendable {
     public enum Format: String, Hashable, Sendable { case markdown, json }
 
     public var format: Format
+    /// Stable identity of this source file, shared by its Reminders records.
+    public var sourceID: String?
+    /// App release that last synchronized this file.
+    public var hudexVersion: String?
+    /// Human-readable contract for people and AI editors of this source.
+    public var aiInstructions: [String]?
+    public var schemaVersion: Int
     public var title: String?
     public var projects: [HudEXProject]
     public var diagnostics: [ParseDiagnostic]
@@ -352,9 +359,17 @@ public struct HudEXDocument: Hashable, Sendable {
         fileModifiedAt: Date? = nil,
         settings: HudEXSettingsBlock? = nil,
         bodyWithoutSettings: String = "",
-        format: Format = .markdown
+        format: Format = .markdown,
+        sourceID: String? = nil,
+        hudexVersion: String? = nil,
+        aiInstructions: [String]? = nil,
+        schemaVersion: Int = 1
     ) {
         self.format = format
+        self.sourceID = sourceID
+        self.hudexVersion = hudexVersion
+        self.aiInstructions = aiInstructions
+        self.schemaVersion = schemaVersion
         self.title = title
         self.projects = projects
         self.diagnostics = diagnostics

@@ -36,7 +36,7 @@ AI agent — and it deliberately isn't.
 
 **Install (the drag-and-drop disk image is the recommended way)**
 
-1. Download **`HudEX-1.0.3.dmg`**, open it, and drag **HudEX** onto the
+1. Download **`HudEX-1.0.4.dmg`**, open it, and drag **HudEX** onto the
    **Applications** shortcut in the window.
 2. **The first launch is blocked by macOS** — HudEX is ad-hoc signed rather than
    notarised (a paid Apple account is not involved), and this happens once:
@@ -96,15 +96,26 @@ Examples: [`Examples/HudEX.md`](Examples/HudEX.md) (English) ·
 
 Under **Settings → Source → Apple Reminders sync**, convert the current file
 in place to versioned JSON; its path, projects, sections and settings are
-preserved. Then choose **Sync Reminders now** and grant HudEX Reminders access.
-Each project maps to its own Reminders list, with the project's `reminders`
-array mapped to items in that list.
+preserved. JSON is the single source of truth for projects and reminders. It
+syncs automatically with Apple Reminders by default; automatic sync can be
+turned off in Settings.
 
-Items can be added, edited and deleted on either side. If both sides change the
-same item, the newer modification wins. Sync is started manually from Settings.
-Unmarked items in a HudEX-managed list are adopted, so keep those lists for
-HudEX project reminders. Markdown files remain supported; back up before
-converting.
+HudEX maintains one `HudEX · Synced` list. Reminder titles show
+`shortTitle · reminder title`; use that prefix when adding a reminder in Apple
+Reminders to assign it to a project. Each project can have multiple reminders.
+To create a project there, add a reminder titled
+`@project SHORT | Project title`, using a unique short title. HudEX writes the
+project to the source file before removing the command reminder.
+Additions, edits, completion and deletion sync both ways. If both sides change
+the same reminder, the newer modification wins. When the source file changes,
+HudEX removes reminders belonging to the old source and migrates or removes the
+legacy per-project lists created by earlier releases. Other Reminders lists are
+not managed by HudEX. Back up before converting a Markdown file.
+
+`schemaVersion` describes the file format; `hudexVersion` records the HudEX
+release that last synchronized it. `aiInstructions` stores the durable editing
+rules for future AI tools. Preserve `sourceID` and stable project/reminder IDs,
+and give every project a distinct short title.
 
 ## First launch
 
@@ -144,11 +155,11 @@ hangs the same way, and nothing animates while the pointer is still.
 The file is yours. Write it by hand, have an AI keep it tidy — live or on a
 schedule — or keep it in any folder a sync service mirrors for you (iCloud
 Drive, OneDrive, Dropbox, WebDAV, a git checkout…). In Markdown mode HudEX only
-reads project content; in JSON mode Reminders sync updates task fields. Two Macs
-can point at the same synced copy.
+reads project content; in JSON mode Reminders sync updates task fields and sync
+metadata. Two Macs can point at the same synced copy.
 
-The one thing HudEX writes is the settings block described below. Everything
-above that block is left byte-for-byte alone.
+In Markdown mode HudEX only writes the settings block described below. JSON
+mode also updates reminder data and sync metadata.
 
 ## Settings live in the file
 
