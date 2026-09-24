@@ -135,7 +135,8 @@ final class HudEXController: ObservableObject {
             self.refresh(reason: "document", allowExpensiveProbes: false)
             // A file without the block gets one, so the settings (and the guide
             // lines an AI needs) are always documented in the file itself.
-            if self.store.document.settings == nil, let url = self.store.sourceURL {
+            if self.store.document.parsedAt != .distantPast,
+               self.store.document.settings == nil, let url = self.store.sourceURL {
                 self.settingsSync.scheduleWrite(to: url)
             }
             self.lastSettingsWrite = self.settingsSync.lastWriteAt
@@ -277,26 +278,44 @@ final class HudEXController: ObservableObject {
 
     /// Re-reads the settings block from the file, ignoring the write debounce.
     func applySettingsFromMarkdown() {
-        guard store.document.format == .markdown else { return }
         store.reload(reason: "settings re-read")
     }
 
-    /// Converts the currently loaded document in place while keeping its path.
-    /// The migration preserves project sections and the existing settings block.
-    func convertSourceToJSON() {
-        guard store.document.format == .markdown, let url = store.sourceURL else { return }
+    /// Migrates the active source to one .json file without leaving a second
+    /// HudEX data file beside it, refreshing the durable AI instructions.
+    func makeSingleJSONSource() {
+        guard let url = store.sourceURL else { return }
+        let target = url.deletingPathExtension().appendingPathExtension("json")
+        guard target != url else { return }
         settingsSync.cancelPendingWrite()
         do {
-            var document = store.document
+            guard !FileManager.default.fileExists(atPath: target.path) else {
+                throw NSError(domain: "HudEX.Source", code: 1, userInfo: [
+                    NSLocalizedDescriptionKey: L10n.t("reminders.targetExists", target.path)
+                ])
+            }
+            let fresh: HudEXDocument
+            switch MarkdownDocumentLoader().load(url: url, previous: nil) {
+            case .success(let loaded): fresh = loaded.document
+            case .failure(let error):
+                throw NSError(domain: "HudEX.Source", code: 2, userInfo: [
+                    NSLocalizedDescriptionKey: error.displayMessage
+                ])
+            }
+            var document = fresh
             document.format = .json
-            document.sourceID = UUID().uuidString.lowercased()
+            document.sourceID = document.sourceID ?? UUID().uuidString.lowercased()
             document.hudexVersion = Self.appReleaseVersion
             document.aiInstructions = HudEXJSONCodec.defaultAIInstructions
             document.schemaVersion = HudEXJSONCodec.currentVersion
-            let data = try HudEXJSONCodec.encode(document)
-            try data.write(to: url, options: .atomic)
+            try HudEXJSONCodec.encode(document).write(to: target, options: .atomic)
+            do { try FileManager.default.removeItem(at: url) }
+            catch {
+                try? FileManager.default.removeItem(at: target)
+                throw error
+            }
+            setSourceURL(target)
             remindersSyncStatus = L10n.t("reminders.converted")
-            store.reload(reason: "convert to JSON")
         } catch {
             remindersSyncStatus = error.localizedDescription
         }
@@ -316,6 +335,8 @@ final class HudEXController: ObservableObject {
             remindersSyncStatus = L10n.t("reminders.convertFirst")
             return
         }
+        guard let sourceURL = store.sourceURL else { return }
+        let expectedSignature = FileSignature.read(at: sourceURL)
         remindersSyncing = true
         remindersSyncStatus = L10n.t("reminders.syncing")
         Task { @MainActor [weak self] in
@@ -325,19 +346,13 @@ final class HudEXController: ObservableObject {
                     document: self.store.document,
                     appVersion: Self.appReleaseVersion
                 )
-                switch self.store.saveSynchronizedJSON(result.document) {
+                switch self.store.saveSynchronizedJSON(result.document, expectedSignature: expectedSignature) {
                 case .failed(let message):
                     self.remindersSyncStatus = L10n.t("reminders.saveFailed", message)
                 case .written, .unchanged:
                     var statusParts: [String] = []
                     if result.createdProjects > 0 {
                         statusParts.append(L10n.t("reminders.projectsCreated", result.createdProjects))
-                    }
-                    if result.removedLegacyLists > 0 {
-                        statusParts.append(L10n.t("reminders.synced.cleaned", result.removedLegacyLists))
-                    }
-                    if result.retainedLegacyLists > 0 {
-                        statusParts.append(L10n.t("reminders.synced.retained", result.retainedLegacyLists))
                     }
                     if result.projectCommandConflicts > 0 {
                         statusParts.append(L10n.t("reminders.projectConflict", result.projectCommandConflicts))
@@ -350,6 +365,13 @@ final class HudEXController: ObservableObject {
                         } catch {
                             statusParts.append(L10n.t("reminders.projectCommandCleanupFailed"))
                         }
+                    }
+                    let cleanup = await self.remindersSync.cleanupLegacyLists()
+                    if cleanup.removed > 0 {
+                        statusParts.append(L10n.t("reminders.synced.cleaned", cleanup.removed))
+                    }
+                    if cleanup.retained > 0 {
+                        statusParts.append(L10n.t("reminders.synced.retained", cleanup.retained))
                     }
                     self.remindersSyncStatus = statusParts.isEmpty
                         ? L10n.t("reminders.synced")
@@ -376,6 +398,7 @@ final class HudEXController: ObservableObject {
     private func scheduleAutomaticRemindersSync() {
         guard preferences.remindersAutoSyncEnabled,
               store.document.format == .json,
+              !store.isLoading,
               store.sourceURL != nil else {
             pendingReminderSync?.cancel()
             pendingReminderSync = nil
@@ -668,7 +691,7 @@ final class HudEXController: ObservableObject {
     /// Whether there is a document worth showing: the file exists and at least
     /// one project parsed out of it.
     var hasUsableDocument: Bool {
-        documentSummary.projectCount > 0 && FileManager.default.fileExists(
+        (documentSummary.projectCount > 0 || store.document.format == .json) && FileManager.default.fileExists(
             atPath: documentSummary.path
         )
     }
@@ -820,11 +843,11 @@ final class HudEXController: ObservableObject {
     /// stays missing (and is reported), rather than being silently recreated.
     private func createStarterFileIfNeeded() {
         guard preferences.sourcePath.isEmpty else { return }
-        let url = Preferences.defaultSourceURL
-        guard !FileManager.default.fileExists(atPath: url.path) else {
-            store.configureSource(url)
+        if let existing = SourceLocator.firstExisting(candidates: SourceLocator.candidates()) {
+            store.configureSource(existing)
             return
         }
+        let url = Preferences.defaultSourceURL
         _ = createExampleFile(at: url, openAfterwards: false)
     }
 
@@ -834,7 +857,16 @@ final class HudEXController: ObservableObject {
                 at: url.deletingLastPathComponent(),
                 withIntermediateDirectories: true
             )
-            try HudEXTemplate.markdown().write(to: url, atomically: true, encoding: .utf8)
+            if url.pathExtension.lowercased() == "json" {
+                var document = MarkdownProjectParser().parse(HudEXTemplate.markdown())
+                document.format = .json
+                document.sourceID = UUID().uuidString.lowercased()
+                document.aiInstructions = HudEXJSONCodec.defaultAIInstructions
+                document.schemaVersion = HudEXJSONCodec.currentVersion
+                try HudEXJSONCodec.encode(document).write(to: url, options: .atomic)
+            } else {
+                try HudEXTemplate.markdown().write(to: url, atomically: true, encoding: .utf8)
+            }
             Log.markdown.info("created example document at \(url.path, privacy: .public)")
             store.configureSource(url)
             store.reload(reason: "example created")
@@ -966,7 +998,7 @@ final class HudEXController: ObservableObject {
     }
 
     static var appReleaseVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.4"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.6"
     }
 
     var diagnosticsText: String {

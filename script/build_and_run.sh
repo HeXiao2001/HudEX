@@ -15,8 +15,8 @@ set -euo pipefail
 
 APP_NAME="HudEX"
 BUNDLE_ID="dev.hex.hudex"
-BUNDLE_VERSION="1.0.4"
-BUNDLE_SHORT_VERSION="1.0.4"
+BUNDLE_VERSION="1.0.6"
+BUNDLE_SHORT_VERSION="1.0.6"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_APP_DIR="$ROOT_DIR/.build/$APP_NAME.app"
 DIST_DIR="$ROOT_DIR/dist"
@@ -56,11 +56,19 @@ fi
 # ------------------------------------------------------------------
 # 2. Build
 # ------------------------------------------------------------------
-pkill -x "$APP_NAME" >/dev/null 2>&1 || true
+if [[ "$LAUNCH" == true ]]; then
+  pkill -x "$APP_NAME" >/dev/null 2>&1 || true
+fi
 
 echo "Building $APP_NAME ($BUILD_CONFIG)…"
 # shellcheck disable=SC2086
 swift build -c "$BUILD_CONFIG" --product "$APP_NAME" $SWIFT_FLAGS
+BIN_DIR="$(swift build -c "$BUILD_CONFIG" --show-bin-path $SWIFT_FLAGS)"
+RESOURCE_BUNDLE="$BIN_DIR/HudEX_HudEXCore.bundle"
+if [[ ! -d "$RESOURCE_BUNDLE" ]] || ! find "$RESOURCE_BUNDLE" -name Localizable.strings -exec grep -l '"reminders.useSingleJSON"' {} + | grep -q .; then
+  echo "!! the current build is missing Reminders localization resources" >&2
+  exit 1
+fi
 
 NEW_HASH="$(shasum -a 256 "$EXECUTABLE" | awk '{print $1}')"
 OLD_HASH=""
@@ -106,7 +114,7 @@ write_info_plist() {
   <key>NSHighResolutionCapable</key>
   <true/>
   <key>NSRemindersFullAccessUsageDescription</key>
-  <string>HudEX automatically syncs the reminders in your active project file with one HudEX-managed Apple Reminders list.</string>
+  <string>HudEX syncs reminders between your JSON file and its project lists in Apple Reminders.</string>
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
   <key>CFBundleDevelopmentRegion</key>
@@ -132,6 +140,11 @@ if [[ -d "$APP_DIR" && ! -w "$APP_DIR" ]]; then
   exit 1
 fi
 
+ICON_KEY=""
+if [[ -f "$ICNS_FILE" ]]; then
+  ICON_KEY="<key>CFBundleIconFile</key><string>HudEX</string>"
+fi
+
 if [[ "$OLD_HASH" == "$NEW_HASH" && -d "$APP_DIR" ]]; then
   echo "Binary unchanged — refreshing resources and re-signing"
   cp "$EXAMPLE_FILE" "$APP_DIR/Contents/Resources/Examples/HudEX.md" 2>/dev/null || true
@@ -141,23 +154,16 @@ else
   mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources/Examples"
   cp "$EXECUTABLE" "$BUNDLE_EXECUTABLE"
   cp "$EXAMPLE_FILE" "$APP_DIR/Contents/Resources/Examples/HudEX.md" 2>/dev/null || true
-  # Localisation lives in the SwiftPM resource bundle.
-  for RESOURCE_BUNDLE in "$ROOT_DIR"/.build/*/"$BUILD_CONFIG"/HudEX_HudEXCore.bundle; do
-    if [[ -d "$RESOURCE_BUNDLE" ]]; then
-      rm -rf "$APP_DIR/Contents/Resources/HudEX_HudEXCore.bundle"
-      cp -R "$RESOURCE_BUNDLE" "$APP_DIR/Contents/Resources/"
-      break
-    fi
-  done
-
-  ICON_KEY=""
   if [[ -f "$ICNS_FILE" ]]; then
     cp "$ICNS_FILE" "$APP_DIR/Contents/Resources/HudEX.icns"
-    ICON_KEY="<key>CFBundleIconFile</key><string>HudEX</string>"
   fi
-
-  write_info_plist
 fi
+
+# The Xcode-backed SwiftPM build uses a nested bundle layout. Always copy the
+# resource bundle beside this build's executable, including on the fast path.
+rm -rf "$APP_DIR/Contents/Resources/HudEX_HudEXCore.bundle"
+cp -R "$RESOURCE_BUNDLE" "$APP_DIR/Contents/Resources/"
+write_info_plist
 
 /usr/bin/codesign --force --deep --sign "$SIGN_IDENTITY" "$APP_DIR" >/dev/null 2>&1 \
   || /usr/bin/codesign --force --deep --sign - "$APP_DIR" >/dev/null

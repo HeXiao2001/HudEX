@@ -51,6 +51,9 @@ struct WelcomeSettingsView: View {
                 if !fileExists {
                     Button(L10n.t("source.createExample")) { createTemplate() }
                 }
+                if fileExists && URL(fileURLWithPath: path).pathExtension.lowercased() != "json" {
+                    Button(L10n.t("reminders.useSingleJSON")) { controller.makeSingleJSONSource() }
+                }
                 Button(L10n.t("source.reload")) { controller.reloadDocument() }
             }
 
@@ -81,6 +84,9 @@ struct WelcomeSettingsView: View {
 
     private var statusText: String {
         if !fileExists { return L10n.t("welcome.status.missing") }
+        if controller.store.document.format == .json && controller.documentSummary.projectCount == 0 {
+            return L10n.t("reminders.onlyCreated")
+        }
         if controller.documentSummary.projectCount == 0 { return L10n.t("welcome.status.empty") }
         return L10n.t("welcome.status.found", controller.documentSummary.projectCount)
     }

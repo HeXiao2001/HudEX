@@ -63,6 +63,10 @@ final class DocumentStore: ObservableObject {
         guard sourceURL != url else { return }
         sourceURL = url
         signature = nil
+        // A previous file must never be reconciled against the new file's
+        // Reminders list while the new source is still loading.
+        document = .empty
+        onDocumentChanged?()
         restartWatcher(for: url)
         reload(reason: "source changed")
     }
@@ -83,11 +87,16 @@ final class DocumentStore: ObservableObject {
     /// Writes an EventKit reconciliation back to a JSON source and reloads it
     /// through the normal file-watching path.
     @discardableResult
-    func saveSynchronizedJSON(_ updated: HudEXDocument) -> SynchronizedWriteResult {
-        guard updated.format == .json, let sourceURL else {
+    func saveSynchronizedJSON(_ updated: HudEXDocument, expectedSignature: FileSignature) -> SynchronizedWriteResult {
+        guard updated.format == .json, let sourceURL,
+              sourceURL == expectedSignature.url else {
             return .failed("The current source is not a writable JSON file.")
         }
         do {
+            guard FileSignature.read(at: sourceURL) == expectedSignature else {
+                reload(reason: "source changed during Reminders sync")
+                return .failed("The JSON file changed during sync. Reloaded it; please sync again.")
+            }
             let data = try HudEXJSONCodec.encode(updated)
             guard (try? Data(contentsOf: sourceURL)) != data else { return .unchanged }
             try data.write(to: sourceURL, options: .atomic)
@@ -133,7 +142,8 @@ final class DocumentStore: ObservableObject {
             // client truncating before it writes. Keep the last good document
             // on screen and re-read once; if it is still empty, the user really
             // did empty the file and the tabs go away.
-            if loaded.document.projects.isEmpty, !document.projects.isEmpty, !isEmptyRetryPending {
+            if loaded.document.projects.isEmpty, loaded.document.reminders.isEmpty,
+               (!document.projects.isEmpty || !document.reminders.isEmpty), !isEmptyRetryPending {
                 isEmptyRetryPending = true
                 statusMessage = L10n.t("error.emptyDocument")
                 Log.markdown.warning("empty document read; keeping the last good content (\(reason))")

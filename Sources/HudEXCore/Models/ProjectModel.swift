@@ -94,35 +94,94 @@ public struct ProjectSection: Identifiable, Hashable, Sendable {
     }
 }
 
+public struct HudEXReminderLocationAlert: Codable, Hashable, Sendable {
+    public enum Trigger: String, Codable, Sendable { case arrive, leave }
+
+    public var title: String
+    public var latitude: Double
+    public var longitude: Double
+    public var radiusMeters: Double
+    public var trigger: Trigger
+
+    public init(title: String, latitude: Double, longitude: Double,
+                radiusMeters: Double = 100, trigger: Trigger = .arrive) {
+        self.title = title
+        self.latitude = latitude
+        self.longitude = longitude
+        self.radiusMeters = radiusMeters
+        self.trigger = trigger
+    }
+}
+
+public struct HudEXReminderRepeatRule: Codable, Hashable, Sendable {
+    public enum Frequency: String, Codable, Sendable { case none, daily, weekly, monthly, yearly }
+
+    public var frequency: Frequency
+    public var interval: Int
+
+    public init(frequency: Frequency, interval: Int = 1) {
+        self.frequency = frequency
+        self.interval = interval
+    }
+}
+
 /// A task mirrored between the structured project file and Apple Reminders.
 public struct HudEXReminder: Identifiable, Hashable, Sendable {
     public let id: String
+    /// Optional association with a project. Unassigned reminders work without any projects.
+    public var projectID: String?
     public var title: String
     public var notes: String?
     public var dueDate: Date?
+    public var startDate: Date?
+    /// Text shown as the reminder's place; use locationAlert for arrival/departure.
+    public var location: String?
+    public var locationAlert: HudEXReminderLocationAlert?
+    public var repeatRule: HudEXReminderRepeatRule?
+    /// An additional alert this many minutes before dueDate. Zero clears it.
+    public var earlyReminderMinutes: Int?
     public var isCompleted: Bool
     public var priority: Int
+    /// Kept in JSON and HudEX's UI; EventKit does not expose native flags/tags.
+    public var isFlagged: Bool
+    public var tags: [String]
     public var reminderIdentifier: String?
     public var modifiedAt: Date?
     public var syncFingerprint: String?
 
     public init(
         id: String = UUID().uuidString.lowercased(),
+        projectID: String? = nil,
         title: String,
         notes: String? = nil,
         dueDate: Date? = nil,
+        startDate: Date? = nil,
+        location: String? = nil,
+        locationAlert: HudEXReminderLocationAlert? = nil,
+        repeatRule: HudEXReminderRepeatRule? = nil,
+        earlyReminderMinutes: Int? = nil,
         isCompleted: Bool = false,
         priority: Int = 0,
+        isFlagged: Bool = false,
+        tags: [String] = [],
         reminderIdentifier: String? = nil,
         modifiedAt: Date? = nil,
         syncFingerprint: String? = nil
     ) {
         self.id = id
+        self.projectID = projectID
         self.title = title
         self.notes = notes
         self.dueDate = dueDate
+        self.startDate = startDate
+        self.location = location
+        self.locationAlert = locationAlert
+        self.repeatRule = repeatRule
+        self.earlyReminderMinutes = earlyReminderMinutes
         self.isCompleted = isCompleted
         self.priority = priority
+        self.isFlagged = isFlagged
+        self.tags = tags
         self.reminderIdentifier = reminderIdentifier
         self.modifiedAt = modifiedAt
         self.syncFingerprint = syncFingerprint
@@ -197,7 +256,7 @@ public struct HudEXProject: Identifiable, Hashable, Sendable {
     public let colorOverride: String?
     /// Optional `优先级：` — drawn as the colour of the tag's punched hole.
     public let priority: ProjectPriority?
-    public let reminders: [HudEXReminder]
+    public var reminders: [HudEXReminder]
 
     public init(
         id: String,
@@ -339,6 +398,7 @@ public struct HudEXDocument: Hashable, Sendable {
     public var schemaVersion: Int
     public var title: String?
     public var projects: [HudEXProject]
+    public var reminders: [HudEXReminder]
     public var diagnostics: [ParseDiagnostic]
     /// When the file was parsed.
     public var parsedAt: Date
@@ -354,6 +414,7 @@ public struct HudEXDocument: Hashable, Sendable {
     public init(
         title: String? = nil,
         projects: [HudEXProject] = [],
+        reminders: [HudEXReminder] = [],
         diagnostics: [ParseDiagnostic] = [],
         parsedAt: Date = Date(),
         fileModifiedAt: Date? = nil,
@@ -372,6 +433,7 @@ public struct HudEXDocument: Hashable, Sendable {
         self.schemaVersion = schemaVersion
         self.title = title
         self.projects = projects
+        self.reminders = reminders
         self.diagnostics = diagnostics
         self.parsedAt = parsedAt
         self.fileModifiedAt = fileModifiedAt
@@ -381,7 +443,7 @@ public struct HudEXDocument: Hashable, Sendable {
 
     public static let empty = HudEXDocument(parsedAt: .distantPast)
 
-    public var isEmpty: Bool { projects.isEmpty }
+    public var isEmpty: Bool { projects.isEmpty && reminders.isEmpty }
 
     public func project(id: String) -> HudEXProject? {
         projects.first { $0.id == id }

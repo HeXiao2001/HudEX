@@ -57,6 +57,8 @@ struct SourceSettingsView: View {
             .onAppear { pathDraft = controller.documentSummary.path }
             .onChange(of: controller.documentSummary.path) { _, new in pathDraft = new }
 
+            remindersSection
+
             Section {
                 Text(L10n.t("source.ownership.body"))
                     .font(.callout)
@@ -71,7 +73,6 @@ struct SourceSettingsView: View {
             }
 
             syncSection
-            remindersSection
 
             Section {
                 if fileExists {
@@ -167,7 +168,6 @@ struct SourceSettingsView: View {
                 Button(L10n.t("sync.writeNow")) { controller.writeSettingsToMarkdown() }
                 Button(L10n.t("sync.readNow")) { controller.applySettingsFromMarkdown() }
             }
-            .disabled(controller.store.document.format == .json)
         } header: {
             Text(L10n.t("sync.section"))
         } footer: {
@@ -179,14 +179,20 @@ struct SourceSettingsView: View {
 
     private var remindersSection: some View {
         Section {
+            Toggle(L10n.t("general.showTags"), isOn: $preferences.showTags)
+            if URL(fileURLWithPath: controller.documentSummary.path).pathExtension.lowercased() != "json" {
+                Button(L10n.t("reminders.useSingleJSON")) { controller.makeSingleJSONSource() }
+            }
             if controller.store.document.format == .markdown {
-                Button(L10n.t("reminders.convert")) { controller.convertSourceToJSON() }
                 Text(L10n.t("reminders.convertHint"))
                     .font(.callout).foregroundStyle(.secondary)
             } else {
                 Toggle(L10n.t("reminders.autoSync"), isOn: $preferences.remindersAutoSyncEnabled)
                 Button(L10n.t("reminders.syncNow")) { controller.syncRemindersNow() }
                     .disabled(controller.remindersSyncing)
+                LabeledContent(L10n.t("reminders.count")) {
+                    value("\(controller.store.document.reminders.count)")
+                }
             }
             if let status = controller.remindersSyncStatus {
                 Text(status).font(.callout).foregroundStyle(.secondary)

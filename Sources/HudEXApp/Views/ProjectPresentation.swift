@@ -34,7 +34,7 @@ struct PreviewModel: Equatable {
         // Whatever the file has, in file order: the card is a renderer, not a
         // schema. A project with two sections gets two blocks, one with six
         // gets six (the controller drops the tail if the screen is too small).
-        let sections: [PreviewSectionModel] = project.sections
+        var sections: [PreviewSectionModel] = project.sections
             .filter { !$0.isEmpty }
             .map { section in
                 PreviewSectionModel(
@@ -44,6 +44,15 @@ struct PreviewModel: Equatable {
                     singleLine: SectionKind.match(section.title) == .latestConversation
                 )
             }
+        let reminders = document.reminders.filter { $0.projectID == project.id && !$0.isCompleted }
+        if !reminders.isEmpty {
+            sections.insert(PreviewSectionModel(
+                id: "hudex-reminders", title: L10n.t("project.reminders"),
+                body: reminders.prefix(3).map(ReminderPresentation.line).joined(separator: "\n")
+                    + (reminders.count > 3 ? "\n… +\(reminders.count - 3)" : ""),
+                singleLine: false
+            ), at: 0)
+        }
 
         let reference = document.ageReferenceDate(for: project)
         let updatedLine: String?
@@ -114,7 +123,37 @@ struct DetailModel: Equatable {
             preamble: project.preamble,
             sections: project.sections.map {
                 PreviewSectionModel(id: $0.id, title: $0.title, body: $0.body, singleLine: false)
-            }
+            } + ReminderPresentation.section(for: project, document: document)
         )
+    }
+}
+
+private enum ReminderPresentation {
+    static func section(for project: HudEXProject, document: HudEXDocument) -> [PreviewSectionModel] {
+        let reminders = document.reminders.filter { $0.projectID == project.id }
+        guard !reminders.isEmpty else { return [] }
+        return [PreviewSectionModel(
+            id: "hudex-reminders", title: L10n.t("project.reminders"),
+            body: reminders.map(line).joined(separator: "\n"), singleLine: false
+        )]
+    }
+
+    static func line(_ reminder: HudEXReminder) -> String {
+        var details: [String] = []
+        if let date = reminder.dueDate {
+            details.append(date.formatted(date: .abbreviated, time: .shortened))
+        }
+        if let location = reminder.location, !location.isEmpty { details.append("⌖ " + location) }
+        else if let alert = reminder.locationAlert { details.append("⌖ " + alert.title) }
+        switch reminder.priority {
+        case 1: details.append(L10n.t("reminder.priority.high"))
+        case 2...5: details.append(L10n.t("reminder.priority.medium"))
+        case 6...9: details.append(L10n.t("reminder.priority.low"))
+        default: break
+        }
+        if reminder.isFlagged { details.append("⚑") }
+        details.append(contentsOf: reminder.tags.map { "#" + $0 })
+        let prefix = reminder.isCompleted ? "✓ " : "○ "
+        return prefix + reminder.title + (details.isEmpty ? "" : " · " + details.joined(separator: " · "))
     }
 }

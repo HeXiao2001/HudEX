@@ -38,19 +38,19 @@
 "general.projectCount" = "Projects";
 
 /* Source */
-"source.section.file" = "HudEX.md";
+"source.section.file" = "HudEX.json";
 "source.choose" = "Choose File…";
 "source.open" = "Open File";
 "source.reveal" = "Show in Finder";
 "source.reload" = "Reload";
-"source.footer" = "HudEX reads this one local file and writes nothing into it except the settings block at the bottom. It never talks to a cloud service or the network itself.";
+"source.footer" = "This one local JSON file holds project context, settings, and reminders. HudEX does not connect to a cloud service itself.";
 "source.section.status" = "Status";
 "source.lastLoaded" = "Last loaded";
 "source.createExample" = "Create Example File";
 "source.section.warnings" = "Parse notes";
-"source.panel.title" = "Choose HudEX.md";
+"source.panel.title" = "Choose HudEX.json";
 "source.panel.prompt" = "Choose";
-"source.missingHint" = "There is no HudEX.md yet. Create an example file and edit it for your own projects.";
+"source.missingHint" = "There is no HudEX.json yet. Create an example file and edit its projects and reminders.";
 
 /* Layout */
 "layout.section.dock" = "Dock geometry";
@@ -258,22 +258,29 @@
 "settingsblock.project.guide.title" = "Per-project options";
 
 /* Settings sync */
-"sync.section" = "Markdown settings";
-"sync.writeBack" = "Write settings back into HudEX.md";
+"sync.section" = "File settings";
+"sync.writeBack" = "Write settings back into HudEX.json";
 "sync.lastWrite" = "Last written";
 "sync.never" = "not yet";
 "sync.writeNow" = "Write now";
 "sync.readNow" = "Read from file";
-"sync.footer" = "HudEX keeps every setting in a documented block at the bottom of HudEX.md, so you — or an AI — can change the layout, colours and thresholds by editing text. Editing the block updates the app; changing a setting in the app updates the block. Only that block is ever touched: the projects above it are never modified.";
+"sync.footer" = "Settings are stored in the same JSON file as projects and reminders. Changes in the app and file stay in sync.";
 
 /* Apple Reminders sync */
 "reminders.section" = "Apple Reminders sync";
-"reminders.convert" = "Convert current file to JSON";
-"reminders.convertHint" = "Keeps the path and project content, and adds stable IDs plus AI editing rules. JSON becomes the single source of truth and syncs automatically with one HudEX Reminders list. Back up the file first.";
+"project.reminders" = "Reminders";
+"reminder.priority.high" = "High priority";
+"reminder.priority.medium" = "Medium priority";
+"reminder.priority.low" = "Low priority";
+"reminders.useSingleJSON" = "Use one JSON file for projects and reminders";
+"reminders.targetExists" = "A file already exists at %@. Choose it or move it before converting.";
+"reminders.onlyCreated" = "JSON source ready; Reminders can sync without project tags.";
+"reminders.count" = "Reminders in file";
+"reminders.convertHint" = "Move the current project content and settings into one JSON file. The old Markdown file is removed after a successful conversion.";
 "reminders.autoSync" = "Automatically sync Apple Reminders";
 "reminders.syncNow" = "Sync Reminders now";
-"reminders.footer" = "HudEX uses one 'HudEX · Synced' list instead of creating one list per project. The JSON source and Reminders additions, edits, completions, and deletions sync both ways automatically. With multiple projects, prefix a reminder with 'shortTitle · ' to assign it. Add a reminder titled '@project SHORT | Project title' to create a project; HudEX removes that command after writing the project to the source file. Switching the source cleans up old HudEX reminders and legacy lists. The first sync requests full access.";
-"reminders.converted" = "Converted to JSON.";
+"reminders.footer" = "All tasks sync to one Apple Reminders list named HudEX; project links stay in JSON. Time, place, priority, simple repetition, and location alerts sync. Select HudEX for the desktop widget.";
+"reminders.converted" = "Projects and reminders now use one JSON file.";
 "reminders.convertFirst" = "Convert the current file to JSON first.";
 "reminders.syncing" = "Syncing…";
 "reminders.synced" = "Reminders sync complete.";
@@ -349,9 +356,9 @@
 "layout.overflowSlot" = "Allow a second position for overflow";
 "settingsblock.guide.layout.overflowSlot" = "Whether bookmarks may also use the overflow slot at the other end of the same edge. Off: one place only, extras are hidden and counted in Settings.";
 
-"source.path.placeholder" = "Path to HudEX.md";
+"source.path.placeholder" = "Path to HudEX.json";
 "source.apply" = "Use this path";
-"source.dropHint" = "…or drop a .md file anywhere on this pane.";
+"source.dropHint" = "…or drop a .json file anywhere on this pane. Older .md files can be converted.";
 
 "source.section.recovery" = "Recovery";
 "source.recovered" = "The previous launch did not finish %lld time(s). HudEX cleared the manual Dock calibration and turned stacking off so it can start cleanly — your Markdown file was not touched.";
@@ -364,17 +371,17 @@
 
 /* Source pane: who owns the content */
 "source.ownership" = "The content is yours to manage";
-"source.ownership.body" = "Write it by hand, have an AI tidy it up for you — live or on a schedule — or keep it in any folder that a sync service (iCloud Drive, OneDrive, Dropbox, WebDAV, a git checkout …) mirrors for you. In Markdown mode HudEX only reads project content; after converting to JSON, Reminders sync updates the reminder fields.";
+"source.ownership.body" = "Edit the single JSON file yourself or with AI. It contains project context, settings, and reminders. A cloud folder may mirror the file, while HudEX syncs its reminders with Apple Reminders.";
 "source.ownership.footer" = "One file per machine is enough: point two Macs at the same synced copy if you like.";
 
 /* First run */
 "welcome.title" = "Welcome to HudEX";
 "welcome.intro" = "HudEX keeps a few solid-colour bookmarks along the edge of the screen and shows the recent context of the projects you are juggling. Choose a project file below. Bookmarks need no system permissions; only Reminders sync requests access to Reminders.";
-"welcome.step1" = "1 · Choose your Markdown file";
+"welcome.step1" = "1 · Choose your JSON file";
 "welcome.step1.location" = "File";
 "welcome.step1.useDefault" = "Use HudEX’s own folder";
-"welcome.step1.footer" = "By default the file lives in HudEX’s own folder (~/Library/Application Support/HudEX/HudEX.md). To use a file somewhere else — Documents, a synced folder, a git checkout — choose it yourself: macOS will ask for that folder once, and the answer is yours.";
-"welcome.step1.fixHint" = "That location has no usable Markdown file yet: choose another one, create the template, or set it later under Source.";
+"welcome.step1.footer" = "By default HudEX creates ~/Library/Application Support/HudEX/HudEX.json. Choose another location if you prefer a synced folder.";
+"welcome.step1.fixHint" = "That location has no usable JSON file yet: choose another one, create the template, or set it later under Source.";
 "welcome.status.missing" = "No file at this location";
 "welcome.status.empty" = "The file exists but has no projects in it — it needs at least one ## heading";
 "welcome.status.found" = "Found %lld project(s)";

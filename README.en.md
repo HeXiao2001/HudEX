@@ -9,7 +9,7 @@ of your screen — normally right next to the Dock. Each bookmark is one project
 you are juggling. Hover it and a small card shows where that project stands,
 what is next, and the name of the most recent conversation about it.
 
-Everything comes from **one Markdown file** that you — or an AI — can edit.
+Project context and reminders come from **one JSON file** that you — or an AI — can edit.
 
 ![HudEX overview: hover card, Dock bookmarks, layout options](docs/images/overview.jpg)
 
@@ -29,14 +29,13 @@ It answers four questions without you opening anything:
 3. What is the next step?
 4. Which one has gone quiet?
 
-It is **not** a task manager, a calendar, a Kanban board, a note archive or an
-AI agent — and it deliberately isn't.
+It shows project context at the screen edge and syncs actionable tasks with Apple Reminders.
 
 ## Quick start
 
 **Install (the drag-and-drop disk image is the recommended way)**
 
-1. Download **`HudEX-1.0.4.dmg`**, open it, and drag **HudEX** onto the
+1. Download [**`HudEX-1.0.6.dmg`** from GitHub Releases](https://github.com/HeXiao2001/HudEX/releases/download/v1.0.6/HudEX-1.0.6.dmg), open it, and drag **HudEX** onto the
    **Applications** shortcut in the window.
 2. **The first launch is blocked by macOS** — HudEX is ad-hoc signed rather than
    notarised (a paid Apple account is not involved), and this happens once:
@@ -51,78 +50,51 @@ AI agent — and it deliberately isn't.
    Reminders access. It does not use Accessibility, Screen Recording, or
    notifications. The "blocked" line in Settings disappears once it has opened.
 4. On the first launch HudEX creates its own file
-   (`~/Library/Application Support/HudEX/HudEX.md`) and opens a short Welcome
+   (`~/Library/Application Support/HudEX/HudEX.json`) and opens a short Welcome
    pane: where the file lives, and which look you want.
 
 > Prefer your own file? Choose it in the Welcome pane — macOS will ask for that
 > folder once, and the answer is yours.
 
 
-## The file
+## One JSON file
 
-```markdown
-## Website redesign          ← one project per `##` heading
+HudEX defaults to `~/Library/Application Support/HudEX/HudEX.json`. Its `projects`, `reminders`, and `settings` live in that single file. Use **Settings → Source** to migrate an older `HudEX.md`: HudEX preserves project content and settings, writes the JSON file, then removes the old Markdown file. Keep your own backup if needed.
 
-short: WEB                   ← optional: the label on the bookmark
-status: active               ← active / paused / archived / done
-updated: 2026-09-12 16:30    ← drives the colour
-priority: high               ← optional: colours the punched hole
-
-### Current                  ← sections; 当前 / 下一步 / 最新对话 / 备注 are
-The new homepage is in review; the rest of the site still uses the old layout.
-
-### Next
-Finish the mobile breakpoints, then hand the copy over to the team.
-
-### Latest conversation
-Homepage layout review
+```json
+{
+  "schemaVersion": 6,
+  "sourceID": "stable-source-uuid",
+  "projects": [{
+    "id": "website-redesign",
+    "title": "Website redesign",
+    "shortTitle": "WEB",
+    "sections": [{ "id": "next", "title": "Next", "body": "Finish the mobile layout and send it for review" }]
+  }],
+  "reminders": [
+    { "id": "stable-task-uuid-1", "projectID": "website-redesign", "title": "Finish mobile layout" },
+    { "id": "stable-task-uuid-2", "projectID": "website-redesign", "title": "Send layout for review", "dueDate": "2026-10-01T09:00:00Z" }
+  ],
+  "settings": {}
+}
 ```
 
-* `###` headings are free-form: the four above are recognised and shown in the
-  hover card, any other heading (`### Data sources`, …) renders in the full view.
-* Extra per-project keys: `order: 1` (position among the bookmarks),
-  `color: #4C6FA0` or `color: teal` (override the bookmark colour).
-* Chinese keys work too (`短名：`, `状态：`, `更新：`, `顺序：`, `颜色：`, `优先级：`) —
-  the two spellings can even be mixed in one file.
-* Only text and ordinary `http(s)` links. Images, attachments and embeds are
-  never loaded, downloaded or rendered.
-* A project with no `short:` gets an abbreviation derived from its title
-  (`GeoRule` → `GR`, `Reading list` → `RL`).
+Apple Reminders uses just one list named `HudEX`. Projects remain in the JSON `projects` array; a reminder's `projectID` links it to a project. A reminder without `projectID` is standalone. A project may have many reminders. A timed `dueDate` creates a system alert. Additions, edits, completion, and deletion sync in both directions. Tasks in older `HudEX · Inbox`, `HudEX · Synced`, and project lists migrate into the single list, then empty lists are removed. A task created directly in Apple Reminders is standalone unless its title starts with a unique project short title followed by ` · `.
 
-Examples: [`Examples/HudEX.md`](Examples/HudEX.md) (English) ·
-[`Examples/HudEX.zh.md`](Examples/HudEX.zh.md) (中文)
+Reminders also support `startDate`, `location`, `priority` (0 none, 1 high, 5 medium, 9 low), `earlyReminderMinutes`, `repeatRule` (for example `{"frequency":"weekly","interval":1}`), and a coordinate-based `locationAlert` (`title`, `latitude`, `longitude`, `radiusMeters`, and `trigger`: `arrive` or `leave`). These sync with Apple Reminders, and project cards/details display place and priority. `isFlagged` and `tags` can be stored in JSON, but Apple's public EventKit API does not sync native flags or tags. Select the `HudEX` list for Apple's desktop Reminders widget.
 
-### Apple Reminders sync
+Generated JSON contains full `aiInstructions` for AI editors: derive actionable tasks from next steps and commitments, create new UUIDs, preserve existing IDs and sync metadata, never guess a due time, and keep general notes out of the task list. The legacy Markdown examples remain under [`Examples/`](Examples/HudEX.md) for migration reference.
 
-Under **Settings → Source → Apple Reminders sync**, convert the current file
-in place to versioned JSON; its path, projects, sections and settings are
-preserved. JSON is the single source of truth for projects and reminders. It
-syncs automatically with Apple Reminders by default; automatic sync can be
-turned off in Settings.
+You can give an AI editor this prompt with the existing file:
 
-HudEX maintains one `HudEX · Synced` list. Reminder titles show
-`shortTitle · reminder title`; use that prefix when adding a reminder in Apple
-Reminders to assign it to a project. Each project can have multiple reminders.
-To create a project there, add a reminder titled
-`@project SHORT | Project title`, using a unique short title. HudEX writes the
-project to the source file before removing the command reminder.
-Additions, edits, completion and deletion sync both ways. If both sides change
-the same reminder, the newer modification wins. When the source file changes,
-HudEX removes reminders belonging to the old source and migrates or removes the
-legacy per-project lists created by earlier releases. Other Reminders lists are
-not managed by HudEX. Back up before converting a Markdown file.
-
-`schemaVersion` describes the file format; `hudexVersion` records the HudEX
-release that last synchronized it. `aiInstructions` stores the durable editing
-rules for future AI tools. Preserve `sourceID` and stable project/reminder IDs,
-and give every project a distinct short title.
+> Edit only the supplied HudEX.json and follow its aiInstructions. Extract concrete actions from each project's next steps and explicit commitments into the top-level reminders array. Set each reminder's projectID to its project's id; a project may have many reminders. Set ISO 8601 dueDate/startDate only when the source gives unambiguous dates and times. Use location when a place is clear, and locationAlert only when exact coordinates are known. Set priority, earlyReminderMinutes, and repeatRule only when explicitly specified. Use a new UUID for a new reminder. Preserve existing ids, sourceID, reminderIdentifier, modifiedAt, and syncFingerprint when editing an existing reminder. Keep settings, project sections, and unrelated content. Return one complete valid JSON file; do not create a separate reminders file.
 
 ## First launch
 
 Two things happen on their own:
 
 1. HudEX creates its own file at
-   `~/Library/Application Support/HudEX/HudEX.md` — that folder needs no
+   `~/Library/Application Support/HudEX/HudEX.json` — that folder needs no
    authorisation;
 2. Settings opens on a **Welcome** pane: where the file is, whether it parsed,
    and which look you want (skeuomorphic by default). The pane disappears once
@@ -150,36 +122,9 @@ Every string hangs differently — direction, curve and even the occasional
 S-bend come from a stable hash of the project, so the same bookmark always
 hangs the same way, and nothing animates while the pointer is still.
 
-## Who manages the content
+## Content and settings in one file
 
-The file is yours. Write it by hand, have an AI keep it tidy — live or on a
-schedule — or keep it in any folder a sync service mirrors for you (iCloud
-Drive, OneDrive, Dropbox, WebDAV, a git checkout…). In Markdown mode HudEX only
-reads project content; in JSON mode Reminders sync updates task fields and sync
-metadata. Two Macs can point at the same synced copy.
-
-In Markdown mode HudEX only writes the settings block described below. JSON
-mode also updates reminder data and sync metadata.
-
-## Settings live in the file
-
-The bottom of `HudEX.md` holds a documented settings block — one guide line,
-then one `key：value` line per option:
-
-```markdown
-# HudEX Settings
-
-> Appearance style: skeuomorphic / frosted / minimal
-Appearance style：skeuomorphic
-
-> Tag width into the screen, in points. 0 = follow the Dock thickness
-Tag width：0
-```
-
-Change a value there and HudEX applies it. Change a setting in the app and
-HudEX writes it back (debounced, atomically; your project content above is left
-untouched). That makes the file fully driveable by a person or an AI — layout,
-colours, thresholds, counts, even the style.
+You or an AI can edit `HudEX.json`. Project context, reminders, and settings live together, and the file can sit in a folder mirrored by your own sync client. Settings use the top-level `settings` object and are written back to the same file. HudEX does not call an AI service or connect to an email account.
 
 ## Where the bookmarks go
 
@@ -214,9 +159,9 @@ reported in Settings instead of being drawn somewhere else. Turn on
 
 ## What it deliberately does not do
 
-No AI calls, no sync service, no built-in editor, no WebView/Electron/Node, no
+No AI calls, no built-in cloud file sync, no built-in editor, no WebView/Electron/Node, no
 history, no auto-scroll, no progress bars, no image attachments, no mobile app.
-Editing means "open `HudEX.md` in whatever your default Markdown editor is".
+Editing means opening `HudEX.json` in your preferred JSON editor.
 Syncing is your sync client's job (the file just has to be local and up to date),
 and how the content gets written is yours: by hand, by an AI, or by whatever
 already produces your notes.

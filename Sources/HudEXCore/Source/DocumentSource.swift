@@ -183,7 +183,8 @@ public struct MarkdownDocumentLoader: Sendable {
     )
 }
 
-/// Resolves which `HudEX.md` to use when the user has not chosen one yet.
+/// Resolves the single HudEX JSON source, while finding older Markdown files
+/// so they can be migrated in place.
 public enum SourceLocator {
     /// Where HudEX keeps its own file by default.
     ///
@@ -196,7 +197,7 @@ public enum SourceLocator {
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
     ) -> URL {
         applicationSupportDirectory(homeDirectory: homeDirectory)
-            .appendingPathComponent("HudEX.md")
+            .appendingPathComponent("HudEX.json")
     }
 
     public static func applicationSupportDirectory(
@@ -213,6 +214,8 @@ public enum SourceLocator {
     ) -> [URL] {
         var urls: [URL] = [
             defaultURL(homeDirectory: homeDirectory),
+            applicationSupportDirectory(homeDirectory: homeDirectory).appendingPathComponent("HudEX.md"),
+            homeDirectory.appendingPathComponent("Documents/HudEX.json"),
             homeDirectory.appendingPathComponent("Documents/HudEX.md")
         ]
 
@@ -227,10 +230,12 @@ public enum SourceLocator {
             options: [.skipsHiddenFiles]
         ) {
             for entry in entries.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+                urls.append(entry.appendingPathComponent("HudEX.json"))
                 urls.append(entry.appendingPathComponent("HudEX.md"))
             }
         }
 
+        urls.append(homeDirectory.appendingPathComponent("Desktop/HudEX.json"))
         urls.append(homeDirectory.appendingPathComponent("Desktop/HudEX.md"))
         return urls
     }

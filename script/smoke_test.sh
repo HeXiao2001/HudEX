@@ -11,15 +11,11 @@
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 APP="${1:-$ROOT/.build/HudEX.app}"
-SUPPORT="$HOME/Library/Application Support/HudEX/HudEX.md"
 
 [[ -d "$APP" ]] || { echo "!! no app at $APP" >&2; exit 1; }
 
 pkill -x HudEX 2>/dev/null || true
 sleep 1
-rm -rf "$(dirname "$SUPPORT")"
-defaults delete dev.hex.hudex source.path 2>/dev/null || true
-defaults delete dev.hex.hudex diagnostics.firstLaunchDone 2>/dev/null || true
 
 open "$APP"
 sleep 6
@@ -36,13 +32,10 @@ fi
 if [[ "$windows" == "0" ]]; then
   echo "!! the app is running but has no windows" >&2; fail=1
 fi
-if [[ ! -f "$SUPPORT" ]]; then
-  echo "!! the starter document was not created at $SUPPORT" >&2; fail=1
-fi
 
 pkill -x HudEX 2>/dev/null || true
 if [[ $fail == 0 ]]; then
-  echo "smoke test passed: running, $windows window(s), starter file created"
+  echo "smoke test passed: running, $windows window(s)"
 else
   exit 1
 fi

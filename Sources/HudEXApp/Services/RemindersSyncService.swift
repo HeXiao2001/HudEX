@@ -1,3 +1,4 @@
+import CoreLocation
 import EventKit
 import Foundation
 import HudEXCore
@@ -6,16 +7,14 @@ import HudEXCore
 final class RemindersSyncService {
     struct SyncResult {
         var document: HudEXDocument
-        var removedLegacyLists: Int
-        var retainedLegacyLists: Int
         var createdProjects: Int
         var projectCommandIdentifiers: [String]
         var projectCommandConflicts: Int
     }
 
-    private struct TaskKey: Hashable {
-        var projectID: String
-        var taskID: String
+    struct LegacyCleanupResult {
+        var removed: Int
+        var retained: Int
     }
 
     private struct Marker {
@@ -41,7 +40,10 @@ final class RemindersSyncService {
         }
     }
 
-    static let managedListTitle = "HudEX · Synced"
+    static let managedListTitle = "HudEX"
+    private static let standaloneProjectID = "__hudex_standalone__"
+    private static let oldSharedListTitle = "HudEX · Synced"
+    private static let inboxListTitle = "HudEX · Inbox"
 
     private let store = EKEventStore()
     private let markerScheme = "hudex-reminder"
@@ -68,135 +70,63 @@ final class RemindersSyncService {
         let sourceID = document.sourceID ?? UUID().uuidString.lowercased()
         document.sourceID = sourceID
         document.hudexVersion = appVersion
-        document.aiInstructions = document.aiInstructions ?? HudEXJSONCodec.defaultAIInstructions
+        if document.schemaVersion < HudEXJSONCodec.currentVersion || document.aiInstructions == nil
+            || document.aiInstructions?.contains(where: { $0.contains("HudEX · Synced") }) == true {
+            document.aiInstructions = HudEXJSONCodec.defaultAIInstructions
+        }
         document.schemaVersion = HudEXJSONCodec.currentVersion
+
+        // Project buckets live only in JSON. Every task uses the same native
+        // Reminders list, with its project ID kept in the stable URL marker.
+        let realProjectIDs = Set(document.projects.map(\.id))
+        document.projects = document.projects.map { project in
+            var copy = project
+            copy.reminders = document.reminders.filter { $0.projectID == project.id }
+            return copy
+        }
+        let standalone = HudEXProject(
+            id: Self.standaloneProjectID, title: "Reminders", shortTitle: "",
+            hasExplicitShortTitle: false, status: .active, statusText: nil,
+            updatedAt: nil, updatedAtText: nil, preamble: nil, sections: [],
+            reminders: document.reminders.filter {
+                $0.projectID == nil || !realProjectIDs.contains($0.projectID!)
+            }
+        )
+        document.projects.append(standalone)
 
         var tasksByProject: [String: [HudEXReminder]] = [:]
         for project in document.projects {
             tasksByProject[project.id, default: []] = project.reminders
         }
 
-        let calendars = store.calendars(for: .reminder)
-        let hadManagedList = calendars.contains(where: { $0.title == Self.managedListTitle })
-        let calendar: EKCalendar
-        if let existing = calendars.first(where: { $0.title == Self.managedListTitle && $0.allowsContentModifications }) {
-            calendar = existing
-        } else {
-            guard let source = store.defaultCalendarForNewReminders()?.source
-                    ?? calendars.first(where: { $0.allowsContentModifications })?.source else {
-                throw SyncError.noWritableListSource
-            }
-            let created = EKCalendar(for: .reminder, eventStore: store)
-            created.source = source
-            created.title = Self.managedListTitle
-            try store.saveCalendar(created, commit: true)
-            calendar = created
+        let existingCalendars = store.calendars(for: .reminder)
+        let hadManagedList = existingCalendars.contains(where: { isManagedListTitle($0.title) })
+        let calendar = try writableCalendar(existing: existingCalendars)
+        let oldCalendars = existingCalendars.filter {
+            $0.calendarIdentifier != calendar.calendarIdentifier && isManagedListTitle($0.title)
+        }
+        var currentReminders: [EKReminder] = []
+        for list in [calendar] + oldCalendars {
+            currentReminders += await fetchReminders(in: list)
         }
 
-        var activeByKey: [TaskKey: EKReminder] = [:]
-        for reminder in await fetchReminders(in: calendar) {
-            guard let marker = marker(from: reminder.url) else { continue }
-            let key = TaskKey(projectID: marker.projectID, taskID: marker.taskID)
-            let belongsToDocument = marker.sourceID == sourceID
-                && document.projects.contains(where: { $0.id == marker.projectID })
-                && tasksByProject[marker.projectID, default: []].contains(where: { $0.id == marker.taskID })
-            guard belongsToDocument else {
-                try store.remove(reminder, commit: true)
-                continue
-            }
-            if activeByKey[key] == nil {
-                activeByKey[key] = reminder
-            } else {
-                // A partial earlier sync can leave a duplicate marker. Keep one
-                // native reminder for each stable project/task ID pair.
-                try store.remove(reminder, commit: true)
-            }
-        }
-
-        var removedLegacyLists = 0
-        var retainedLegacyLists = 0
-        let legacyCalendars = calendars.filter { legacyProjectID(fromListTitle: $0.title) != nil }
-        for legacyCalendar in legacyCalendars where legacyCalendar.calendarIdentifier != calendar.calendarIdentifier {
-            guard legacyCalendar.allowsContentModifications else {
-                retainedLegacyLists += 1
-                continue
-            }
-
-            let projectID = legacyProjectID(fromListTitle: legacyCalendar.title)!
-            let project = document.projects.first(where: { $0.id == projectID })
-            for reminder in await fetchReminders(in: legacyCalendar) {
-                guard let project else {
-                    try store.remove(reminder, commit: true)
-                    continue
-                }
-
-                if let taskID = legacyTaskID(from: reminder.url, projectID: projectID) {
-                    let key = TaskKey(projectID: projectID, taskID: taskID)
-                    guard tasksByProject[projectID, default: []].contains(where: { $0.id == taskID }) else {
-                        try store.remove(reminder, commit: true)
-                        continue
-                    }
-                    guard activeByKey[key] == nil else {
-                        try store.remove(reminder, commit: true)
-                        continue
-                    }
-                    reminder.calendar = calendar
-                    reminder.url = taskURL(sourceID: sourceID, projectID: projectID, taskID: taskID)
-                    reminder.title = displayTitle(
-                        jsonTitle(from: reminder.title, project: project),
-                        project: project
-                    )
-                    try store.save(reminder, commit: true)
-                    activeByKey[key] = reminder
-                } else {
-                    // The previous implementation could leave a newly created
-                    // item unmarked if HudEX closed before its next manual sync.
-                    // These lists were created by HudEX for one project, so
-                    // preserve such items while migrating them to the new list.
-                    let taskID = UUID().uuidString.lowercased()
-                    reminder.calendar = calendar
-                    reminder.url = taskURL(sourceID: sourceID, projectID: projectID, taskID: taskID)
-                    let title = jsonTitle(from: reminder.title, project: project)
-                    reminder.title = displayTitle(title, project: project)
-                    try store.save(reminder, commit: true)
-
-                    var task = HudEXReminder(
-                        id: taskID,
-                        title: title,
-                        notes: reminder.notes,
-                        dueDate: dueDate(from: reminder),
-                        isCompleted: reminder.isCompleted,
-                        priority: reminder.priority,
-                        reminderIdentifier: reminder.calendarItemIdentifier,
-                        modifiedAt: reminder.lastModifiedDate ?? Date()
-                    )
-                    task.syncFingerprint = fingerprint(task)
-                    tasksByProject[projectID, default: []].append(task)
-                    activeByKey[TaskKey(projectID: projectID, taskID: taskID)] = reminder
-                }
-            }
-
-            do {
-                try store.removeCalendar(legacyCalendar, commit: true)
-                removedLegacyLists += 1
-            } catch {
-                retainedLegacyLists += 1
-            }
-        }
-
-        // EventKit invalidates fetched objects after store changes. Refetch the
-        // managed list after migration and cleanup before applying the merge.
-        let currentReminders = await fetchReminders(in: calendar)
-        var byKey: [TaskKey: EKReminder] = [:]
-        var nativeOnly: [EKReminder] = []
+        var byKey: [String: EKReminder] = [:]
+        var nativeOnly: [(reminder: EKReminder, project: HudEXProject)] = []
         var createdProjects = 0
         var projectCommandIdentifiers: [String] = []
         var projectCommandConflicts = 0
         for reminder in currentReminders {
             if let marker = marker(from: reminder.url), marker.sourceID == sourceID {
-                let key = TaskKey(projectID: marker.projectID, taskID: marker.taskID)
-                if byKey[key] == nil { byKey[key] = reminder }
+                if byKey[marker.taskID] == nil { byKey[marker.taskID] = reminder }
             } else if marker(from: reminder.url) == nil {
+                let oldProjectID = legacyProjectID(fromListTitle: reminder.calendar?.title ?? "")
+                if let oldProjectID, let taskID = legacyTaskID(from: reminder.url, projectID: oldProjectID),
+                   tasksByProject.values.contains(where: { $0.contains(where: { $0.id == taskID }) }) {
+                    reminder.url = taskURL(sourceID: sourceID, projectID: oldProjectID, taskID: taskID)
+                    try store.save(reminder, commit: true)
+                    byKey[taskID] = reminder
+                    continue
+                }
                 if isProjectCommandTitle(reminder.title) {
                     guard let command = projectCommand(from: reminder.title) else {
                         projectCommandConflicts += 1
@@ -237,15 +167,18 @@ final class RemindersSyncService {
                     createdProjects += 1
                     projectCommandIdentifiers.append(reminder.calendarItemIdentifier)
                 } else {
-                    nativeOnly.append(reminder)
+                    let assigned = document.projects.first(where: {
+                        $0.id != Self.standaloneProjectID && $0.id == oldProjectID
+                    }) ?? project(forNativeTitle: reminder.title, in: document.projects)
+                    if let assigned { nativeOnly.append((reminder, assigned)) }
                 }
             }
         }
 
-        for reminder in nativeOnly {
-            guard let project = project(forNativeTitle: reminder.title, in: document.projects) else { continue }
+        for (reminder, project) in nativeOnly {
             let taskID = UUID().uuidString.lowercased()
             let title = jsonTitle(from: reminder.title, project: project)
+            reminder.calendar = calendar
             reminder.url = taskURL(sourceID: sourceID, projectID: project.id, taskID: taskID)
             reminder.title = displayTitle(title, project: project)
             try store.save(reminder, commit: true)
@@ -255,6 +188,11 @@ final class RemindersSyncService {
                 title: title,
                 notes: reminder.notes,
                 dueDate: dueDate(from: reminder),
+                startDate: startDate(from: reminder),
+                location: reminder.location,
+                locationAlert: locationAlert(from: reminder),
+                repeatRule: repeatRule(from: reminder),
+                earlyReminderMinutes: earlyReminderMinutes(from: reminder),
                 isCompleted: reminder.isCompleted,
                 priority: reminder.priority,
                 reminderIdentifier: reminder.calendarItemIdentifier,
@@ -262,26 +200,52 @@ final class RemindersSyncService {
             )
             task.syncFingerprint = fingerprint(task)
             tasksByProject[project.id, default: []].append(task)
-            byKey[TaskKey(projectID: project.id, taskID: taskID)] = reminder
+        }
+
+        // EventKit can invalidate fetched objects after a save or list move.
+        byKey.removeAll()
+        for list in [calendar] + oldCalendars {
+            for reminder in await fetchReminders(in: list) {
+                guard let marker = marker(from: reminder.url), marker.sourceID == sourceID else { continue }
+                byKey[marker.taskID] = reminder
+            }
         }
 
         var updatedProjects: [HudEXProject] = []
         for project in document.projects {
             var retained: [HudEXReminder] = []
             for var task in tasksByProject[project.id, default: []] {
-                let key = TaskKey(projectID: project.id, taskID: task.id)
-                if let native = byKey.removeValue(forKey: key) {
+                if let native = byKey.removeValue(forKey: task.id) {
                     let nativeDate = native.lastModifiedDate ?? .distantPast
                     let nativeTask = HudEXReminder(
                         id: task.id,
                         title: jsonTitle(from: native.title, project: project),
                         notes: native.notes,
                         dueDate: dueDate(from: native),
+                        startDate: startDate(from: native),
+                        location: native.location,
+                        locationAlert: locationAlert(from: native),
+                        repeatRule: repeatRule(from: native),
+                        earlyReminderMinutes: earlyReminderMinutes(from: native),
                         isCompleted: native.isCompleted,
                         priority: native.priority
                     )
-                    let fileChanged = task.syncFingerprint.map { $0 != fingerprint(task) } ?? true
-                    let nativeChanged = task.syncFingerprint.map { $0 != fingerprint(nativeTask) } ?? false
+                    let isCurrentFingerprint = task.syncFingerprint?.hasPrefix("v2:") == true
+                    let fileChanged = task.syncFingerprint.map {
+                        $0 != (isCurrentFingerprint ? fingerprint(task) : legacyFingerprint(task))
+                    } ?? true
+                    let nativeChanged = task.syncFingerprint.map {
+                        $0 != (isCurrentFingerprint ? fingerprint(nativeTask) : legacyFingerprint(nativeTask))
+                    } ?? false
+                    if !isCurrentFingerprint {
+                        // Earlier JSON versions had no fields for these native
+                        // details. Import them before writing anything back.
+                        task.startDate = task.startDate ?? nativeTask.startDate
+                        task.location = task.location ?? nativeTask.location
+                        task.locationAlert = task.locationAlert ?? nativeTask.locationAlert
+                        task.repeatRule = task.repeatRule ?? nativeTask.repeatRule
+                        task.earlyReminderMinutes = task.earlyReminderMinutes ?? nativeTask.earlyReminderMinutes
+                    }
                     let fileWins: Bool
                     if fileChanged && nativeChanged {
                         fileWins = (document.fileModifiedAt ?? .distantPast) >= nativeDate
@@ -293,6 +257,11 @@ final class RemindersSyncService {
                         task.title = nativeTask.title
                         task.notes = nativeTask.notes
                         task.dueDate = nativeTask.dueDate
+                        task.startDate = nativeTask.startDate
+                        task.location = nativeTask.location
+                        task.locationAlert = nativeTask.locationAlert
+                        task.repeatRule = nativeTask.repeatRule
+                        task.earlyReminderMinutes = nativeTask.earlyReminderMinutes
                         task.isCompleted = nativeTask.isCompleted
                         task.priority = nativeTask.priority
                         task.modifiedAt = nativeDate
@@ -323,12 +292,9 @@ final class RemindersSyncService {
             }
 
             // Items still mapped here were removed from the source file.
-            for removed in byKey.filter({ $0.key.projectID == project.id }).map(\.value) {
+            for removed in byKey.filter({ marker(from: $0.value.url)?.projectID == project.id }).map(\.value) {
                 try store.remove(removed, commit: true)
-                byKey.removeValue(forKey: TaskKey(
-                    projectID: project.id,
-                    taskID: marker(from: removed.url)?.taskID ?? ""
-                ))
+                byKey.removeValue(forKey: marker(from: removed.url)?.taskID ?? "")
             }
 
             updatedProjects.append(HudEXProject(
@@ -349,11 +315,25 @@ final class RemindersSyncService {
             ))
         }
 
-        document.projects = updatedProjects
+        // A deleted project leaves its native reminders in the old list. They
+        // are removed only if absent from JSON, using their stable task ID.
+        for removed in byKey.values {
+            try store.remove(removed, commit: true)
+        }
+        document.reminders = updatedProjects.flatMap { project in
+            project.reminders.map { task in
+                var copy = task
+                copy.projectID = project.id == Self.standaloneProjectID ? nil : project.id
+                return copy
+            }
+        }
+        document.projects = updatedProjects.filter { $0.id != Self.standaloneProjectID }.map { project in
+            var copy = project
+            copy.reminders = []
+            return copy
+        }
         return SyncResult(
             document: document,
-            removedLegacyLists: removedLegacyLists,
-            retainedLegacyLists: retainedLegacyLists,
             createdProjects: createdProjects,
             projectCommandIdentifiers: projectCommandIdentifiers,
             projectCommandConflicts: projectCommandConflicts
@@ -361,15 +341,36 @@ final class RemindersSyncService {
     }
 
     func consumeProjectCommands(identifiers: [String]) async throws {
-        guard !identifiers.isEmpty,
-              let calendar = store.calendars(for: .reminder).first(where: {
-                  $0.title == Self.managedListTitle && $0.allowsContentModifications
-              }) else { return }
+        guard !identifiers.isEmpty else { return }
         let identifiers = Set(identifiers)
-        for reminder in await fetchReminders(in: calendar)
-        where identifiers.contains(reminder.calendarItemIdentifier) {
-            try store.remove(reminder, commit: true)
+        for calendar in store.calendars(for: .reminder)
+        where isManagedListTitle(calendar.title) && calendar.allowsContentModifications {
+            for reminder in await fetchReminders(in: calendar)
+            where identifiers.contains(reminder.calendarItemIdentifier) {
+                try store.remove(reminder, commit: true)
+            }
         }
+    }
+
+    /// Run only after the reconciled JSON has been saved. Never remove a list
+    /// that still contains a reminder (including one from another source).
+    func cleanupLegacyLists() async -> LegacyCleanupResult {
+        var result = LegacyCleanupResult(removed: 0, retained: 0)
+        for calendar in store.calendars(for: .reminder)
+        where calendar.title != Self.managedListTitle && isManagedListTitle(calendar.title) {
+            guard calendar.allowsContentModifications,
+                  await fetchReminders(in: calendar).isEmpty else {
+                result.retained += 1
+                continue
+            }
+            do {
+                try store.removeCalendar(calendar, commit: true)
+                result.removed += 1
+            } catch {
+                result.retained += 1
+            }
+        }
+        return result
     }
 
     private func fetchReminders(in calendar: EKCalendar) async -> [EKReminder] {
@@ -379,6 +380,36 @@ final class RemindersSyncService {
                 continuation.resume(returning: reminders ?? [])
             }
         }
+    }
+
+    private func writableCalendar(existing: [EKCalendar]) throws -> EKCalendar {
+        if let calendar = existing.first(where: {
+            $0.title == Self.managedListTitle && $0.allowsContentModifications
+        }) { return calendar }
+        // Reuse the Inbox identifier first: existing desktop widgets pointing
+        // to it keep working after this list is renamed to plain “HudEX”.
+        if let previous = existing.first(where: {
+            ($0.title == Self.inboxListTitle || $0.title == Self.oldSharedListTitle)
+                && $0.allowsContentModifications
+        }) {
+            previous.title = Self.managedListTitle
+            try store.saveCalendar(previous, commit: true)
+            return previous
+        }
+        guard let source = store.defaultCalendarForNewReminders()?.source
+                ?? existing.first(where: { $0.allowsContentModifications })?.source else {
+            throw SyncError.noWritableListSource
+        }
+        let calendar = EKCalendar(for: .reminder, eventStore: store)
+        calendar.source = source
+        calendar.title = Self.managedListTitle
+        try store.saveCalendar(calendar, commit: true)
+        return calendar
+    }
+
+    private func isManagedListTitle(_ title: String) -> Bool {
+        title == Self.managedListTitle || title == Self.inboxListTitle
+            || title == Self.oldSharedListTitle || legacyProjectID(fromListTitle: title) != nil
     }
 
     private func taskURL(sourceID: String, projectID: String, taskID: String) -> URL? {
@@ -418,9 +449,11 @@ final class RemindersSyncService {
     }
 
     private func project(forNativeTitle title: String, in projects: [HudEXProject]) -> HudEXProject? {
-        if projects.count == 1 { return projects[0] }
-        let matches = projects.filter { title.hasPrefix("\($0.shortTitle) · ") }
-        return matches.count == 1 ? matches[0] : nil
+        let matches = projects.filter {
+            $0.id != Self.standaloneProjectID && title.hasPrefix("\($0.shortTitle) · ")
+        }
+        if matches.count == 1 { return matches[0] }
+        return projects.first(where: { $0.id == Self.standaloneProjectID })
     }
 
     private func projectCommand(from title: String) -> ProjectCommand? {
@@ -448,10 +481,11 @@ final class RemindersSyncService {
     }
 
     private func displayTitle(_ title: String, project: HudEXProject) -> String {
-        "\(project.shortTitle) · \(title)"
+        return title
     }
 
     private func jsonTitle(from title: String, project: HudEXProject) -> String {
+        if project.id == Self.standaloneProjectID { return title }
         let prefix = "\(project.shortTitle) · "
         return title.hasPrefix(prefix) ? String(title.dropFirst(prefix.count)) : title
     }
@@ -473,10 +507,64 @@ final class RemindersSyncService {
         if reminder.calendar?.calendarIdentifier != calendar.calendarIdentifier { reminder.calendar = calendar; changed = true }
         let url = taskURL(sourceID: sourceID, projectID: project.id, taskID: task.id)
         if reminder.url != url { reminder.url = url; changed = true }
+        if reminder.location != task.location { reminder.location = task.location; changed = true }
         let priority = min(max(task.priority, 0), 9)
         if reminder.priority != priority { reminder.priority = priority; changed = true }
-        if !sameMinute(dueDate(from: reminder), task.dueDate) {
+        let oldDue = dueDate(from: reminder)
+        let oldEarlyMinutes = earlyReminderMinutes(from: reminder)
+        let oldLocationAlert = locationAlert(from: reminder)
+        if !sameMinute(oldDue, task.dueDate) {
             reminder.dueDateComponents = task.dueDate.map(dueDateComponents(from:))
+            changed = true
+        }
+        if !sameMinute(startDate(from: reminder), task.startDate) {
+            reminder.startDateComponents = task.startDate.map(dueDateComponents(from:))
+            changed = true
+        }
+        if repeatRule(from: reminder) != task.repeatRule,
+           task.repeatRule != nil || repeatRule(from: reminder) != nil {
+            for rule in reminder.recurrenceRules ?? [] { reminder.removeRecurrenceRule(rule) }
+            if let rule = task.repeatRule, rule.frequency != .none {
+                let frequency: EKRecurrenceFrequency
+                switch rule.frequency {
+                case .none: frequency = .daily
+                case .daily: frequency = .daily
+                case .weekly: frequency = .weekly
+                case .monthly: frequency = .monthly
+                case .yearly: frequency = .yearly
+                }
+                reminder.addRecurrenceRule(EKRecurrenceRule(
+                    recurrenceWith: frequency, interval: rule.interval, end: nil
+                ))
+            }
+            changed = true
+        }
+        var desiredAlarms = (reminder.alarms ?? []).filter { alarm in
+            if alarm.structuredLocation != nil { return oldLocationAlert == nil }
+            if sameMinute(alarm.absoluteDate, oldDue), oldDue != nil { return false }
+            if let oldDue, let oldEarlyMinutes, oldEarlyMinutes > 0,
+               sameMinute(alarm.absoluteDate, oldDue.addingTimeInterval(-Double(oldEarlyMinutes * 60))) {
+                return false
+            }
+            return true
+        }
+        if let due = task.dueDate {
+            desiredAlarms.append(EKAlarm(absoluteDate: due))
+            if let early = task.earlyReminderMinutes, early > 0 {
+                desiredAlarms.append(EKAlarm(absoluteDate: due.addingTimeInterval(-Double(early * 60))))
+            }
+        }
+        if let alert = task.locationAlert {
+            let location = EKStructuredLocation(title: alert.title)
+            location.geoLocation = CLLocation(latitude: alert.latitude, longitude: alert.longitude)
+            location.radius = alert.radiusMeters
+            let alarm = EKAlarm(relativeOffset: 0)
+            alarm.structuredLocation = location
+            alarm.proximity = alert.trigger == .arrive ? .enter : .leave
+            desiredAlarms.append(alarm)
+        }
+        if alarmSignatures(reminder.alarms ?? []) != alarmSignatures(desiredAlarms) {
+            reminder.alarms = desiredAlarms.isEmpty ? nil : desiredAlarms
             changed = true
         }
         if reminder.isCompleted != task.isCompleted { reminder.isCompleted = task.isCompleted; changed = true }
@@ -495,6 +583,64 @@ final class RemindersSyncService {
         return Calendar.current.date(from: components)
     }
 
+    private func startDate(from reminder: EKReminder) -> Date? {
+        guard let components = reminder.startDateComponents else { return nil }
+        return Calendar.current.date(from: components)
+    }
+
+    private func earlyReminderMinutes(from reminder: EKReminder) -> Int? {
+        guard let due = dueDate(from: reminder) else { return nil }
+        let minutes = (reminder.alarms ?? []).compactMap { alarm -> Int? in
+            if let absolute = alarm.absoluteDate {
+                let value = Int((due.timeIntervalSince(absolute) / 60).rounded())
+                return value > 0 ? value : nil
+            }
+            if alarm.structuredLocation == nil && alarm.relativeOffset < 0 {
+                return Int((-alarm.relativeOffset / 60).rounded())
+            }
+            return nil
+        }
+        return minutes.min()
+    }
+
+    private func locationAlert(from reminder: EKReminder) -> HudEXReminderLocationAlert? {
+        guard let alarm = reminder.alarms?.first(where: { $0.structuredLocation?.geoLocation != nil }),
+              let place = alarm.structuredLocation, let coordinate = place.geoLocation?.coordinate else { return nil }
+        return HudEXReminderLocationAlert(
+            title: place.title ?? reminder.location ?? "Location",
+            latitude: coordinate.latitude, longitude: coordinate.longitude,
+            radiusMeters: place.radius,
+            trigger: alarm.proximity == .leave ? .leave : .arrive
+        )
+    }
+
+    private func repeatRule(from reminder: EKReminder) -> HudEXReminderRepeatRule? {
+        guard let rules = reminder.recurrenceRules, rules.count == 1,
+              let rule = rules.first, rule.recurrenceEnd == nil,
+              rule.daysOfTheWeek == nil, rule.daysOfTheMonth == nil,
+              rule.monthsOfTheYear == nil, rule.weeksOfTheYear == nil,
+              rule.daysOfTheYear == nil, rule.setPositions == nil else { return nil }
+        let frequency: HudEXReminderRepeatRule.Frequency
+        switch rule.frequency {
+        case .daily: frequency = .daily
+        case .weekly: frequency = .weekly
+        case .monthly: frequency = .monthly
+        case .yearly: frequency = .yearly
+        @unknown default: return nil
+        }
+        return HudEXReminderRepeatRule(frequency: frequency, interval: rule.interval)
+    }
+
+    private func alarmSignatures(_ alarms: [EKAlarm]) -> [String] {
+        alarms.map { alarm in
+            if let place = alarm.structuredLocation, let coordinate = place.geoLocation?.coordinate {
+                return "geo:\(place.title ?? ""):\(coordinate.latitude):\(coordinate.longitude):\(place.radius):\(alarm.proximity.rawValue)"
+            }
+            if let date = alarm.absoluteDate { return "at:\(Int(date.timeIntervalSince1970 / 60))" }
+            return "offset:\(Int(alarm.relativeOffset))"
+        }.sorted()
+    }
+
     private func sameMinute(_ lhs: Date?, _ rhs: Date?) -> Bool {
         switch (lhs, rhs) {
         case (nil, nil): true
@@ -505,17 +651,33 @@ final class RemindersSyncService {
 
     private func fingerprint(_ task: HudEXReminder) -> String {
         let values = [
+            legacyFingerprint(task),
+            task.startDate.map { String(Int($0.timeIntervalSince1970 / 60)) } ?? "",
+            task.location ?? "",
+            task.locationAlert.map { "\($0.title):\($0.latitude):\($0.longitude):\($0.radiusMeters):\($0.trigger.rawValue)" } ?? "",
+            task.repeatRule.map { "\($0.frequency.rawValue):\($0.interval)" } ?? "",
+            task.earlyReminderMinutes.map(String.init) ?? ""
+        ].joined(separator: "\u{1f}")
+        return "v2:" + hash(values)
+    }
+
+    private func legacyFingerprint(_ task: HudEXReminder) -> String {
+        let values = [
             task.title,
             task.notes ?? "",
             task.dueDate.map { String(Int($0.timeIntervalSince1970 / 60)) } ?? "",
             task.isCompleted ? "1" : "0",
             String(task.priority)
         ].joined(separator: "\u{1f}")
-        var hash: UInt64 = 0xcbf29ce484222325
+        return hash(values)
+    }
+
+    private func hash(_ values: String) -> String {
+        var result: UInt64 = 0xcbf29ce484222325
         for byte in values.utf8 {
-            hash ^= UInt64(byte)
-            hash &*= 0x100000001b3
+            result ^= UInt64(byte)
+            result &*= 0x100000001b3
         }
-        return String(hash, radix: 16)
+        return String(result, radix: 16)
     }
 }

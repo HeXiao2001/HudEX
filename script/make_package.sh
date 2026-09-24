@@ -84,9 +84,9 @@ HudEX — first launch / 第一次打开
 
 3. HudEX has no Dock icon: it lives in the menu bar.
    Open Settings → Source to pick your project file, convert it to JSON and
-   convert it to JSON to enable automatic two-way sync with the single
-   'HudEX · Synced' Apple Reminders list. HudEX asks for Reminders access on the
-   first sync. Project reminders use the title prefix 'shortTitle ·'.
+   convert an older Markdown file to one JSON source when needed. All tasks
+   use one Apple Reminders list named HudEX. HudEX asks for Reminders access on the
+   first sync.
    HudEX 没有 Dock 图标，它住在菜单栏里。
    打开 设置 → 数据源 选择你的 HudEX.md，没有文件时点「创建示例文件」。
 

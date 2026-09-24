@@ -8,7 +8,7 @@ HudEX 在你屏幕边缘空出来的地方——通常是 Dock 旁边——放�
 每个书签是一个你正在推进的项目。鼠标悬停时弹出一张小卡片，告诉你这个项目
 做到哪了、下一步是什么、最近一次聊的是什么。
 
-这些内容全部来自**一个 Markdown 文件**，你自己写、AI 写都行。
+这些内容与提醒事项全部来自**一个 JSON 文件**，你自己写、AI 写都行。
 
 ![HudEX 总览：悬停卡片、Dock 旁的书签、布局设置](docs/images/overview.jpg)
 
@@ -26,13 +26,13 @@ HudEX 在你屏幕边缘空出来的地方——通常是 Dock 旁边——放�
 3. 下一步要做什么？
 4. 哪一个已经放了很久没动？
 
-它**不是**任务管理器、日历、看板、笔记库，也不是 AI Agent——刻意不做这些。
+它把项目上下文显示在屏幕边缘，并与 Apple 提醒事项同步具体任务。
 
 ## 快速开始
 
 **安装（推荐用拖拽版）**
 
-1. 下载 **`HudEX-1.0.4.dmg`** 并打开，把 **HudEX** 拖到窗口里的 **Applications** 快捷方式上。
+1. 从 [GitHub Releases 下载 `HudEX-1.0.6.dmg`](https://github.com/HeXiao2001/HudEX/releases/download/v1.0.6/HudEX-1.0.6.dmg) 并打开，把 **HudEX** 拖到窗口里的 **Applications** 快捷方式上。
 2. **第一次打开会被系统拦下来**——因为 HudEX 没有做 Apple 公证签名（个人开发者没有付费账号），
    这一步只需要做一次：
    - 直接双击 HudEX 会看到「Apple 无法验证此 App 是否包含恶意软件」；
@@ -44,81 +44,45 @@ HudEX 在你屏幕边缘空出来的地方——通常是 Dock 旁边——放�
    不需要辅助功能、屏幕录制或通知。系统设置里那条
    「已阻止」的记录在成功打开后就不再出现。
 4. 第一次启动时 HudEX 会自己创建文件
-   （`~/Library/Application Support/HudEX/HudEX.md`）并打开「开始使用」页，
+   （`~/Library/Application Support/HudEX/HudEX.json`）并打开「开始使用」页，
    告诉你文件在哪里、选哪种外观。
 
-> 想放在别处？在「开始使用」页点「选择文件…」选你自己的 Markdown 文件即可——
+> 想放在别处？在「开始使用」页点「选择文件…」选你自己的 JSON 文件即可——
 > macOS 会为该文件夹问一次，答不答应由你决定。
 
 
-## 文件格式
+## 一个 JSON 文件
 
-```markdown
-## 网站改版                  ← 一个 `##` 就是一个项目
-
-短名：WEB                    ← 可选：书签上显示的字
-状态：进行中                 ← 进行中 / 暂停 / 归档 / 已完成
-更新：2026-09-12 16:30       ← 决定书签颜色
-优先级：高                   ← 可选：给标签上的洞洞上色
-
-### 当前                     ← 小节；当前 / 下一步 / 最新对话 / 备注 会被识别
-新版首页在评审中，站点其他页面还是旧版。
-
-### 下一步
-补齐移动端断点，然后把文案交给团队。
-
-### 最新对话
-首页布局评审
-```
-
-* `###` 标题完全自由：上面四个会被识别并显示在悬停卡片里，其他标题
-  （比如 `### 数据来源`）会显示在「完整窗口」中。
-* 项目级可选字段还有：`顺序：1`（决定标签先后）、
-  `颜色：#4C6FA0` 或 `颜色：绿色`（单独覆盖标签颜色）。
-* 英文键名同样可用（`short:` `status:` `updated:` `order:` `color:` `priority:`），中英文可以混写。
-* 只处理文字和普通 `http(s)` 链接；图片、附件、嵌入一律不加载、不下载、不渲染。
-* 没写 `短名` 的项目会自动生成缩写（`GeoRule` → `GR`，`Reading list` → `RL`）。
-
-示例文件：[`Examples/HudEX.md`](Examples/HudEX.md)（英文）·
-[`Examples/HudEX.zh.md`](Examples/HudEX.zh.md)（中文）
-
-### Apple 提醒事项同步
-
-在 **设置 → 数据源 → Apple 提醒事项同步** 中，把当前文件原地转换成版本化 JSON；路径、项目和现有设置会保留。JSON 是项目与提醒的唯一主文件，默认自动与 Apple 提醒事项双向同步，也可关闭自动同步后手动触发。
+HudEX 默认使用 `~/Library/Application Support/HudEX/HudEX.json`。`projects`、`reminders` 和 `settings` 都在这一个文件中。旧版 `HudEX.md` 可在 **设置 → 数据源** 一次性迁移：保留项目和设置，写入 `.json` 后删除旧 `.md`。迁移前请自行备份需要留存的版本。
 
 ```json
 {
-  "schemaVersion": 2,
-  "sourceID": "a-stable-source-uuid",
-  "hudexVersion": "1.0.4",
-  "aiInstructions": [
-    "This file is the source of truth for HudEX projects and reminders.",
-    "Preserve schemaVersion, sourceID, stable project IDs, and stable reminder IDs when editing this file.",
-    "Keep project reminders in each project's reminders array; edit or delete them by their stable id.",
-    "HudEX uses one Apple Reminders list named 'HudEX · Synced'. Prefix native reminder titles with the project's shortTitle and ' · ' to assign them to a project.",
-    "To create a project from Apple Reminders, add a reminder titled '@project SHORT | Project title'; SHORT must be unique. HudEX writes the new project to this file before consuming that command reminder.",
-    "Give every project a distinct shortTitle so reminders can be assigned unambiguously.",
-    "Preserve settings and project sections. HudEX updates hudexVersion during synchronization."
-  ],
+  "schemaVersion": 6,
+  "sourceID": "stable-source-uuid",
   "projects": [{
     "id": "website-redesign",
     "title": "网站改版",
     "shortTitle": "WEB",
     "status": "进行中",
-    "sections": [{ "id": "next", "title": "下一步", "body": "完成移动端断点" }],
-    "reminders": [{
-      "id": "a-stable-uuid",
-      "title": "交付移动端断点",
-      "dueDate": "2026-10-01T09:00:00Z",
-      "isCompleted": false
-    }]
-  }]
+    "sections": [{ "id": "next", "title": "下一步", "body": "完成移动端断点并交给团队评审" }]
+  }],
+  "reminders": [
+    { "id": "stable-task-uuid-1", "projectID": "website-redesign", "title": "完成移动端断点" },
+    { "id": "stable-task-uuid-2", "projectID": "website-redesign", "title": "提交团队评审", "dueDate": "2026-10-01T09:00:00Z" }
+  ],
+  "settings": {}
 }
 ```
 
-Reminders 中只维护一个 `HudEX · Synced` 列表，提醒标题显示为「项目短名 · 提醒标题」。用此前缀新增提醒可指定项目，每个项目可以有多个提醒。创建项目时新增 `@project 短名 | 项目名称` 提醒（短名需唯一）；HudEX 会先把项目写入主文件，再移除这条命令。两边的新增、修改、完成和删除会自动同步，同一条提醒两边都改动时按修改时间合并。切换主文件后，旧文件对应的 HudEX 提醒会清理；早期版本生成的项目列表会迁移并删除。普通 Reminders 列表不会被 HudEX 管理。转换前建议备份。
+Apple 提醒事项只使用一个名为 `HudEX` 的列表。项目标签仍由 JSON 的 `projects` 定义，提醒用 `projectID` 与项目关联；没有 `projectID` 的提醒是独立任务。一个项目可以有多条提醒。有明确时间的 `dueDate` 会设置提醒时间和系统闹铃。两边的新增、修改、完成与删除会同步；旧版 `HudEX · Inbox`、`HudEX · Synced` 和项目列表中的任务会迁入单一列表，空列表会清理。直接在 Apple 提醒事项新建的任务默认是独立任务；若标题以唯一的“项目短名 · ”开头，HudEX 会将它关联到该项目。
 
-JSON 顶层的 `schemaVersion` 表示文件格式，`hudexVersion` 表示最后同步它的 HudEX 发布版本。`aiInstructions` 是给后续 AI 编辑者的持续规则；请保留 `sourceID`、项目 ID 和提醒 ID，并确保项目短名唯一。
+提醒还支持 `startDate`、`location`、`priority`（0 无、1 高、5 中、9 低）、`earlyReminderMinutes`、`repeatRule`（如 `{"frequency":"weekly","interval":1}`）以及带坐标的 `locationAlert`（`title`、`latitude`、`longitude`、`radiusMeters`、`trigger` 为 `arrive` 或 `leave`）。这些字段与系统提醒事项双向同步，悬停卡片和项目详情会显示位置与优先级。`isFlagged`、`tags` 可以保存在 JSON 中，但 Apple 公开的 EventKit 接口暂不支持同步原生旗标和标签。桌面上的 Apple 提醒事项组件请选择 `HudEX` 列表。
+
+应用创建的 JSON 会附带完整 `aiInstructions`：让 AI 从「下一步」和明确承诺中提取具体行动，使用新 UUID 创建提醒，保持已有 ID 和同步元数据，不猜测截止时间，也不把一般备注变成任务。项目内容和提醒都写回同一个文件。旧版 Markdown 示例仍在 [`Examples/HudEX.md`](Examples/HudEX.md)，仅用于迁移参考。
+
+把现有文件交给 AI 编辑时，可以直接使用这段提示词：
+
+> 请只编辑我提供的 HudEX.json，并遵守其中的 aiInstructions。整理 projects 的内容，从每个项目的「下一步」和明确承诺中提取可执行的提醒事项，写入顶层 reminders 数组。每个提醒用对应项目的 id 作为 projectID；一个项目可以有多条提醒。仅在原文给出明确日期和时间时填写 ISO 8601 dueDate/startDate，不能猜测时间；有明确地点时写 location，只有知道精确坐标才写 locationAlert。明确提到优先级、提前提醒或重复规则时，分别写 priority、earlyReminderMinutes、repeatRule。新增提醒使用新的 UUID；修改已有提醒时保留 id、sourceID、reminderIdentifier、modifiedAt 和 syncFingerprint。保留现有 settings、项目章节及其他未要求修改的内容。输出完整、有效的单个 JSON 文件，不要另建提醒事项文件。
 
 ## 三种外观风格
 
@@ -132,32 +96,9 @@ JSON 顶层的 `schemaVersion` 表示文件格式，`hudexVersion` 表示最后�
 每个项目的连接线都不一样——方向、弧度甚至偶尔的 S 形，都由项目名的稳定哈希决定，
 所以同一个标签每次悬停都一样，静止时也不播放任何动画。
 
-## 内容归你管
+## 内容与设置都在同一个文件
 
-文件是你的：可以自己手写，也可以让 AI 实时或定期帮你整理，还可以把它放在任意
-一个会被云服务（iCloud 云盘、OneDrive、Dropbox、WebDAV、git 仓库……）同步的
-目录里。Markdown 模式下 HudEX 只读项目内容；JSON 模式下提醒事项同步会更新任务字段。
-两台 Mac 也可以指向同一份同步过来的文件。
-
-Markdown 模式下 HudEX 只写下面那段设置；JSON 模式下还会更新提醒数据与同步元信息。
-
-## 设置就写在 Markdown 里
-
-`HudEX.md` 最下面是一段自带说明的设置段：每个选项**上面一行说明、下面一行 `名称：值`**。
-
-```markdown
-# HudEX 设置
-
-> 外观风格：skeuomorphic（拟物）/ frosted（磨砂）/ minimal（极简）
-外观风格：skeuomorphic
-
-> 标签伸进屏幕的宽度，单位 pt；0 = 跟随 Dock 厚度
-标签宽度：0
-```
-
-改文件里的值，HudEX 立刻生效；在应用里改了设置，HudEX 也会写回这一段
-（1.2 秒防抖、原子替换，上面的项目内容一字不动）。所以这个文件完全可以
-由人或者 AI 来驱动：布局、颜色、阈值、数量上限，连风格都能改。
+你可以自己或让 AI 编辑 `HudEX.json`。项目内容、提醒事项和设置都在其中；文件也可以放到你自己的云盘同步目录。设置使用顶层 `settings` 对象，在应用里修改后会写回同一文件。HudEX 不调用 AI 服务，也不内置邮箱连接。
 
 ## 标签放在哪
 
@@ -185,9 +126,9 @@ Markdown 模式下 HudEX 只写下面那段设置；JSON 模式下还会更新�
 
 ## 明确不做的事
 
-不调用 AI、不接入 HudEX 自己的云同步、不内置编辑器、不用 WebView/Electron/Node、不存历史、
+不调用 AI、不接入 HudEX 自己的云文件同步、不内置编辑器、不用 WebView/Electron/Node、不存历史、
 自动滚动、不做进度条、不加载图片附件、没有手机端。
-「编辑」就是「用你系统的默认 Markdown 程序打开 `HudEX.md`」，
+「编辑」就是用你系统默认的 JSON 编辑器打开 `HudEX.json`，
 同步交给同步客户端——文件只要在本地是新的就行；内容由谁写、怎么写，也完全由你决定
 （手写、让 AI 整理、或者用你已有的笔记流程）。
 

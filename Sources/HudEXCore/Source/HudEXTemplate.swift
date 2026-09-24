@@ -38,5 +38,5 @@ public enum HudEXTemplate {
     }
 
     /// Short hint shown in Settings when the file is missing.
-    public static let missingFileHint = "还没有 HudEX.md。可以创建一个示例文件，然后按自己的项目改。"
+    public static let missingFileHint = "还没有 HudEX.json。可以创建示例文件，然后编辑项目和提醒事项。"
 }
